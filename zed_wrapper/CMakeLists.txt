@@ -96,7 +96,7 @@ endif()
 ###############################################################################
 # SOURCES
 set(NODE_SRC
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/zed_wrapper_node.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/zed_wrapper_container.cpp
 )
 
 set(COMPONENT_SRC
