@@ -2,10 +2,10 @@
 
 <!-- Package format 3 according to http://www.ros.org/reps/rep-0149.html -->
 <package format="3">
-  <name>zed_ros2_wrapper</name>
-  <version>0.1</version>
+  <name>ros2_stereolabs_zed</name>
+  <version>0.1.0</version>
   <description>
-    zed-ros2-wrapper is a ROS2 wrapper for the <a href="https://www.stereolabs.com/developers/">ZED library</a>
+    ros2_stereolabs_zed is a ROS2 wrapper for the <a href="https://www.stereolabs.com/developers/">ZED library</a>
     for interfacing with the ZED camera.
   </description>
   <maintainer email="developers@stereolabs.com">STEREOLABS</maintainer>

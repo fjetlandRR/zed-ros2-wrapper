@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-project(zed_ros2_wrapper)
+project(ros2_stereolabs_zed)
 
 # ROS2 Flags
 if(NOT CMAKE_CXX_STANDARD)
@@ -104,34 +104,50 @@ set(COMPONENT_SRC
 )
 
 ###############################################################################
-# COMPONENT and EXECUTABLE
+# ZED COMPONENT and ZED EXECUTABLE
 
 # create ament index resource which references the libraries in the binary dir
 set(node_plugins "")
 
 add_library(zed_component SHARED ${COMPONENT_SRC})
-target_compile_definitions(zed_component PRIVATE "COMPOSITION_BUILDING_DLL")
+target_compile_definitions(zed_component PRIVATE "ZED_BUILDING_DLL")
 ament_target_dependencies(zed_component
-  "class_loader"
-  "rclcpp"
-  "std_msgs")
+  class_loader
+  rclcpp
+  std_msgs
+  sensor_msgs
+  stereo_msgs
+  tf2_ros
+  tf2
+  tf2_geometry_msgs
+  nav_msgs
+)
 rclcpp_register_node_plugins(zed_component "zed_wrapper::ZedCameraComponent")
 set(node_plugins "${node_plugins}zed_wrapper::ZedCameraComponent;$<TARGET_FILE:zed_component>\n")
 
 add_executable(zed_wrapper_node ${NODE_SRC})
 target_link_libraries(zed_wrapper_node
-  zed_component
+    zed_component
 )
 ament_target_dependencies(zed_wrapper_node
-  "rclcpp")
+  rclcpp
+  zed_component)
 
-install(TARGETS
-  zed_component
-  ARCHIVE DESTINATION lib
-  LIBRARY DESTINATION lib
-  RUNTIME DESTINATION bin)
+# Install binaries
+install(TARGETS zed_wrapper_node
+  DESTINATION lib/${PROJECT_NAME}
+)
 
-install(TARGETS
-  zed_wrapper_node
-  DESTINATION lib/${PROJECT_NAME})
+install(TARGETS zed_component
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+)
 
+# Install header files
+install(
+  DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/component/include/
+  DESTINATION include/${PROJECT_NAME}/
+)
+
+ament_package()
