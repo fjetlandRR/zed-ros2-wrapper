@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-project(ros2_stereolabs_zed)
+project(stereolabs_zed)
 
 # ROS2 Flags
 if(NOT CMAKE_CXX_STANDARD)
@@ -48,6 +48,8 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_index_cpp REQUIRED)
 find_package(class_loader REQUIRED)
 find_package(builtin_interfaces REQUIRED)
+find_package(rclcpp_lifecycle REQUIRED)
+find_package(lifecycle_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rmw_implementation REQUIRED)
 find_package(std_msgs REQUIRED)
@@ -72,6 +74,8 @@ include_directories(
     ${OpenCV_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/src/component/include
+    ${rclcpp_lifecycle_INCLUDE_DIRS}
+    ${lifecycle_msgs_INCLUDE_DIRS}
     ${rclcpp_INCLUDE_DIRS}
     ${class_loader_INCLUDE_DIRS}
     ${rmw_implementation_INCLUDE_DIRS}
@@ -93,6 +97,12 @@ if(NOT DEFINED CUDA_NPP_LIBRARIES_ZED)
     set(CUDA_NPP_LIBRARIES_ZED ${CUDA_npp_LIBRARY} ${CUDA_npps_LIBRARY} ${CUDA_nppi_LIBRARY})
 endif()
 
+set(LINK_LIBRARIES
+  ${ZED_LIBRARIES}
+  ${CUDA_LIBRARIES} ${CUDA_NPP_LIBRARIES_ZED}
+  ${OpenCV_LIBS}
+  )
+
 ###############################################################################
 # SOURCES
 set(NODE_SRC
@@ -111,8 +121,13 @@ set(node_plugins "")
 
 add_library(zed_component SHARED ${COMPONENT_SRC})
 target_compile_definitions(zed_component PRIVATE "ZED_BUILDING_DLL")
+target_link_libraries(zed_component
+    ${rclcpp_lifecycle_LIBRARIES}
+    ${LINK_LIBRARIES}
+)
 ament_target_dependencies(zed_component
-  class_loader
+  lifecycle_msgs
+  rclcpp_lifecycle
   rclcpp
   std_msgs
   sensor_msgs
@@ -122,22 +137,25 @@ ament_target_dependencies(zed_component
   tf2_geometry_msgs
   nav_msgs
 )
-rclcpp_register_node_plugins(zed_component "zed_wrapper::ZedCameraComponent")
-set(node_plugins "${node_plugins}zed_wrapper::ZedCameraComponent;$<TARGET_FILE:zed_component>\n")
+rclcpp_register_node_plugins(zed_component "stereolabs::ZedCameraComponent")
+set(node_plugins "${node_plugins}stereolabs::ZedCameraComponent;$<TARGET_FILE:zed_component>\n")
 
 add_executable(zed_wrapper_node ${NODE_SRC})
 target_link_libraries(zed_wrapper_node
     zed_component
+    ${LINK_LIBRARIES}
 )
 ament_target_dependencies(zed_wrapper_node
   rclcpp
+  class_loader
   zed_component)
 
-# Install binaries
+# Install executable
 install(TARGETS zed_wrapper_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
+# Install plugin library
 install(TARGETS zed_component
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
