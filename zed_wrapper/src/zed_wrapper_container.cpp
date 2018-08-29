@@ -13,7 +13,7 @@ int main(int argc, char* argv[]) {
     rclcpp::executors::SingleThreadedExecutor exe;
 
     std::shared_ptr<stereolabs::ZedCameraComponent> lc_node =
-        std::make_shared<stereolabs::ZedCameraComponent>("zed_node", "zed");
+        std::make_shared<stereolabs::ZedCameraComponent>("zed_node", "");
 
     exe.add_node(lc_node->get_node_base_interface());
 

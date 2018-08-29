@@ -41,8 +41,7 @@ namespace stereolabs {
         // available.
         msg_ = std::make_shared<std_msgs::msg::String>();
         pub_ = this->create_publisher<std_msgs::msg::String>("lifecycle_chatter");
-        timer_ = this->create_wall_timer(
-                     1s, std::bind(&ZedCameraComponent::publish, this));
+        timer_ = this->create_wall_timer(1s, std::bind(&ZedCameraComponent::publish, this));
 
         RCLCPP_INFO(get_logger(), "on_configure() is called.")
 

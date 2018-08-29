@@ -52,7 +52,7 @@ namespace stereolabs {
          * arguments a regular node.
          */
         explicit ZedCameraComponent(const std::string& node_name = "zed_node",
-                                    const std::string& ros_namespace = "",
+                                    const std::string& ros_namespace = "zed",
                                     bool intra_process_comms = false);
 
         /// Callback for walltimer in order to publish the message.
