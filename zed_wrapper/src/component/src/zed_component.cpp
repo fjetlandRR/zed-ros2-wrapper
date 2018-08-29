@@ -7,20 +7,18 @@ namespace stereolabs {
 
     ZedCameraComponent::ZedCameraComponent(const std::string& node_name, const std::string& ros_namespace, bool intra_process_comms)
         : rclcpp_lifecycle::LifecycleNode(node_name, ros_namespace, intra_process_comms) {
-        RCUTILS_LOG_INFO("ZED Camera Component created");
+        RCLCPP_INFO(get_logger(), "ZED Camera Component created");
     }
 
     void ZedCameraComponent::publish() {
         static size_t count = 0;
-        msg_->data = "ZED HelloWorld #" + std::to_string(++count);
+        msg_->data = "ZED HelloWorld #" + std::to_string(++count) + " - Current state: " + this->get_current_state().label();
 
         // Print the current state for demo purposes
         if (!pub_->is_activated()) {
-            RCLCPP_INFO(
-                get_logger(), "ZED node is currently inactive. Messages are not published.")
+            RCLCPP_INFO(get_logger(), "ZED node is currently inactive. Messages are not published.")
         } else {
-            RCLCPP_INFO(
-                get_logger(), "ZED node is active. Publishing: [%s]", msg_->data.c_str())
+            RCLCPP_INFO(get_logger(), "ZED node is active. Publishing: [%s]", msg_->data.c_str())
         }
 
         // We independently from the current state call publish on the lifecycle
@@ -30,7 +28,61 @@ namespace stereolabs {
         pub_->publish(msg_);
     }
 
+    rcl_lifecycle_transition_key_t ZedCameraComponent::on_shutdown(const rclcpp_lifecycle::State& previous_state) {
+        RCLCPP_INFO(get_logger(), "ZED node is shutting down")
+        return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
+    }
+
+    rcl_lifecycle_transition_key_t ZedCameraComponent::on_error(const rclcpp_lifecycle::State& previous_state) {
+        RCLCPP_INFO(get_logger(), "on_error() is called.");
+
+        switch (previous_state.id()) {
+        case lifecycle_msgs::msg::Transition::TRANSITION_CONFIGURE: { // Error in CONFIGURE STATE
+            RCLCPP_INFO(get_logger(), "Finalizing the node");
+
+            return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
+        }
+        break;
+
+        default:
+            RCLCPP_INFO(get_logger(), "transition error not handled: %d", previous_state.id())
+        }
+
+        return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
+    }
+
     rcl_lifecycle_transition_key_t ZedCameraComponent::on_configure(const rclcpp_lifecycle::State&) {
+        RCLCPP_INFO(get_logger(), "on_configure() is called.");
+
+        // >>>>> Check SDK version
+#if (ZED_SDK_MAJOR_VERSION<2 || (ZED_SDK_MAJOR_VERSION==2 && ZED_SDK_MINOR_VERSION<6))
+        RCLCPP_ERROR(get_logger(), "ROS2 ZED node requires ZED SDK > v2.6.0");
+
+        return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_ERROR;
+#endif
+        // <<<<< Check SDK version
+
+        // >>>>> Load params from param server
+        // TODO load params from param server
+        // <<<<< Load params from param server
+
+        // >>>>> ZED configuration
+        if (!mSvoFilepath.empty()) {
+            mZedParams.svo_input_filename = mSvoFilepath.c_str();
+            mZedParams.svo_real_time_mode = true;
+            mSvoMode = true;
+        } else {
+            mZedParams.camera_fps = mCamFrameRate;
+            mZedParams.camera_resolution = static_cast<sl::RESOLUTION>(mCamResol);
+
+            if (mZedSerialNumber == 0) {
+                mZedParams.camera_linux_id = mZedId;
+            }
+        }
+
+
+        // <<<<< ZED configuration
+
         // This callback is supposed to be used for initialization and
         // configuring purposes.
         // We thus initialize and configure our messages, publishers and timers.
@@ -42,8 +94,6 @@ namespace stereolabs {
         msg_ = std::make_shared<std_msgs::msg::String>();
         pub_ = this->create_publisher<std_msgs::msg::String>("lifecycle_chatter");
         timer_ = this->create_wall_timer(1s, std::bind(&ZedCameraComponent::publish, this));
-
-        RCLCPP_INFO(get_logger(), "on_configure() is called.")
 
         // We return a success and hence invoke the transition to the next
         // step: "inactive".
