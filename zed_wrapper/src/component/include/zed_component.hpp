@@ -9,6 +9,7 @@
 #include <string>
 #include <thread>
 
+#include "lifecycle_msgs/msg/state.hpp"
 #include "lifecycle_msgs/msg/transition.hpp"
 
 #include "rclcpp/rclcpp.hpp"
@@ -122,13 +123,16 @@ namespace stereolabs {
         * on_cleanup callback is being called when the lifecycle node
         * enters the "cleaningup" state.
         * Depending on the return value of this function, the state machine
-        * either invokes a transition to the "uncofigured" state or stays
+        * either invokes a transition to the "unconfigured" state or stays
         * in "inactive".
         * TRANSITION_CALLBACK_SUCCESS transitions to "unconfigured"
         * TRANSITION_CALLBACK_FAILURE transitions to "inactive"
         * TRANSITION_CALLBACK_ERROR or any uncaught exceptions to "errorprocessing"
         */
         rcl_lifecycle_transition_key_t on_cleanup(const rclcpp_lifecycle::State&);
+
+      protected:
+        void zedGrabThreadFunc();
 
       private:
         std::shared_ptr<std_msgs::msg::String> msg_;
@@ -145,6 +149,10 @@ namespace stereolabs {
         // lifecycle timer will be created which obeys the same lifecycle management as the
         // lifecycle publisher.
         std::shared_ptr<rclcpp::TimerBase> timer_;
+
+        // Grab thread
+        std::thread mGrabThread;
+        bool mThreadStop = false;
 
         // ZED SDK
         sl::Camera mZed;

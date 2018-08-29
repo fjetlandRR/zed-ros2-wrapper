@@ -7,6 +7,12 @@ namespace stereolabs {
 
     ZedCameraComponent::ZedCameraComponent(const std::string& node_name, const std::string& ros_namespace, bool intra_process_comms)
         : rclcpp_lifecycle::LifecycleNode(node_name, ros_namespace, intra_process_comms) {
+
+
+#ifndef NDEBUG
+        rcutils_logging_set_logger_level(get_name(), RCUTILS_LOG_SEVERITY_DEBUG);
+#endif
+
         RCLCPP_INFO(get_logger(), "ZED Camera Component created");
     }
 
@@ -29,7 +35,25 @@ namespace stereolabs {
     }
 
     rcl_lifecycle_transition_key_t ZedCameraComponent::on_shutdown(const rclcpp_lifecycle::State& previous_state) {
-        RCLCPP_INFO(get_logger(), "ZED node is shutting down")
+        RCLCPP_INFO(get_logger(), "on_shutdown() is called.");
+
+        RCLCPP_INFO(get_logger(), "ZED node is shutting down");
+
+        // >>>>> Verify that all the threads are not active
+        mThreadStop = true;
+        if (mGrabThread.joinable()) {
+            mGrabThread.join();
+        }
+        // <<<<< Verify that the grab thread is not active
+
+        // >>>>> Verify that ZED is not opened
+        if (mZed.isOpened()) {
+            mZed.close();
+        }
+        // <<<<< Verify that ZED is not opened
+
+        RCLCPP_INFO(get_logger(), "shutdown complete");
+
         return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
     }
 
@@ -45,7 +69,7 @@ namespace stereolabs {
         break;
 
         default:
-            RCLCPP_INFO(get_logger(), "transition error not handled: %d", previous_state.id())
+            RCLCPP_INFO(get_logger(), "Transition error not handled: %d", previous_state.id())
         }
 
         return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
@@ -79,21 +103,7 @@ namespace stereolabs {
                 mZedParams.camera_linux_id = mZedId;
             }
         }
-
-
         // <<<<< ZED configuration
-
-        // This callback is supposed to be used for initialization and
-        // configuring purposes.
-        // We thus initialize and configure our messages, publishers and timers.
-        // The lifecycle node API does return lifecycle components such as
-        // lifecycle publishers. These entities obey the lifecycle and
-        // can comply to the current state of the node.
-        // As of the beta version, there is only a lifecycle publisher
-        // available.
-        msg_ = std::make_shared<std_msgs::msg::String>();
-        pub_ = this->create_publisher<std_msgs::msg::String>("lifecycle_chatter");
-        timer_ = this->create_wall_timer(1s, std::bind(&ZedCameraComponent::publish, this));
 
         // We return a success and hence invoke the transition to the next
         // step: "inactive".
@@ -105,17 +115,12 @@ namespace stereolabs {
     }
 
     rcl_lifecycle_transition_key_t ZedCameraComponent::on_activate(const rclcpp_lifecycle::State&) {
-        // We explicitly activate the lifecycle publisher.
-        // Starting from this point, all messages are no longer
-        // ignored but sent into the network.
-        pub_->on_activate();
+        RCUTILS_LOG_INFO_NAMED(get_name(), "on_activate() is called.");
 
-        RCUTILS_LOG_INFO_NAMED(get_name(), "on_activate() is called.")
-
-        // Let's sleep for 2 seconds.
-        // We emulate we are doing important
-        // work in the activating phase.
-        std::this_thread::sleep_for(2s);
+        // >>>>> Start ZED thread
+        mThreadStop = false;
+        mGrabThread = std::thread(&ZedCameraComponent::zedGrabThreadFunc, this);
+        // <<<<< Start ZED thread
 
         // We return a success and hence invoke the transition to the next
         // step: "active".
@@ -127,12 +132,14 @@ namespace stereolabs {
     }
 
     rcl_lifecycle_transition_key_t ZedCameraComponent::on_deactivate(const rclcpp_lifecycle::State&) {
-        // We explicitly deactivate the lifecycle publisher.
-        // Starting from this point, all messages are no longer
-        // sent into the network.
-        pub_->on_deactivate();
+        RCUTILS_LOG_INFO_NAMED(get_name(), "on_deactivate() is called.");
 
-        RCUTILS_LOG_INFO_NAMED(get_name(), "on_deactivate() is called.")
+        // >>>>> Verify that all the threads are not active
+        mThreadStop = true;
+        if (mGrabThread.joinable()) {
+            mGrabThread.join();
+        }
+        // <<<<< Verify that the grab thread is not active
 
         // We return a success and hence invoke the transition to the next
         // step: "inactive".
@@ -144,13 +151,12 @@ namespace stereolabs {
     }
 
     rcl_lifecycle_transition_key_t ZedCameraComponent::on_cleanup(const rclcpp_lifecycle::State&) {
-        // In our cleanup phase, we release the shared pointers to the
-        // timer and publisher. These entities are no longer available
-        // and our node is "clean".
-        timer_.reset();
-        pub_.reset();
+        RCUTILS_LOG_INFO_NAMED(get_name(), "on_cleanup() is called.");
 
-        RCUTILS_LOG_INFO_NAMED(get_name(), "on cleanup is called.")
+        // TODO close ZED and clean all the data structures to go back to "unconfigured" state
+        if (mZed.isOpened()) {
+            mZed.close();
+        }
 
         // We return a success and hence invoke the transition to the next
         // step: "unconfigured".
@@ -159,6 +165,25 @@ namespace stereolabs {
         // In case of TRANSITION_CALLBACK_ERROR or any thrown exception within
         // this callback, the state machine transitions to state "errorprocessing".
         return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
+    }
+
+    void ZedCameraComponent::zedGrabThreadFunc() {
+        RCUTILS_LOG_INFO_NAMED(get_name(), "ZED thread started");
+
+        while (1) {
+            if (!rclcpp::ok() || mThreadStop) {
+                RCUTILS_LOG_INFO_NAMED(get_name(), "ZED thread stop requested");
+
+                if (this->get_current_state().id() == lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE) {
+                    RCUTILS_LOG_INFO_NAMED(get_name(), "Forcing node shutdown")
+                    shutdown();
+                } else {
+                    break;
+                }
+            }
+        }
+
+        RCUTILS_LOG_INFO_NAMED(get_name(), "ZED thread finished");
     }
 }
 
