@@ -73,6 +73,7 @@ include_directories(
     ${ZED_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/tools/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src/component/include
     ${rclcpp_lifecycle_INCLUDE_DIRS}
     ${lifecycle_msgs_INCLUDE_DIRS}
@@ -105,6 +106,9 @@ set(LINK_LIBRARIES
 
 ###############################################################################
 # SOURCES
+set(TOOLS_SRC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/tools/src/sl_tools.cpp )
+
 set(NODE_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/zed_wrapper_container.cpp
 )
@@ -119,7 +123,7 @@ set(COMPONENT_SRC
 # create ament index resource which references the libraries in the binary dir
 set(node_plugins "")
 
-add_library(zed_component SHARED ${COMPONENT_SRC})
+add_library(zed_component SHARED ${TOOLS_SRC} ${COMPONENT_SRC})
 target_compile_definitions(zed_component PRIVATE "ZED_BUILDING_DLL")
 target_link_libraries(zed_component
     ${rclcpp_lifecycle_LIBRARIES}

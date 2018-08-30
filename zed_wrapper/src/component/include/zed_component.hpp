@@ -55,15 +55,7 @@ namespace stereolabs {
                                     const std::string& ros_namespace = "zed",
                                     bool intra_process_comms = false);
 
-        /// Callback for walltimer in order to publish the message.
-        /**
-        * Callback for walltimer. This function gets invoked by the timer
-        * and executes the publishing.
-        * For this demo, we ask the node for its current state. If the
-        * lifecycle publisher is not activate, we still invoke publish, but
-        * the communication is blocked so that no messages is actually transferred.
-        */
-        void publish();
+        virtual ~ZedCameraComponent();
 
         /// Transition callback for state error
         /**
@@ -135,24 +127,13 @@ namespace stereolabs {
         void zedGrabThreadFunc();
 
       private:
-        std::shared_ptr<std_msgs::msg::String> msg_;
-
-        // We hold an instance of a lifecycle publisher. This lifecycle publisher
-        // can be activated or deactivated regarding on which state the lifecycle node
-        // is in.
-        // By default, a lifecycle publisher is inactive by creation and has to be
-        // activated to publish messages into the ROS world.
-        std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<std_msgs::msg::String>> pub_;
-
-        // We hold an instance of a timer which periodically triggers the publish function.
-        // As for the beta version, this is a regular timer. In a future version, a
-        // lifecycle timer will be created which obeys the same lifecycle management as the
-        // lifecycle publisher.
-        std::shared_ptr<rclcpp::TimerBase> timer_;
+        // Status variables
+        rcl_lifecycle_transition_key_t mPrevTransition = lifecycle_msgs::msg::Transition::TRANSITION_CREATE;
 
         // Grab thread
         std::thread mGrabThread;
         bool mThreadStop = false;
+        int mCamTimeoutMsec = 5000; // Error generated if camera is not available after timeout
 
         // ZED SDK
         sl::Camera mZed;
@@ -160,11 +141,22 @@ namespace stereolabs {
 
         // ZED params
         int mZedId = 0;
-        unsigned int mZedSerialNumber;
+        unsigned int mZedSerialNumber = 0;
+        int mZedUserCamModel = 1;   // Camera model set by ROS Param
+        sl::MODEL mZedRealCamModel; // Camera model requested to SDK
         int mCamFrameRate = 30;
         std::string mSvoFilepath = "";
         bool mSvoMode = false;
+        bool mVerbose = true;
+        int mGpuId = -1;
         int mCamResol = 2; // Default resolution: RESOLUTION_HD720
+        int mCamQuality = 1; // Default quality: DEPTH_MODE_PERFORMANCE
+        int mDepthStabilization = 1;
+        bool mCameraFlip = false;
+        double mCamMatResizeFactor = 1.0;
+
+
+
 
 
     };
