@@ -6,7 +6,7 @@
 using namespace std::chrono_literals;
 
 #ifndef TIMER_ELAPSED
-#define TIMER_ELAPSED auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count();
+#define TIMER_ELAPSED double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count();
 #endif
 
 namespace stereolabs {
@@ -65,14 +65,12 @@ namespace stereolabs {
         if (mPrevTransition != 255) {
             switch (mPrevTransition) {
             case lifecycle_msgs::msg::Transition::TRANSITION_CONFIGURE: { // Error during configuration
-                RCLCPP_INFO(get_logger(), "Finalizing the node");
-
+                RCLCPP_INFO(get_logger(), "Node entering 'FINALIZED' state. Kill and restart the node.");
                 return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
             }
             break;
 
             case lifecycle_msgs::msg::Transition::TRANSITION_ACTIVATE: { // Error during activation
-
                 if (mSvoMode) {
                     RCLCPP_INFO(get_logger(), "Please verify the SVO path and reboot the node: %s", mSvoFilepath.c_str());
                     return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
@@ -95,11 +93,11 @@ namespace stereolabs {
             case lifecycle_msgs::msg::Transition::TRANSITION_DEACTIVATE:
             default:
                 RCLCPP_INFO(get_logger(), "Transition error not handled: %d", mPrevTransition);
-                RCLCPP_INFO(get_logger(), "Node entering 'UNCONFIGURED' state");
+                RCLCPP_INFO(get_logger(), "Node entering 'FINALIZED' state. Kill and restart the node.");
             }
         }
 
-        return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
+        return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
     }
 
     rcl_lifecycle_transition_key_t ZedCameraComponent::on_configure(const rclcpp_lifecycle::State&) {
@@ -128,7 +126,7 @@ namespace stereolabs {
             mSvoMode = true;
         } else {
             mZedParams.camera_fps = mCamFrameRate;
-            mZedParams.camera_resolution = static_cast<sl::RESOLUTION>(mCamResol);
+            mZedParams.camera_resolution = static_cast<sl::RESOLUTION>(mZedResol);
 
             if (mZedSerialNumber == 0) {
                 mZedParams.camera_linux_id = mZedId;
@@ -136,7 +134,7 @@ namespace stereolabs {
         }
         mZedParams.coordinate_system = sl::COORDINATE_SYSTEM_RIGHT_HANDED_Z_UP_X_FWD;
         mZedParams.coordinate_units = sl::UNIT_METER;
-        mZedParams.depth_mode = static_cast<sl::DEPTH_MODE>(mCamQuality);
+        mZedParams.depth_mode = static_cast<sl::DEPTH_MODE>(mZedQuality);
         mZedParams.sdk_verbose = mVerbose;
         mZedParams.sdk_gpu_id = mGpuId;
         mZedParams.depth_stabilization = mDepthStabilization;
@@ -206,7 +204,7 @@ namespace stereolabs {
             }
 
             if (!rclcpp::ok() || mThreadStop) {
-                RCUTILS_LOG_INFO_NAMED(get_name(), "ZED activation interrupted");
+                RCLCPP_INFO(get_logger(), "ZED activation interrupted");
 
                 return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
             }
@@ -221,8 +219,8 @@ namespace stereolabs {
         }
         // <<<<< Try to open ZED camera or to load SVO
 
-        mZedRealCamModel = mZed.getCameraInformation().camera_model;
-        std::string camModelStr = "LAST";
+        sl::CameraInformation camInfo = mZed.getCameraInformation();
+        mZedRealCamModel = camInfo.camera_model;
 
         if (mZedRealCamModel == sl::MODEL_ZED) {
 
@@ -238,9 +236,26 @@ namespace stereolabs {
             }
         }
 
+        // >>>>> Camera Parameters user feedback
         RCLCPP_INFO(get_logger(), "CAMERA MODEL: %s", sl::toString(mZedRealCamModel).c_str());
         mZedSerialNumber = mZed.getCameraInformation().serial_number;
         RCLCPP_INFO(get_logger(), "SERIAL NUMBER: %s", std::to_string(mZedSerialNumber).c_str());
+        RCLCPP_INFO(get_logger(), "FW VERSION: %s", std::to_string(camInfo.firmware_version).c_str());
+
+        RCLCPP_INFO(get_logger(), "RESOLUTION: %s", sl::toString(mZedParams.camera_resolution).c_str());
+        RCLCPP_INFO(get_logger(), "FRAMERATE: %s FPS", std::to_string(mZedParams.camera_fps).c_str());
+        RCLCPP_INFO(get_logger(), "CAMERA FLIPPED: %s", std::to_string(mZedParams.camera_image_flip).c_str());
+        RCLCPP_INFO(get_logger(), "COORDINATE SYSTEM: %s", sl::toString(mZedParams.coordinate_system).c_str());
+        RCLCPP_INFO(get_logger(), "COORDINATE UNITS: %s", sl::toString(mZedParams.coordinate_units).c_str());
+        RCLCPP_INFO(get_logger(), "DEPTH MODE: %s", sl::toString(mZedParams.depth_mode).c_str());
+        float minDist = mZedParams.depth_minimum_distance;
+        minDist = minDist == -1.0f ? (mZedRealCamModel == sl::MODEL_ZED_M ? 0.2f : 0.7f) : minDist;
+        RCLCPP_INFO(get_logger(), "DEPTH MINIMUM DISTANCE: %s m", std::to_string(minDist).c_str());
+        RCLCPP_INFO(get_logger(), "DEPTH STABILIZATION: %s", std::to_string(mZedParams.depth_stabilization).c_str());
+        RCLCPP_INFO(get_logger(), "GPU ID: %s", std::to_string(mZedParams.sdk_gpu_id).c_str());
+        // <<<<< Camera Parameters user feedback
+
+
 
         // We return a success and hence invoke the transition to the next
         // step: "inactive".
@@ -257,6 +272,11 @@ namespace stereolabs {
         mPrevTransition = lifecycle_msgs::msg::Transition::TRANSITION_ACTIVATE;
 
         RCLCPP_DEBUG(get_logger(), "on_activate() is called.");
+
+        if (!mZed.isOpened()) {
+            RCLCPP_WARN(get_logger(), "ZED Camera not opened");
+            return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
+        }
 
         // >>>>> Start ZED thread
         mGrabThread = std::thread(&ZedCameraComponent::zedGrabThreadFunc, this);
@@ -319,11 +339,24 @@ namespace stereolabs {
     }
 
     void ZedCameraComponent::zedGrabThreadFunc() {
-        RCUTILS_LOG_INFO_NAMED(get_name(), "ZED thread started");
+        RCLCPP_INFO(get_logger(), "ZED thread started");
 
         mPrevTransition = 255;
+        sl::ERROR_CODE grab_status;
+
+        // >>>>> Grab parameters
+        sl::RuntimeParameters runParams;
+        runParams.sensing_mode = static_cast<sl::SENSING_MODE>(mCamSensingMode);
+        runParams.enable_depth = false;
+        runParams.enable_point_cloud = false;
+        // <<<<< Grab parameters
+
+        rclcpp::Rate loop_rate(mCamFrameRate);
+
+        INIT_TIMER;
 
         while (1) {
+            // >>>>> Interruption check
             if (!rclcpp::ok()) {
                 RCLCPP_DEBUG(get_logger(), "Ctrl+C received");
                 break;
@@ -333,6 +366,56 @@ namespace stereolabs {
                 RCLCPP_DEBUG(get_logger(), "Grab thread stopped");
                 break;
             }
+            // <<<<< Interruption check
+
+            bool runLoop = true;
+
+            // TODO check subscribers!
+
+            if (runLoop) {
+
+                grab_status = mZed.grab(runParams);
+
+                if (grab_status != sl::ERROR_CODE::SUCCESS) {
+                    // Detect if a error occurred (for example:
+                    // the zed have been disconnected) and
+                    // re-initialize the ZED
+                    if (grab_status != sl::ERROR_CODE_NOT_A_NEW_FRAME) {
+                        RCLCPP_WARN(get_logger(), sl::toString(grab_status));
+                    }
+
+                    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+
+                    // TODO Check errors like in ROS1
+
+                    continue;
+                }
+
+            }
+
+            // >>>>> Thread sleep
+            TIMER_ELAPSED;
+            START_TIMER;
+
+            static int rateWarnCount = 0;
+            if (!loop_rate.sleep()) {
+                rateWarnCount++;
+
+                if (rateWarnCount == mCamFrameRate) {
+                    RCLCPP_WARN(get_logger(),  "Expected cycle time: %g sec  - Real cycle time: %g sec ",
+                                0.001 / mCamFrameRate, elapsed / 1000.0);
+                    RCLCPP_INFO(get_logger(),  "Elaboration takes longer than requested "
+                                "by the FPS rate. Please consider to "
+                                "lower the 'frame_rate' setting.");
+
+                    rateWarnCount = 0;
+                }
+            } else {
+                rateWarnCount = 0;
+            }
+
+            RCLCPP_DEBUG(get_logger(), "Thread freq: %g Hz", 1000.0 / elapsed);
+            // <<<<< Thread sleep
         }
 
         RCLCPP_INFO(get_logger(), "ZED thread finished");

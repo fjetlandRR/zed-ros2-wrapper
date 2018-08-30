@@ -137,9 +137,9 @@ namespace stereolabs {
 
         // ZED SDK
         sl::Camera mZed;
-        sl::InitParameters mZedParams;
 
         // ZED params
+        sl::InitParameters mZedParams;
         int mZedId = 0;
         unsigned int mZedSerialNumber = 0;
         int mZedUserCamModel = 1;   // Camera model set by ROS Param
@@ -149,16 +149,12 @@ namespace stereolabs {
         bool mSvoMode = false;
         bool mVerbose = true;
         int mGpuId = -1;
-        int mCamResol = 2; // Default resolution: RESOLUTION_HD720
-        int mCamQuality = 1; // Default quality: DEPTH_MODE_PERFORMANCE
+        int mZedResol = 2; // Default resolution: RESOLUTION_HD720
+        int mZedQuality = 1; // Default quality: DEPTH_MODE_PERFORMANCE
         int mDepthStabilization = 1;
         bool mCameraFlip = false;
-        double mCamMatResizeFactor = 1.0;
-
-
-
-
-
+        double mZedMatResizeFactor = 1.0;
+        int mCamSensingMode = 0; // Default Sensing mode: SENSING_MODE_STANDARD
     };
 }
 
