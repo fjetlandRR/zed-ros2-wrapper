@@ -177,6 +177,9 @@ namespace stereolabs {
         // Status variables
         rcl_lifecycle_transition_key_t mPrevTransition = lifecycle_msgs::msg::Transition::TRANSITION_CREATE;
 
+        // Last frame time
+        rclcpp::Time mLastFrameTime;
+
         // Grab thread
         std::thread mGrabThread;
         bool mThreadStop = false;
@@ -200,7 +203,7 @@ namespace stereolabs {
         int mZedQuality = 1; // Default quality: DEPTH_MODE_PERFORMANCE
         int mDepthStabilization = 1;
         bool mCameraFlip = false;
-        double mZedMatResizeFactor = 0.5;
+        double mZedMatResizeFactor = 1.0;
         int mCamSensingMode = 0; // Default Sensing mode: SENSING_MODE_STANDARD
 
         // Publishers

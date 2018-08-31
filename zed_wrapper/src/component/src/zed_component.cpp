@@ -21,7 +21,11 @@ namespace stereolabs {
         : rclcpp_lifecycle::LifecycleNode(node_name, ros_namespace, intra_process_comms) {
 
 #ifndef NDEBUG
-        rcutils_logging_set_logger_level(get_name(), RCUTILS_LOG_SEVERITY_DEBUG);
+        rcutils_ret_t res = rcutils_logging_set_logger_level(get_name(), RCUTILS_LOG_SEVERITY_DEBUG);
+
+        if (res != RCUTILS_RET_OK) {
+            RCLCPP_INFO(get_logger(), "Error setting DEBUG logger");
+        }
 #endif
 
         RCLCPP_INFO(get_logger(), "ZED Camera Component created");
@@ -114,7 +118,7 @@ namespace stereolabs {
         // https://github.com/ros2/ros2/wiki/About-Quality-of-Service-Settings
         rmw_qos_profile_t custom_camera_qos_profile = rmw_qos_profile_default; // Default QOS profile
 
-        custom_camera_qos_profile.reliability = RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT; // to reduce the latency
+        custom_camera_qos_profile.reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE; // to be sure to publish images
         custom_camera_qos_profile.history = RMW_QOS_POLICY_HISTORY_KEEP_LAST;// KEEP_LAST enforces a limit on the number of messages that are saved, specified by the "depth" parameter
         custom_camera_qos_profile.depth = 1; // Depth represents how many messages to store in history when the history policy is KEEP_LAST.
         custom_camera_qos_profile.durability = RMW_QOS_POLICY_DURABILITY_SYSTEM_DEFAULT;
@@ -441,9 +445,13 @@ namespace stereolabs {
 
         RCLCPP_DEBUG(get_logger(), "on_deactivate() is called.");
         // >>>>> Verify that all the threads are not active
-        mThreadStop = true;
-        if (mGrabThread.joinable()) {
-            mGrabThread.join();
+        try {
+            mThreadStop = true;
+            if (mGrabThread.joinable()) {
+                mGrabThread.join();
+            }
+        } catch (std::system_error& e) {
+            RCLCPP_WARN(get_logger(), "Thread joining exception: %s", e.what());
         }
         // <<<<< Verify that the grab thread is not active
 
@@ -500,8 +508,20 @@ namespace stereolabs {
     void ZedCameraComponent::zedGrabThreadFunc() {
         RCLCPP_INFO(get_logger(), "ZED thread started");
 
+        rclcpp::Clock ros_clock(RCL_ROS_TIME);
+
         mPrevTransition = 255;
         sl::ERROR_CODE grab_status;
+
+        // >>>>> Timeout checking
+        rclcpp::Time startTime;
+        if (mSvoMode) {
+            startTime = ros_clock.now();
+        } else {
+            startTime = sl_tools::slTime2Ros(mZed.getTimestamp(sl::TIME_REFERENCE_CURRENT));
+        }
+        mLastFrameTime = startTime;
+        // <<<<< Timeout checking
 
         // >>>>> Grab parameters
         sl::RuntimeParameters runParams;
@@ -536,6 +556,7 @@ namespace stereolabs {
             size_t rightRawSub = count_subscribers(mRightRawTopic);  //mPubRawRight subscribers
 
             bool pubImages = ((rgbSub + rgbRawSub + leftSub + leftRawSub + rightSub + rightRawSub) > 0);
+
             bool runLoop = pubImages;
             //<<<<< Subscribers check
 
@@ -543,12 +564,11 @@ namespace stereolabs {
                 grab_status = mZed.grab(runParams);
 
                 // Timestamp
-                rclcpp::Time t;
-                rclcpp::Clock ros_clock(RCL_ROS_TIME);
+                rclcpp::Time frameTime;
                 if (mSvoMode) {
-                    t = ros_clock.now();
+                    frameTime = ros_clock.now();
                 } else {
-                    t = sl_tools::slTime2Ros(mZed.getTimestamp(sl::TIME_REFERENCE_IMAGE));
+                    frameTime = sl_tools::slTime2Ros(mZed.getTimestamp(sl::TIME_REFERENCE_IMAGE));
                 }
 
                 if (grab_status != sl::ERROR_CODE::SUCCESS) {
@@ -559,15 +579,26 @@ namespace stereolabs {
                         RCLCPP_WARN(get_logger(), sl::toString(grab_status));
                     }
 
-                    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+                    std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-                    // TODO Check errors like in ROS1
+                    rclcpp::Time now = sl_tools::slTime2Ros(mZed.getTimestamp(sl::TIME_REFERENCE_CURRENT));
+
+                    rcl_time_point_value_t elapsed = (now - mLastFrameTime).nanoseconds();
+                    rcl_time_point_value_t timeout = rclcpp::Duration(5, 0).nanoseconds();
+
+                    if (elapsed > timeout && !mSvoMode) {
+                        rcl_lifecycle_transition_key_t ret = lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
+                        RCLCPP_WARN(get_logger(), "Camera timeout. Triggering DEACTIVATE...");
+                        trigger_transition(lifecycle_msgs::msg::Transition::TRANSITION_DEACTIVATE, ret);
+                    }
 
                     continue;
                 }
 
+                mLastFrameTime = frameTime;
+
                 if (pubImages) {
-                    publishImages(t);
+                    publishImages(frameTime);
                 }
 
                 // >>>>> Thread sleep
