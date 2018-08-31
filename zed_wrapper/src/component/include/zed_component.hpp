@@ -177,7 +177,7 @@ namespace stereolabs {
         // Status variables
         rcl_lifecycle_transition_key_t mPrevTransition = lifecycle_msgs::msg::Transition::TRANSITION_CREATE;
 
-        // Last frame time
+        // Last received frame time
         rclcpp::Time mLastFrameTime;
 
         // Grab thread

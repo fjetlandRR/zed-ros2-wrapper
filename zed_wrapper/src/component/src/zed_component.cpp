@@ -38,11 +38,16 @@ namespace stereolabs {
         RCLCPP_DEBUG(get_logger(), "on_shutdown() is called.");
 
         // >>>>> Verify that all the threads are not active
-        mThreadStop = true;
-        if (mGrabThread.joinable()) {
-            mGrabThread.join();
+        try {
+            if (!mThreadStop) {
+                mThreadStop = true;
+                if (mGrabThread.joinable()) {
+                    mGrabThread.join();
+                }
+            }
+        } catch (std::system_error& e) {
+            RCLCPP_WARN(get_logger(), "Thread joining exception: %s", e.what());
         }
-        RCLCPP_DEBUG(get_logger(), "Grab thread joined");
         // <<<<< Verify that the grab thread is not active
 
         // >>>>> Verify that ZED is not opened
@@ -58,11 +63,16 @@ namespace stereolabs {
     }
 
     ZedCameraComponent::~ZedCameraComponent() {
-        mThreadStop = true;
-        if (mGrabThread.joinable()) {
-            mGrabThread.join();
+        try {
+            if (!mThreadStop) {
+                mThreadStop = true;
+                if (mGrabThread.joinable()) {
+                    mGrabThread.join();
+                }
+            }
+        } catch (std::system_error& e) {
+            RCLCPP_WARN(get_logger(), "Thread joining exception: %s", e.what());
         }
-        RCLCPP_DEBUG(get_logger(), "Grab thread joined");
     }
 
     rcl_lifecycle_transition_key_t ZedCameraComponent::on_error(const rclcpp_lifecycle::State& previous_state) {
@@ -172,15 +182,6 @@ namespace stereolabs {
         mPubRightCamInfoRaw = create_publisher<sensor_msgs::msg::CameraInfo>(mRightCamInfoRawTopic, custom_camera_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mRightCamInfoRawTopic.c_str());
         // <<<<< Create Camera Info publishers
-
-
-        //mPubDepth;
-        //mPubConfImg;
-        //mPubDepthCamInfo;
-        //mPubConfImgCamInfo;
-
-
-
     }
 
     rcl_lifecycle_transition_key_t ZedCameraComponent::on_configure(const rclcpp_lifecycle::State&) {
@@ -444,11 +445,14 @@ namespace stereolabs {
         mPrevTransition = lifecycle_msgs::msg::Transition::TRANSITION_DEACTIVATE;
 
         RCLCPP_DEBUG(get_logger(), "on_deactivate() is called.");
+
         // >>>>> Verify that all the threads are not active
         try {
-            mThreadStop = true;
-            if (mGrabThread.joinable()) {
-                mGrabThread.join();
+            if (!mThreadStop) {
+                mThreadStop = true;
+                if (mGrabThread.joinable()) {
+                    mGrabThread.join();
+                }
             }
         } catch (std::system_error& e) {
             RCLCPP_WARN(get_logger(), "Thread joining exception: %s", e.what());
@@ -513,7 +517,7 @@ namespace stereolabs {
         mPrevTransition = 255;
         sl::ERROR_CODE grab_status;
 
-        // >>>>> Timeout checking
+        // >>>>> Last frame time initialization
         rclcpp::Time startTime;
         if (mSvoMode) {
             startTime = ros_clock.now();
@@ -521,7 +525,7 @@ namespace stereolabs {
             startTime = sl_tools::slTime2Ros(mZed.getTimestamp(sl::TIME_REFERENCE_CURRENT));
         }
         mLastFrameTime = startTime;
-        // <<<<< Timeout checking
+        // <<<<< Last frame time initialization
 
         // >>>>> Grab parameters
         sl::RuntimeParameters runParams;
@@ -587,6 +591,7 @@ namespace stereolabs {
                     rcl_time_point_value_t timeout = rclcpp::Duration(5, 0).nanoseconds();
 
                     if (elapsed > timeout && !mSvoMode) {
+                        // TODO Better handle the error: throw exception?
                         rcl_lifecycle_transition_key_t ret = lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
                         RCLCPP_WARN(get_logger(), "Camera timeout. Triggering DEACTIVATE...");
                         trigger_transition(lifecycle_msgs::msg::Transition::TRANSITION_DEACTIVATE, ret);
