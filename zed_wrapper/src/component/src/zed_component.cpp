@@ -3,6 +3,12 @@
 #include "sl_tools.h"
 #include <string>
 
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui.hpp>
+
+#include <sensor_msgs/distortion_models.hpp>
+#include <sensor_msgs/image_encodings.hpp>
+
 using namespace std::chrono_literals;
 
 #ifndef TIMER_ELAPSED
@@ -14,12 +20,12 @@ namespace stereolabs {
     ZedCameraComponent::ZedCameraComponent(const std::string& node_name, const std::string& ros_namespace, bool intra_process_comms)
         : rclcpp_lifecycle::LifecycleNode(node_name, ros_namespace, intra_process_comms) {
 
-
 #ifndef NDEBUG
         rcutils_logging_set_logger_level(get_name(), RCUTILS_LOG_SEVERITY_DEBUG);
 #endif
 
         RCLCPP_INFO(get_logger(), "ZED Camera Component created");
+        RCLCPP_INFO(get_logger(), "Waiting for `CONFIGURE` request...");
     }
 
     rcl_lifecycle_transition_key_t ZedCameraComponent::on_shutdown(const rclcpp_lifecycle::State& previous_state) {
@@ -100,6 +106,79 @@ namespace stereolabs {
         return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
     }
 
+    void ZedCameraComponent::initPublishers() {
+
+        std::string topicPrefix = "~/";
+
+        // >>>>> Image publishers QOS
+        // https://github.com/ros2/ros2/wiki/About-Quality-of-Service-Settings
+        rmw_qos_profile_t custom_camera_qos_profile = rmw_qos_profile_default; // Default QOS profile
+
+        custom_camera_qos_profile.reliability = RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT; // to reduce the latency
+        custom_camera_qos_profile.history = RMW_QOS_POLICY_HISTORY_KEEP_LAST;// KEEP_LAST enforces a limit on the number of messages that are saved, specified by the "depth" parameter
+        custom_camera_qos_profile.depth = 1; // Depth represents how many messages to store in history when the history policy is KEEP_LAST.
+        custom_camera_qos_profile.durability = RMW_QOS_POLICY_DURABILITY_SYSTEM_DEFAULT;
+
+        // >>>>> Image topics
+        std::string img_topic = "image_rect_color";
+        std::string img_raw_topic = "image_raw_color";
+        std::string cam_info_topic = "camera_info";
+        std::string cam_info_raw_topic = "camera_info_raw";
+        // Set the default topic names
+        mLeftTopic = topicPrefix + "left/" + img_topic;
+        mLeftRawTopic = topicPrefix + "left/" + img_raw_topic;
+        mLeftCamInfoTopic = topicPrefix + "left/" + cam_info_topic;
+        mLeftCamInfoRawTopic = topicPrefix + "left/" + cam_info_raw_topic;
+        mRightTopic = topicPrefix + "right/" + img_topic;
+        mRightRawTopic = topicPrefix + "right/" + img_raw_topic;
+        mRightCamInfoTopic = topicPrefix + "right/" + cam_info_topic;;
+        mRightCamInfoRawTopic = topicPrefix + "right/" + cam_info_raw_topic;
+        mRgbTopic = topicPrefix + "rgb/" + img_topic;
+        mRgbRawTopic = topicPrefix + "rgb/" + img_raw_topic;
+        mRgbCamInfoTopic = topicPrefix + "rgb/" + cam_info_topic;;
+        mRgbCamInfoRawTopic = topicPrefix + "rgb/" + cam_info_raw_topic;
+        // <<<<< Image topics
+
+        // >>>>> Create Image publishers
+        mPubRgb = create_publisher<sensor_msgs::msg::Image>(mRgbTopic, custom_camera_qos_profile);
+        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mRgbTopic.c_str());
+        mPubRawRgb = create_publisher<sensor_msgs::msg::Image>(mRgbRawTopic, custom_camera_qos_profile);
+        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mRgbRawTopic.c_str());
+        mPubLeft = create_publisher<sensor_msgs::msg::Image>(mLeftTopic, custom_camera_qos_profile);
+        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mLeftTopic.c_str());
+        mPubRawLeft = create_publisher<sensor_msgs::msg::Image>(mLeftRawTopic, custom_camera_qos_profile);
+        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mLeftRawTopic.c_str());
+        mPubRight = create_publisher<sensor_msgs::msg::Image>(mRightTopic, custom_camera_qos_profile);
+        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mRightTopic.c_str());
+        mPubRawRight = create_publisher<sensor_msgs::msg::Image>(mRightRawTopic, custom_camera_qos_profile);
+        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mRightRawTopic.c_str());
+        // <<<<< Create Image publishers
+
+        // >>>>> Create Camera Info publishers
+        mPubRgbCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mRgbCamInfoTopic, custom_camera_qos_profile);
+        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mRgbCamInfoTopic.c_str());
+        mPubRgbCamInfoRaw = create_publisher<sensor_msgs::msg::CameraInfo>(mRgbCamInfoRawTopic, custom_camera_qos_profile);
+        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mRgbCamInfoRawTopic.c_str());
+        mPubLeftCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mLeftCamInfoTopic, custom_camera_qos_profile);
+        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mLeftCamInfoTopic.c_str());
+        mPubLeftCamInfoRaw = create_publisher<sensor_msgs::msg::CameraInfo>(mLeftCamInfoRawTopic, custom_camera_qos_profile);
+        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mLeftCamInfoRawTopic.c_str());
+        mPubRightCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mRightCamInfoTopic, custom_camera_qos_profile);
+        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mRightCamInfoTopic.c_str());
+        mPubRightCamInfoRaw = create_publisher<sensor_msgs::msg::CameraInfo>(mRightCamInfoRawTopic, custom_camera_qos_profile);
+        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mRightCamInfoRawTopic.c_str());
+        // <<<<< Create Camera Info publishers
+
+
+        //mPubDepth;
+        //mPubConfImg;
+        //mPubDepthCamInfo;
+        //mPubConfImgCamInfo;
+
+
+
+    }
+
     rcl_lifecycle_transition_key_t ZedCameraComponent::on_configure(const rclcpp_lifecycle::State&) {
         RCLCPP_INFO(get_logger(), "*** State transition: %s ***", this->get_current_state().label().c_str());
 
@@ -118,6 +197,28 @@ namespace stereolabs {
         // >>>>> Load params from param server
         // TODO load params from param server
         // <<<<< Load params from param server
+
+        // >>>>> Frame IDs
+        mRightCamFrameId = "right_camera_frame";
+        mRightCamOptFrameId = "right_camera_optical_frame";
+        mLeftCamFrameId = "left_camera_frame";
+        mLeftCamOptFrameId = "left_camera_optical_frame";
+
+        mDepthFrameId = mLeftCamFrameId;
+        mDepthOptFrameId = mLeftCamOptFrameId;
+        // <<<<< Frame IDs
+
+        // >>>>> Create camera info
+        mRgbCamInfoMsg = std::make_shared<sensor_msgs::msg::CameraInfo>();
+        mLeftCamInfoMsg = std::make_shared<sensor_msgs::msg::CameraInfo>();
+        mRightCamInfoMsg = std::make_shared<sensor_msgs::msg::CameraInfo>();
+        mRgbCamInfoRawMsg = std::make_shared<sensor_msgs::msg::CameraInfo>();
+        mLeftCamInfoRawMsg = std::make_shared<sensor_msgs::msg::CameraInfo>();
+        mRightCamInfoRawMsg = std::make_shared<sensor_msgs::msg::CameraInfo>();
+        // <<<<< Create camera info
+
+        // Initialize Message Publishers
+        initPublishers();
 
         // >>>>> ZED configuration
         if (!mSvoFilepath.empty()) {
@@ -255,7 +356,27 @@ namespace stereolabs {
         RCLCPP_INFO(get_logger(), "GPU ID: %s", std::to_string(mZedParams.sdk_gpu_id).c_str());
         // <<<<< Camera Parameters user feedback
 
+        // >>>>> Images info
+        // Get the parameters of the ZED images
+        mCamWidth = mZed.getResolution().width;
+        mCamHeight = mZed.getResolution().height;
+        RCLCPP_INFO(get_logger(), "Camera Frame size: %d x %d", mCamWidth, mCamHeight);
+        mMatWidth = static_cast<int>(mCamWidth * mZedMatResizeFactor);
+        mMatHeight = static_cast<int>(mCamHeight * mZedMatResizeFactor);
+        RCLCPP_INFO(get_logger(), "Data size: %d x %d (Resize factor: %g)", mMatWidth, mMatHeight, mZedMatResizeFactor);
 
+        cv::Size cvSize(mMatWidth, mMatWidth);
+        mCvLeftImRGB = cv::Mat(cvSize, CV_8UC3);
+        mCvRightImRGB = cv::Mat(cvSize, CV_8UC3);
+        // Create and fill the camera information messages
+        fillCamInfo(mZed, mLeftCamInfoMsg, mRightCamInfoMsg, mLeftCamOptFrameId, mRightCamOptFrameId);
+        fillCamInfo(mZed, mLeftCamInfoRawMsg, mRightCamInfoRawMsg, mLeftCamOptFrameId, mRightCamOptFrameId, true);
+        mRgbCamInfoMsg = mLeftCamInfoMsg;
+        mRgbCamInfoRawMsg = mLeftCamInfoRawMsg;
+        // <<<<< Images info
+
+        RCLCPP_INFO(get_logger(), "ZED configured");
+        RCLCPP_INFO(get_logger(), "Waiting for `ACTIVATE` request...");
 
         // We return a success and hence invoke the transition to the next
         // step: "inactive".
@@ -278,7 +399,29 @@ namespace stereolabs {
             return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
         }
 
+        // >>>>> Publishers activation
+        mPubRgb->on_activate();
+        mPubRawRgb->on_activate();
+        mPubLeft->on_activate();
+        mPubRawLeft->on_activate();
+        mPubRight->on_activate();
+        mPubRawRight->on_activate();
+
+        mPubRgbCamInfo->on_activate();
+        mPubRgbCamInfoRaw->on_activate();
+        mPubLeftCamInfo->on_activate();
+        mPubLeftCamInfoRaw->on_activate();
+        mPubRightCamInfo->on_activate();
+        mPubRightCamInfoRaw->on_activate();
+
+        //mPubDepth->on_activate();
+        //mPubConfImg->on_activate();
+        //mPubDepthCamInfo->on_activate();
+        //mPubConfImgCamInfo->on_activate();
+        // <<<<< Publishers activation
+
         // >>>>> Start ZED thread
+        mThreadStop = false;
         mGrabThread = std::thread(&ZedCameraComponent::zedGrabThreadFunc, this);
         // <<<<< Start ZED thread
 
@@ -303,6 +446,22 @@ namespace stereolabs {
             mGrabThread.join();
         }
         // <<<<< Verify that the grab thread is not active
+
+        // >>>>> Publishers deactivation
+        mPubRgb->on_deactivate();
+        mPubRawRgb->on_deactivate();
+        mPubLeft->on_deactivate();
+        mPubRawLeft->on_deactivate();
+        mPubRight->on_deactivate();
+        mPubRawRight->on_deactivate();
+
+        mPubRgbCamInfo->on_deactivate();
+        mPubRgbCamInfoRaw->on_deactivate();
+        mPubLeftCamInfo->on_deactivate();
+        mPubLeftCamInfoRaw->on_deactivate();
+        mPubRightCamInfo->on_deactivate();
+        mPubRightCamInfoRaw->on_deactivate();
+        // <<<<< Publishers deactivation
 
         // We return a success and hence invoke the transition to the next
         // step: "inactive".
@@ -356,7 +515,7 @@ namespace stereolabs {
         INIT_TIMER;
 
         while (1) {
-            // >>>>> Interruption check
+            //>>>>> Interruption check
             if (!rclcpp::ok()) {
                 RCLCPP_DEBUG(get_logger(), "Ctrl+C received");
                 break;
@@ -366,15 +525,31 @@ namespace stereolabs {
                 RCLCPP_DEBUG(get_logger(), "Grab thread stopped");
                 break;
             }
-            // <<<<< Interruption check
+            //<<<<< Interruption check
 
-            bool runLoop = true;
+            //>>>>> Subscribers check
+            size_t rgbSub = count_subscribers(mRgbTopic);  // mPubRgb subscribers
+            size_t rgbRawSub = count_subscribers(mRgbRawTopic);  //mPubRawRgb subscribers
+            size_t leftSub = count_subscribers(mLeftTopic);  //mPubLeft subscribers
+            size_t leftRawSub = count_subscribers(mLeftRawTopic);  //mPubRawLeft subscribers
+            size_t rightSub = count_subscribers(mRightTopic);  //mPubRight subscribers
+            size_t rightRawSub = count_subscribers(mRightRawTopic);  //mPubRawRight subscribers
 
-            // TODO check subscribers!
+            bool pubImages = ((rgbSub + rgbRawSub + leftSub + leftRawSub + rightSub + rightRawSub) > 0);
+            bool runLoop = pubImages;
+            //<<<<< Subscribers check
 
             if (runLoop) {
-
                 grab_status = mZed.grab(runParams);
+
+                // Timestamp
+                rclcpp::Time t;
+                rclcpp::Clock ros_clock(RCL_ROS_TIME);
+                if (mSvoMode) {
+                    t = ros_clock.now();
+                } else {
+                    t = sl_tools::slTime2Ros(mZed.getTimestamp(sl::TIME_REFERENCE_IMAGE));
+                }
 
                 if (grab_status != sl::ERROR_CODE::SUCCESS) {
                     // Detect if a error occurred (for example:
@@ -391,34 +566,208 @@ namespace stereolabs {
                     continue;
                 }
 
-            }
+                if (pubImages) {
+                    publishImages(t);
+                }
 
-            // >>>>> Thread sleep
-            TIMER_ELAPSED;
-            START_TIMER;
+                // >>>>> Thread sleep
+                TIMER_ELAPSED;
+                START_TIMER;
 
-            static int rateWarnCount = 0;
-            if (!loop_rate.sleep()) {
-                rateWarnCount++;
+                static int rateWarnCount = 0;
+                if (!loop_rate.sleep()) {
+                    rateWarnCount++;
 
-                if (rateWarnCount == mCamFrameRate) {
-                    RCLCPP_WARN(get_logger(),  "Expected cycle time: %g sec  - Real cycle time: %g sec ",
-                                0.001 / mCamFrameRate, elapsed / 1000.0);
-                    RCLCPP_INFO(get_logger(),  "Elaboration takes longer than requested "
-                                "by the FPS rate. Please consider to "
-                                "lower the 'frame_rate' setting.");
+                    if (rateWarnCount == mCamFrameRate) {
+                        RCLCPP_WARN(get_logger(),  "Expected cycle time: %g sec  - Real cycle time: %g sec ",
+                                    1.0 / mCamFrameRate, elapsed / 1000.0);
+                        RCLCPP_INFO(get_logger(),  "Elaboration takes longer than requested "
+                                    "by the FPS rate. Please consider to "
+                                    "lower the 'frame_rate' setting.");
 
+                        rateWarnCount = 0;
+                        loop_rate.reset();
+                    }
+                } else {
                     rateWarnCount = 0;
                 }
-            } else {
-                rateWarnCount = 0;
-            }
 
-            RCLCPP_DEBUG(get_logger(), "Thread freq: %g Hz", 1000.0 / elapsed);
-            // <<<<< Thread sleep
+                RCLCPP_DEBUG(get_logger(), "Thread freq: %g Hz", 1000.0 / elapsed);
+                // <<<<< Thread sleep
+            } else {
+                static int noSubInfoCount = 0;
+
+                if (noSubInfoCount % 500 == 0) {
+                    RCLCPP_INFO(get_logger(), "No subscribers");
+                }
+
+                noSubInfoCount++;
+
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));  // No subscribers, we just wait
+                loop_rate.reset();
+            }
         }
 
         RCLCPP_INFO(get_logger(), "ZED thread finished");
+    }
+
+    void ZedCameraComponent::publishImages(rclcpp::Time timeStamp) {
+        size_t rgbSubnumber = count_subscribers(mRgbTopic);  // mPubRgb subscribers
+        size_t rgbRawSubnumber = count_subscribers(mRgbRawTopic);  //mPubRawRgb subscribers
+        size_t leftSubnumber = count_subscribers(mLeftTopic);  //mPubLeft subscribers
+        size_t leftRawSubnumber = count_subscribers(mLeftRawTopic);  //mPubRawLeft subscribers
+        size_t rightSubnumber = count_subscribers(mRightTopic);  //mPubRight subscribers
+        size_t rightRawSubnumber = count_subscribers(mRightRawTopic);  //mPubRawRight subscribers
+
+        sl::Mat leftZEDMat, rightZEDMat;
+
+        // >>>>> Publish the left == rgb image if someone has subscribed to
+        if (leftSubnumber > 0 || rgbSubnumber > 0) {
+            // Retrieve RGBA Left image
+            mZed.retrieveImage(leftZEDMat, sl::VIEW_LEFT, sl::MEM_CPU, mMatWidth, mMatHeight);
+            cv::cvtColor(sl_tools::toCVMat(leftZEDMat), mCvLeftImRGB, CV_RGBA2RGB);
+
+            if (leftSubnumber > 0) {
+                publishCamInfo(mLeftCamInfoMsg, mPubLeftCamInfo, timeStamp);
+                publishImage(mCvLeftImRGB, mPubLeft, mLeftCamOptFrameId, timeStamp);
+            }
+
+            if (rgbSubnumber > 0) {
+                publishCamInfo(mRgbCamInfoMsg, mPubRgbCamInfo, timeStamp);
+                publishImage(mCvLeftImRGB, mPubRgb, mDepthOptFrameId, timeStamp); // rgb is the left image
+            }
+        }
+        // <<<<< Publish the left == rgb image if someone has subscribed to
+
+        // >>>>> Publish the left_raw == rgb_raw image if someone has subscribed to
+        if (leftRawSubnumber > 0 || rgbRawSubnumber > 0) {
+            // Retrieve RGBA Left image
+            mZed.retrieveImage(leftZEDMat, sl::VIEW_LEFT_UNRECTIFIED, sl::MEM_CPU, mMatWidth, mMatHeight);
+            cv::cvtColor(sl_tools::toCVMat(leftZEDMat), mCvLeftImRGB, CV_RGBA2RGB);
+
+            if (leftRawSubnumber > 0) {
+                publishCamInfo(mLeftCamInfoRawMsg, mPubLeftCamInfoRaw, timeStamp);
+                publishImage(mCvLeftImRGB, mPubRawLeft, mLeftCamOptFrameId, timeStamp);
+            }
+
+            if (rgbRawSubnumber > 0) {
+                publishCamInfo(mRgbCamInfoRawMsg, mPubRgbCamInfoRaw, timeStamp);
+                publishImage(mCvLeftImRGB, mPubRawRgb, mDepthOptFrameId, timeStamp);
+            }
+        }
+        // <<<<< Publish the left_raw == rgb_raw image if someone has subscribed to
+
+        // >>>>> Publish the right image if someone has subscribed to
+        if (rightSubnumber > 0) {
+            // Retrieve RGBA Right image
+            mZed.retrieveImage(rightZEDMat, sl::VIEW_RIGHT, sl::MEM_CPU, mMatWidth, mMatHeight);
+            cv::cvtColor(sl_tools::toCVMat(rightZEDMat), mCvRightImRGB, CV_RGBA2RGB);
+            publishCamInfo(mRightCamInfoMsg, mPubRightCamInfo, timeStamp);
+            publishImage(mCvRightImRGB, mPubRight, mRightCamOptFrameId, timeStamp);
+        }
+        // <<<<< Publish the right image if someone has subscribed to
+
+        // >>>>> Publish the right image if someone has subscribed to
+        if (rightRawSubnumber > 0) {
+            // Retrieve RGBA Right image
+            mZed.retrieveImage(rightZEDMat, sl::VIEW_RIGHT_UNRECTIFIED, sl::MEM_CPU, mMatWidth, mMatHeight);
+            cv::cvtColor(sl_tools::toCVMat(rightZEDMat), mCvRightImRGB, CV_RGBA2RGB);
+            publishCamInfo(mRightCamInfoRawMsg, mPubRightCamInfoRaw, timeStamp);
+            publishImage(mCvRightImRGB, mPubRawRight, mRightCamOptFrameId, timeStamp);
+        }
+        // <<<<< Publish the right image if someone has subscribed to
+    }
+
+    void ZedCameraComponent::fillCamInfo(sl::Camera& zed, std::shared_ptr<sensor_msgs::msg::CameraInfo> leftCamInfoMsg,
+                                         std::shared_ptr<sensor_msgs::msg::CameraInfo> rightCamInfoMsg,
+                                         std::string leftFrameId, std::string rightFrameId,
+                                         bool rawParam /*= false*/) {
+        sl::CalibrationParameters zedParam;
+
+        if (rawParam) {
+            zedParam = zed.getCameraInformation(sl::Resolution(mMatWidth, mMatHeight))
+                       .calibration_parameters_raw;
+        } else {
+            zedParam = zed.getCameraInformation(sl::Resolution(mMatWidth, mMatHeight))
+                       .calibration_parameters;
+        }
+
+        float baseline = zedParam.T[0];
+        leftCamInfoMsg->distortion_model = sensor_msgs::distortion_models::PLUMB_BOB;
+        rightCamInfoMsg->distortion_model = sensor_msgs::distortion_models::PLUMB_BOB;
+        leftCamInfoMsg->d.resize(5);
+        rightCamInfoMsg->d.resize(5);
+        leftCamInfoMsg->d[0] = zedParam.left_cam.disto[0];   // k1
+        leftCamInfoMsg->d[1] = zedParam.left_cam.disto[1];   // k2
+        leftCamInfoMsg->d[2] = zedParam.left_cam.disto[4];   // k3
+        leftCamInfoMsg->d[3] = zedParam.left_cam.disto[2];   // p1
+        leftCamInfoMsg->d[4] = zedParam.left_cam.disto[3];   // p2
+        rightCamInfoMsg->d[0] = zedParam.right_cam.disto[0]; // k1
+        rightCamInfoMsg->d[1] = zedParam.right_cam.disto[1]; // k2
+        rightCamInfoMsg->d[2] = zedParam.right_cam.disto[4]; // k3
+        rightCamInfoMsg->d[3] = zedParam.right_cam.disto[2]; // p1
+        rightCamInfoMsg->d[4] = zedParam.right_cam.disto[3]; // p2
+        leftCamInfoMsg->k.fill(0.0);
+        rightCamInfoMsg->k.fill(0.0);
+        leftCamInfoMsg->k[0] = static_cast<double>(zedParam.left_cam.fx);
+        leftCamInfoMsg->k[2] = static_cast<double>(zedParam.left_cam.cx);
+        leftCamInfoMsg->k[4] = static_cast<double>(zedParam.left_cam.fy);
+        leftCamInfoMsg->k[5] = static_cast<double>(zedParam.left_cam.cy);
+        leftCamInfoMsg->k[8] = 1.0;
+        rightCamInfoMsg->k[0] = static_cast<double>(zedParam.right_cam.fx);
+        rightCamInfoMsg->k[2] = static_cast<double>(zedParam.right_cam.cx);
+        rightCamInfoMsg->k[4] = static_cast<double>(zedParam.right_cam.fy);
+        rightCamInfoMsg->k[5] = static_cast<double>(zedParam.right_cam.cy);
+        rightCamInfoMsg->k[8] = 1.0;
+        leftCamInfoMsg->r.fill(0.0);
+        rightCamInfoMsg->r.fill(0.0);
+
+        for (size_t i = 0; i < 3; i++) {
+            // identity
+            rightCamInfoMsg->r[i + i * 3] = 1;
+            leftCamInfoMsg->r[i + i * 3] = 1;
+        }
+
+        if (rawParam) {
+            cv::Mat R_ = sl_tools::convertRodrigues(zedParam.R);
+            float* p = (float*)(R_.data);
+
+            for (size_t i = 0; i < 9; i++) {
+                rightCamInfoMsg->r[i] = static_cast<double>(p[i]);
+            }
+        }
+
+        leftCamInfoMsg->p.fill(0.0);
+        rightCamInfoMsg->p.fill(0.0);
+        leftCamInfoMsg->p[0] = static_cast<double>(zedParam.left_cam.fx);
+        leftCamInfoMsg->p[2] = static_cast<double>(zedParam.left_cam.cx);
+        leftCamInfoMsg->p[5] = static_cast<double>(zedParam.left_cam.fy);
+        leftCamInfoMsg->p[6] = static_cast<double>(zedParam.left_cam.cy);
+        leftCamInfoMsg->p[10] = 1.0;
+        // http://docs.ros.org/api/sensor_msgs/html/msg/CameraInfo.html
+        rightCamInfoMsg->p[3] = static_cast<double>(-1 * zedParam.left_cam.fx * baseline);
+        rightCamInfoMsg->p[0] = static_cast<double>(zedParam.right_cam.fx);
+        rightCamInfoMsg->p[2] = static_cast<double>(zedParam.right_cam.cx);
+        rightCamInfoMsg->p[5] = static_cast<double>(zedParam.right_cam.fy);
+        rightCamInfoMsg->p[6] = static_cast<double>(zedParam.right_cam.cy);
+        rightCamInfoMsg->p[10] = 1.0;
+        leftCamInfoMsg->width = rightCamInfoMsg->width = static_cast<uint32_t>(mMatWidth);
+        leftCamInfoMsg->height = rightCamInfoMsg->height = static_cast<uint32_t>(mMatHeight);
+        leftCamInfoMsg->header.frame_id = leftFrameId;
+        rightCamInfoMsg->header.frame_id = rightFrameId;
+    }
+
+    void ZedCameraComponent::publishCamInfo(camInfoMsgPtr camInfoMsg, camInfoPub pubCamInfo, rclcpp::Time t) {
+        static int seq = 0;
+        camInfoMsg->header.stamp = t;
+        pubCamInfo->publish(camInfoMsg);
+        seq++;
+    }
+
+    void ZedCameraComponent::publishImage(cv::Mat img,
+                                          imagePub pubImg,
+                                          std::string imgFrameId, rclcpp::Time t) {
+        pubImg->publish(sl_tools::imageToROSmsg(img, sensor_msgs::image_encodings::BGR8, imgFrameId, t)) ;
     }
 }
 

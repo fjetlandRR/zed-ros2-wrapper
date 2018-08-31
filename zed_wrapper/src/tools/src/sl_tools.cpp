@@ -192,42 +192,46 @@ namespace sl_tools {
         return ver;
     }
 
-    //    ros::Time slTime2Ros(sl::timeStamp t) {
-    //        uint32_t sec = static_cast<uint32_t>(t / 1000000000);
-    //        uint32_t nsec = static_cast<uint32_t>(t % 1000000000);
-    //        return ros::Time(sec, nsec);
-    //    }
+    rclcpp::Time slTime2Ros(sl::timeStamp t) {
+        uint32_t sec = static_cast<uint32_t>(t / 1000000000);
+        uint32_t nsec = static_cast<uint32_t>(t % 1000000000);
+        return rclcpp::Time(sec, nsec);
+    }
 
-    //    sensor_msgs::ImagePtr imageToROSmsg(cv::Mat img, const std::string encodingType,
-    //                                        std::string frameId, ros::Time t) {
-    //        sensor_msgs::ImagePtr ptr = boost::make_shared<sensor_msgs::Image>();
-    //        sensor_msgs::Image& imgMessage = *ptr;
-    //        imgMessage.header.stamp = t;
-    //        imgMessage.header.frame_id = frameId;
-    //        imgMessage.height = static_cast<unsigned int>(img.rows);
-    //        imgMessage.width = static_cast<unsigned int>(img.cols);
-    //        imgMessage.encoding = encodingType;
-    //        int num = 1; // for endianness detection
-    //        imgMessage.is_bigendian = !(*(char*)&num == 1);
-    //        imgMessage.step = static_cast<unsigned int>(img.step);
-    //        size_t size = imgMessage.step * img.rows;
-    //        imgMessage.data.resize(size);
+    std::shared_ptr<sensor_msgs::msg::Image> imageToROSmsg(cv::Mat img,
+            const std::string encodingType,
+            std::string frameId, rclcpp::Time t) {
 
-    //        if (img.isContinuous()) {
-    //            memcpy((char*)(&imgMessage.data[0]), img.data, size);
-    //        } else {
-    //            uchar* opencvData = img.data;
-    //            uchar* rosData = (uchar*)(&imgMessage.data[0]);
+        std::shared_ptr<sensor_msgs::msg::Image> ptr = std::make_shared<sensor_msgs::msg::Image>();
 
-    //            #pragma omp parallel for
-    //            for (unsigned int i = 0; i < img.rows; i++) {
-    //                memcpy(rosData, opencvData, imgMessage.step);
-    //                rosData += imgMessage.step;
-    //                opencvData += img.step;
-    //            }
-    //        }
+        sensor_msgs::msg::Image& imgMessage = *ptr;
 
-    //        return ptr;
-    //    }
+        imgMessage.header.stamp = t;
+        imgMessage.header.frame_id = frameId;
+        imgMessage.height = static_cast<unsigned int>(img.rows);
+        imgMessage.width = static_cast<unsigned int>(img.cols);
+        imgMessage.encoding = encodingType;
+        int num = 1; // for endianness detection
+        imgMessage.is_bigendian = !(*(char*)&num == 1);
+        imgMessage.step = static_cast<sensor_msgs::msg::Image::_step_type>(img.step);
+        size_t size = imgMessage.step * img.rows;
+        imgMessage.data.resize(size);
+
+        if (img.isContinuous()) {
+            memcpy((char*)(&imgMessage.data[0]), img.data, size);
+        } else {
+            uchar* opencvData = img.data;
+            uchar* rosData = (uchar*)(&imgMessage.data[0]);
+
+            #pragma omp parallel for
+            for (unsigned int i = 0; i < img.rows; i++) {
+                memcpy(rosData, opencvData, imgMessage.step);
+                rosData += imgMessage.step;
+                opencvData += img.step;
+            }
+        }
+
+        return ptr;
+    }
 
 } // namespace

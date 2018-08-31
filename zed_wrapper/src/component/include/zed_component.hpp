@@ -9,6 +9,8 @@
 #include <string>
 #include <thread>
 
+#include <opencv2/core/core.hpp>
+
 #include "lifecycle_msgs/msg/state.hpp"
 #include "lifecycle_msgs/msg/transition.hpp"
 
@@ -19,11 +21,19 @@
 #include "rclcpp_lifecycle/lifecycle_publisher.hpp"
 
 #include "rcutils/logging_macros.h"
-#include "std_msgs/msg/string.hpp"
+#include "sensor_msgs/msg/image.hpp"
+#include "sensor_msgs/msg/camera_info.hpp"
 
 #include "sl/Camera.hpp"
 
 namespace stereolabs {
+
+    // >>>>> Typedefs to simplify declarations
+    typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::Image>> imagePub;
+    typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::CameraInfo>> camInfoPub;
+
+    typedef std::shared_ptr<sensor_msgs::msg::CameraInfo> camInfoMsgPtr;
+    // <<<<< Typedefs to simplify declarations
 
     /// ZedCameraComponent inheriting from rclcpp_lifecycle::LifecycleNode
     /**
@@ -126,6 +136,43 @@ namespace stereolabs {
       protected:
         void zedGrabThreadFunc();
 
+        void initPublishers();
+
+        void publishImages(rclcpp::Time timeStamp);
+
+        /* \brief Get the information of the ZED cameras and store them in an
+         * information message
+         * \param zed : the sl::zed::Camera* pointer to an instance
+         * \param left_cam_info_msg : the information message to fill with the left
+         * camera informations
+         * \param right_cam_info_msg : the information message to fill with the right
+         * camera informations
+         * \param left_frame_id : the id of the reference frame of the left camera
+         * \param right_frame_id : the id of the reference frame of the right camera
+         */
+        void fillCamInfo(sl::Camera& zed, std::shared_ptr<sensor_msgs::msg::CameraInfo> leftCamInfoMsg,
+                         std::shared_ptr<sensor_msgs::msg::CameraInfo> rightCamInfoMsg,
+                         std::string leftFrameId, std::string rightFrameId,
+                         bool rawParam = false);
+
+        /* \brief Publish the informations of a camera with a ros Publisher
+         * \param cam_info_msg : the information message to publish
+         * \param pub_cam_info : the publisher object to use
+         * \param t : the ros::Time to stamp the message
+         */
+        void publishCamInfo(camInfoMsgPtr camInfoMsg, camInfoPub pubCamInfo, rclcpp::Time t);
+
+        /* \brief Publish a cv::Mat image with a ros Publisher
+         * \param img : the image to publish
+         * \param pub_img : the publisher object to use (different image publishers
+         * exist)
+         * \param img_frame_id : the id of the reference frame of the image (different
+         * image frames exist)
+         * \param t : the ros::Time to stamp the image
+         */
+        void publishImage(cv::Mat img, imagePub pubImg, std::string imgFrameId, rclcpp::Time t);
+
+
       private:
         // Status variables
         rcl_lifecycle_transition_key_t mPrevTransition = lifecycle_msgs::msg::Transition::TRANSITION_CREATE;
@@ -153,8 +200,65 @@ namespace stereolabs {
         int mZedQuality = 1; // Default quality: DEPTH_MODE_PERFORMANCE
         int mDepthStabilization = 1;
         bool mCameraFlip = false;
-        double mZedMatResizeFactor = 1.0;
+        double mZedMatResizeFactor = 0.5;
         int mCamSensingMode = 0; // Default Sensing mode: SENSING_MODE_STANDARD
+
+        // Publishers
+        imagePub mPubRgb;
+        imagePub mPubRawRgb;
+        imagePub mPubLeft;
+        imagePub mPubRawLeft;
+        imagePub mPubRight;
+        imagePub mPubRawRight;
+
+        camInfoPub mPubRgbCamInfo;
+        camInfoPub mPubRgbCamInfoRaw;
+        camInfoPub mPubLeftCamInfo;
+        camInfoPub mPubLeftCamInfoRaw;
+        camInfoPub mPubRightCamInfo;
+        camInfoPub mPubRightCamInfoRaw;
+
+        // Topics
+        std::string mLeftTopic;
+        std::string mLeftRawTopic;
+        std::string mLeftCamInfoTopic;
+        std::string mLeftCamInfoRawTopic;
+        std::string mRightTopic;
+        std::string mRightRawTopic;
+        std::string mRightCamInfoTopic;
+        std::string mRightCamInfoRawTopic;
+        std::string mRgbTopic;
+        std::string mRgbRawTopic;
+        std::string mRgbCamInfoTopic;
+        std::string mRgbCamInfoRawTopic;
+
+        // Messages
+        // Camera info
+        camInfoMsgPtr mRgbCamInfoMsg;
+        camInfoMsgPtr mLeftCamInfoMsg;
+        camInfoMsgPtr mRightCamInfoMsg;
+        camInfoMsgPtr mRgbCamInfoRawMsg;
+        camInfoMsgPtr mLeftCamInfoRawMsg;
+        camInfoMsgPtr mRightCamInfoRawMsg;
+
+        // Frame IDs
+        std::string mRightCamFrameId;
+        std::string mRightCamOptFrameId;
+        std::string mLeftCamFrameId;
+        std::string mLeftCamOptFrameId;
+        std::string mDepthFrameId;
+        std::string mDepthOptFrameId;
+
+        // OpenCV Mats
+        int mCamWidth;
+        int mCamHeight;
+        int mMatWidth;
+        int mMatHeight;
+        cv::Mat mCvLeftImRGB;
+        cv::Mat mCvRightImRGB;
+        cv::Mat mCvConfImRGB;
+        cv::Mat mCvConfMapFloat;
+
     };
 }
 

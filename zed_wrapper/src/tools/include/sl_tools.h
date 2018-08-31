@@ -22,8 +22,8 @@
 ///////////////////////////////////////////////////////////////////////////
 
 #include <opencv2/core/core.hpp>
-//#include <ros/time.h>
-//#include <sensor_msgs/Image.h>
+#include <sensor_msgs/msg/image.hpp>
+#include <rclcpp/clock.hpp>
 #include <sl/Camera.hpp>
 #include <string>
 
@@ -67,17 +67,17 @@ namespace sl_tools {
     //    /* \brief Convert StereoLabs timestamp to ROS timestamp
     //     *  \param t : Stereolabs timestamp to be converted
     //     */
-    //    ros::Time slTime2Ros(sl::timeStamp t);
+    rclcpp::Time slTime2Ros(sl::timeStamp t);
 
-    //    /* \brief Image to ros message conversion
-    //     * \param img : the image to publish
-    //     * \param encodingType : the sensor_msgs::image_encodings encoding type
-    //     * \param frameId : the id of the reference frame of the image
-    //     * \param t : the ros::Time to stamp the image
-    //     */
-    //    sensor_msgs::ImagePtr imageToROSmsg(cv::Mat img,
-    //                                        const std::string encodingType,
-    //                                        std::string frameId, ros::Time t);
+    /* \brief Image to ros message conversion
+     * \param img : the image to publish
+     * \param encodingType : the sensor_msgs::image_encodings encoding type
+     * \param frameId : the id of the reference frame of the image
+     * \param t : the ros::Time to stamp the image
+     */
+    std::shared_ptr<sensor_msgs::msg::Image> imageToROSmsg(cv::Mat img,
+            const std::string encodingType,
+            std::string frameId, rclcpp::Time t);
 
     // TODO Remove when it will be available in Terrain SDK
     inline float packColor(sl::uchar3 colorIn) {
