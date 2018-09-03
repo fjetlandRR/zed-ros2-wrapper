@@ -261,7 +261,6 @@ namespace stereolabs {
         cv::Mat mCvRightImRGB;
         cv::Mat mCvConfImRGB;
         cv::Mat mCvConfMapFloat;
-
     };
 }
 

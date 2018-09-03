@@ -30,12 +30,19 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), "ZED Camera Component created");
         RCLCPP_INFO(get_logger(), "Waiting for `CONFIGURE` request...");
+
+        RCLCPP_DEBUG(get_logger(), "ZED node: %s", get_name());
+        RCLCPP_DEBUG(get_logger(), "ZED namespace: %s", get_namespace());
+        RCLCPP_DEBUG(get_logger(), "LifecycleNode node: %s", rclcpp_lifecycle::LifecycleNode::get_name());
+        RCLCPP_DEBUG(get_logger(), "LifecycleNode namespace: %s", rclcpp_lifecycle::LifecycleNode::get_namespace());
     }
 
     rcl_lifecycle_transition_key_t ZedCameraComponent::on_shutdown(const rclcpp_lifecycle::State& previous_state) {
         RCLCPP_INFO(get_logger(), "*** State transition: %s ***", this->get_current_state().label().c_str());
 
         RCLCPP_DEBUG(get_logger(), "on_shutdown() is called.");
+        RCLCPP_DEBUG(get_logger(), "Current state: %s", this->get_current_state().label().c_str());
+        RCLCPP_DEBUG(get_logger(), "Previous state: %s (%d)", previous_state.label().c_str(), previous_state.id());
 
         // >>>>> Verify that all the threads are not active
         try {
@@ -512,15 +519,13 @@ namespace stereolabs {
     void ZedCameraComponent::zedGrabThreadFunc() {
         RCLCPP_INFO(get_logger(), "ZED thread started");
 
-        rclcpp::Clock ros_clock(RCL_ROS_TIME);
-
         mPrevTransition = 255;
         sl::ERROR_CODE grab_status;
 
         // >>>>> Last frame time initialization
         rclcpp::Time startTime;
         if (mSvoMode) {
-            startTime = ros_clock.now();
+            startTime = now();
         } else {
             startTime = sl_tools::slTime2Ros(mZed.getTimestamp(sl::TIME_REFERENCE_CURRENT));
         }
@@ -570,7 +575,7 @@ namespace stereolabs {
                 // Timestamp
                 rclcpp::Time frameTime;
                 if (mSvoMode) {
-                    frameTime = ros_clock.now();
+                    frameTime = now();
                 } else {
                     frameTime = sl_tools::slTime2Ros(mZed.getTimestamp(sl::TIME_REFERENCE_IMAGE));
                 }
@@ -592,9 +597,7 @@ namespace stereolabs {
 
                     if (elapsed > timeout && !mSvoMode) {
                         // TODO Better handle the error: throw exception?
-                        rcl_lifecycle_transition_key_t ret = lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
-                        RCLCPP_WARN(get_logger(), "Camera timeout. Triggering DEACTIVATE...");
-                        trigger_transition(lifecycle_msgs::msg::Transition::TRANSITION_DEACTIVATE, ret);
+                        throw std::runtime_error("ZED Camera timeout");
                     }
 
                     continue;
