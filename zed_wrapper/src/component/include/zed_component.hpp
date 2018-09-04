@@ -1,4 +1,4 @@
-#ifndef ZED_COMPONENT_HPP
+﻿#ifndef ZED_COMPONENT_HPP
 #define ZED_COMPONENT_HPP
 
 #include "visibility_control.h"
@@ -139,6 +139,7 @@ namespace stereolabs {
         void initPublishers();
 
         void publishImages(rclcpp::Time timeStamp);
+        void publishDepthData(rclcpp::Time timeStamp);
 
         /* \brief Get the information of the ZED cameras and store them in an
          * information message
@@ -158,9 +159,9 @@ namespace stereolabs {
         /* \brief Publish the informations of a camera with a ros Publisher
          * \param cam_info_msg : the information message to publish
          * \param pub_cam_info : the publisher object to use
-         * \param t : the ros::Time to stamp the message
+         * \param timeStamp : the ros::Time to stamp the message
          */
-        void publishCamInfo(camInfoMsgPtr camInfoMsg, camInfoPub pubCamInfo, rclcpp::Time t);
+        void publishCamInfo(camInfoMsgPtr camInfoMsg, camInfoPub pubCamInfo, rclcpp::Time timeStamp);
 
         /* \brief Publish a cv::Mat image with a ros Publisher
          * \param img : the image to publish
@@ -168,10 +169,15 @@ namespace stereolabs {
          * exist)
          * \param img_frame_id : the id of the reference frame of the image (different
          * image frames exist)
-         * \param t : the ros::Time to stamp the image
+         * \param timeStamp : the ros::Time to stamp the image
          */
-        void publishImage(cv::Mat img, imagePub pubImg, std::string imgFrameId, rclcpp::Time t);
+        void publishImage(cv::Mat img, imagePub pubImg, std::string imgFrameId, rclcpp::Time timeStamp);
 
+        /* \brief Publish a cv::Mat depth image with a ros Publisher
+         * \param depth : the depth image to publish
+         * \param timeStamp : the ros::Time to stamp the depth image
+         */
+        void publishDepth(cv::Mat depth, rclcpp::Time timeStamp);
 
       private:
         // Status variables
@@ -203,8 +209,13 @@ namespace stereolabs {
         int mZedQuality = 1; // Default quality: DEPTH_MODE_PERFORMANCE
         int mDepthStabilization = 1;
         bool mCameraFlip = false;
-        double mZedMatResizeFactor = 1.0;
         int mCamSensingMode = 0; // Default Sensing mode: SENSING_MODE_STANDARD
+        bool mOpenniDepthMode = false; // 16 bit UC data in mm else 32F in m, for more info -> http://www.ros.org/reps/rep-0118.html
+
+        // ZED dynamic params (TODO when available in ROS2)
+        double mZedMatResizeFactor = 1.0; // Dynamic...
+        int mCamConfidence = 80; // Dynamic...
+        double mCamMaxDepth = 10.0; // Dynamic...
 
         // Publishers
         imagePub mPubRgb;
@@ -213,6 +224,7 @@ namespace stereolabs {
         imagePub mPubRawLeft;
         imagePub mPubRight;
         imagePub mPubRawRight;
+        imagePub mPubDepth;
 
         camInfoPub mPubRgbCamInfo;
         camInfoPub mPubRgbCamInfoRaw;
@@ -220,6 +232,7 @@ namespace stereolabs {
         camInfoPub mPubLeftCamInfoRaw;
         camInfoPub mPubRightCamInfo;
         camInfoPub mPubRightCamInfoRaw;
+        camInfoPub mPubDepthCamInfo;
 
         // Topics
         std::string mLeftTopic;
@@ -234,6 +247,8 @@ namespace stereolabs {
         std::string mRgbRawTopic;
         std::string mRgbCamInfoTopic;
         std::string mRgbCamInfoRawTopic;
+        std::string mDepthTopic;
+        std::string mDepthCamInfoTopic;
 
         // Messages
         // Camera info
@@ -243,6 +258,7 @@ namespace stereolabs {
         camInfoMsgPtr mRgbCamInfoRawMsg;
         camInfoMsgPtr mLeftCamInfoRawMsg;
         camInfoMsgPtr mRightCamInfoRawMsg;
+        camInfoMsgPtr mDepthCamInfoMsg;
 
         // Frame IDs
         std::string mRightCamFrameId;
@@ -261,6 +277,9 @@ namespace stereolabs {
         cv::Mat mCvRightImRGB;
         cv::Mat mCvConfImRGB;
         cv::Mat mCvConfMapFloat;
+
+        // Thread Sync
+        std::mutex mCamDataMutex;
     };
 }
 

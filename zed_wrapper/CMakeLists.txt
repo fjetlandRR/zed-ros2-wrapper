@@ -155,12 +155,14 @@ ament_target_dependencies(zed_wrapper_node
   zed_component)
 
 # Install executable
-install(TARGETS zed_wrapper_node
-  DESTINATION lib/${PROJECT_NAME}
+install(
+    TARGETS zed_wrapper_node
+    DESTINATION lib/${PROJECT_NAME}
 )
 
 # Install plugin library
-install(TARGETS zed_component
+install(
+    TARGETS zed_component
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin
@@ -168,8 +170,18 @@ install(TARGETS zed_component
 
 # Install header files
 install(
-  DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/component/include/
-  DESTINATION include/${PROJECT_NAME}/
+    DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/component/include/
+    DESTINATION include/${PROJECT_NAME}/
 )
+
+# Install launch files
+install(
+    DIRECTORY launch
+    DESTINATION share/${PROJECT_NAME})
+
+# Install URDF files
+install(
+    DIRECTORY urdf
+    DESTINATION share/${PROJECT_NAME})
 
 ament_package()
