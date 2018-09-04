@@ -8,6 +8,8 @@
 
 #include <sensor_msgs/distortion_models.hpp>
 #include <sensor_msgs/image_encodings.hpp>
+#include <sensor_msgs/point_cloud2_iterator.hpp>
+#include <sensor_msgs/msg/point_field.hpp>
 
 using namespace std::chrono_literals;
 
@@ -51,6 +53,9 @@ namespace stereolabs {
                 if (mGrabThread.joinable()) {
                     mGrabThread.join();
                 }
+                if (mPcThread.joinable()) {
+                    mPcThread.join();
+                }
             }
         } catch (std::system_error& e) {
             RCLCPP_WARN(get_logger(), "Thread joining exception: %s", e.what());
@@ -75,6 +80,9 @@ namespace stereolabs {
                 mThreadStop = true;
                 if (mGrabThread.joinable()) {
                     mGrabThread.join();
+                }
+                if (mPcThread.joinable()) {
+                    mPcThread.join();
                 }
             }
         } catch (std::system_error& e) {
@@ -140,7 +148,7 @@ namespace stereolabs {
         custom_camera_qos_profile.depth = 1; // Depth represents how many messages to store in history when the history policy is KEEP_LAST.
         custom_camera_qos_profile.durability = RMW_QOS_POLICY_DURABILITY_SYSTEM_DEFAULT;
 
-        // >>>>> Image topics
+        // >>>>> Message topics
         std::string img_topic = "image_rect_color";
         std::string img_raw_topic = "image_raw_color";
         std::string cam_info_topic = "camera_info";
@@ -171,7 +179,11 @@ namespace stereolabs {
         mConfImgTopic = topicPrefix + "confidence/image";
         mConfMapTopic = topicPrefix + "confidence/map";
         mConfidenceCamInfoTopic = topicPrefix + "confidence/camera_info";
-        // <<<<< Image topics
+
+        mDispTopic = topicPrefix + "disparity/disparity_image";
+
+        mPointcloudTopic = topicPrefix + "point_cloud/cloud_registered";
+        // <<<<< Message topics
 
         // >>>>> Create Image publishers
         mPubRgb = create_publisher<sensor_msgs::msg::Image>(mRgbTopic, custom_camera_qos_profile);
@@ -212,6 +224,14 @@ namespace stereolabs {
         mPubConfidenceCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mConfidenceCamInfoTopic, custom_camera_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mConfidenceCamInfoTopic.c_str());
         // <<<<< Create Camera Info publishers
+
+        // Disparity Publisher
+        mPubDisparity = create_publisher<stereo_msgs::msg::DisparityImage>(mDispTopic, custom_camera_qos_profile);
+        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mDispTopic.c_str());
+
+        // Pointcloud Publisher
+        mPubPointcloud = create_publisher<sensor_msgs::msg::PointCloud2>(mPointcloudTopic, custom_camera_qos_profile);
+        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mPointcloudTopic.c_str());
     }
 
     rcl_lifecycle_transition_key_t ZedCameraComponent::on_configure(const rclcpp_lifecycle::State&) {
@@ -234,10 +254,10 @@ namespace stereolabs {
         // <<<<< Load params from param server
 
         // >>>>> Frame IDs
-        mRightCamFrameId = "right_camera_frame";
-        mRightCamOptFrameId = "right_camera_optical_frame";
-        mLeftCamFrameId = "left_camera_frame";
-        mLeftCamOptFrameId = "left_camera_optical_frame";
+        mRightCamFrameId = "zed_right_camera_frame";
+        mRightCamOptFrameId = "zed_right_camera_optical_frame";
+        mLeftCamFrameId = "zed_left_camera_frame";
+        mLeftCamOptFrameId = "zed_left_camera_optical_frame";
 
         mDepthFrameId = mLeftCamFrameId;
         mDepthOptFrameId = mLeftCamOptFrameId;
@@ -252,6 +272,9 @@ namespace stereolabs {
         mRightCamInfoRawMsg = std::make_shared<sensor_msgs::msg::CameraInfo>();
         mDepthCamInfoMsg = std::make_shared<sensor_msgs::msg::CameraInfo>();
         // <<<<< Create camera info
+
+        // Create pointcloud message
+        mPointcloudMsg = std::make_shared<sensor_msgs::msg::PointCloud2>();
 
         // Initialize Message Publishers
         initPublishers();
@@ -456,7 +479,16 @@ namespace stereolabs {
         mPubRightCamInfoRaw->on_activate();
         mPubDepthCamInfo->on_activate();
         mPubConfidenceCamInfo->on_activate();
+
+        mPubDisparity->on_activate();
+
+        mPubPointcloud->on_activate();
         // <<<<< Publishers activation
+
+        // >>>>> Start Pointcloud thread
+        mPcDataReady = false;
+        mPcThread = std::thread(&ZedCameraComponent::pointcloudThreadFunc, this);
+        // <<<<< Start Pointcloud thread
 
         // >>>>> Start ZED thread
         mThreadStop = false;
@@ -486,6 +518,9 @@ namespace stereolabs {
                 if (mGrabThread.joinable()) {
                     mGrabThread.join();
                 }
+                if (mPcThread.joinable()) {
+                    mPcThread.join();
+                }
             }
         } catch (std::system_error& e) {
             RCLCPP_WARN(get_logger(), "Thread joining exception: %s", e.what());
@@ -511,6 +546,10 @@ namespace stereolabs {
         mPubRightCamInfoRaw->on_deactivate();
         mPubDepthCamInfo->on_deactivate();
         mPubConfidenceCamInfo->on_deactivate();
+
+        mPubDisparity->on_deactivate();
+
+        mPubPointcloud->on_deactivate();
         // <<<<< Publishers deactivation
 
         // We return a success and hence invoke the transition to the next
@@ -595,11 +634,13 @@ namespace stereolabs {
             size_t rightSub = count_subscribers(mRightTopic);       // mPubRight subscribers
             size_t rightRawSub = count_subscribers(mRightRawTopic); // mPubRawRight subscribers
             size_t depthSub = count_subscribers(mDepthTopic);       // mPubDepth subscribers
-            size_t confImgSub = count_subscribers(mConfImgTopic);   // mConfImg subscribers
-            size_t confMapSub = count_subscribers(mConfMapTopic);   // mConfMap subscribers
+            size_t confImgSub = count_subscribers(mConfImgTopic);   // mPubConfImg subscribers
+            size_t confMapSub = count_subscribers(mConfMapTopic);   // mPubConfMap subscribers
+            size_t dispSub = count_subscribers(mDispTopic);         // mPubDisparity subscribers
+            size_t cloudSub = count_subscribers(mPointcloudTopic);  // mPubPointcloud subscribers
 
             bool pubImages = ((rgbSub + rgbRawSub + leftSub + leftRawSub + rightSub + rightRawSub) > 0);
-            bool pubDepthData = ((depthSub + confImgSub + confMapSub) > 0);
+            bool pubDepthData = ((depthSub + confImgSub + confMapSub + dispSub + cloudSub) > 0);
 
             bool runLoop = pubImages | pubDepthData;
             //<<<<< Subscribers check
@@ -783,8 +824,10 @@ namespace stereolabs {
         size_t depthSub = count_subscribers(mDepthTopic);       // mPubDepth subscribers
         size_t confImgSub = count_subscribers(mConfImgTopic);   // mConfImg subscribers
         size_t confMapSub = count_subscribers(mConfMapTopic);   // mConfMap subscribers
+        size_t dispSub = count_subscribers(mDispTopic);         // mDisparity subscribers
+        size_t cloudSub = count_subscribers(mPointcloudTopic);  //mPubPointcloud subscribers
 
-        sl::Mat depthZEDMat, confImgZedMat, confMapZedMat;
+        sl::Mat depthZEDMat, confImgZedMat, confMapZedMat, disparityZEDMat;
 
         // >>>>>  Publish the depth image if someone has subscribed to
         if (depthSub > 0 /*|| dispImgSub > 0*/) {
@@ -813,6 +856,34 @@ namespace stereolabs {
             }
         }
         // <<<<<  Publish the confidence image and map if someone has subscribed to
+
+        // >>>>> Publish the disparity image if someone has subscribed to
+        if (dispSub > 0) {
+            mZed.retrieveMeasure(disparityZEDMat, sl::MEASURE_DISPARITY, sl::MEM_CPU, mMatWidth, mMatHeight);
+            // Need to flip sign, but cause of this is not sure
+            cv::Mat disparity = sl_tools::toCVMat(disparityZEDMat) * -1.0;
+            publishDisparity(disparity, timeStamp);
+        }
+        // <<<<< Publish the disparity image if someone has subscribed to
+
+        // >>>>> Publish the point cloud if someone has subscribed to
+        if (cloudSub > 0) {
+            // Run the point cloud conversion asynchronously to avoid slowing down
+            // all the program
+            // Retrieve raw pointCloud data if latest Pointcloud is ready
+            std::unique_lock<std::mutex> lock(mPcMutex, std::defer_lock);
+            if (lock.try_lock()) {
+                mZed.retrieveMeasure(mCloud, sl::MEASURE_XYZBGRA, sl::MEM_CPU, mMatWidth, mMatHeight);
+
+                mPointCloudTime = timeStamp;
+
+                // Signal Pointcloud thread that a new pointcloud is ready
+                mPcDataReady = true;
+
+                mPcDataReadyCondVar.notify_one();
+            }
+        }
+        // <<<<< Publish the point cloud if someone has subscribed to
 
     }
 
@@ -923,6 +994,83 @@ namespace stereolabs {
 
         //        cv::imshow("Depth Image", depth);
         //        cv::waitKey(1);
+    }
+
+    void ZedCameraComponent::publishDisparity(cv::Mat disparity, rclcpp::Time timestamp) {
+        sl::CameraInformation zedParam =
+            mZed.getCameraInformation(sl::Resolution(mMatWidth, mMatHeight));
+        std::shared_ptr<sensor_msgs::msg::Image> disparity_image =
+            sl_tools::imageToROSmsg(disparity, sensor_msgs::image_encodings::TYPE_32FC1,
+                                    mDepthOptFrameId, timestamp);
+        stereo_msgs::msg::DisparityImage msg;
+        msg.image = *disparity_image;
+        msg.header = msg.image.header;
+        msg.f = zedParam.calibration_parameters.left_cam.fx;
+        msg.t = zedParam.calibration_parameters.T.x;
+        msg.min_disparity = msg.f * msg.t / mZed.getDepthMaxRangeValue();
+        msg.max_disparity = msg.f * msg.t / mZed.getDepthMinRangeValue();
+        mPubDisparity->publish(msg);
+    }
+
+    void ZedCameraComponent::publishPointCloud() {
+        // Initialize Point Cloud message
+        // https://github.com/ros/common_msgs/blob/jade-devel/sensor_msgs/include/sensor_msgs/point_cloud2_iterator.h
+
+        int ptsCount = mMatWidth * mMatHeight;
+        mPointcloudMsg->header.stamp = mPointCloudTime;
+        if (mPointcloudMsg->width != mMatWidth || mPointcloudMsg->height != mMatHeight) {
+            mPointcloudMsg->header.frame_id = mDepthFrameId; // Set the header values of the ROS message
+
+            mPointcloudMsg->is_bigendian = false;
+            mPointcloudMsg->is_dense = false;
+
+            mPointcloudMsg->width = mMatWidth;
+            mPointcloudMsg->height = mMatHeight;
+
+            sensor_msgs::PointCloud2Modifier modifier(*mPointcloudMsg);
+            modifier.setPointCloud2Fields(4,
+                                          "x", 1, sensor_msgs::msg::PointField::FLOAT32,
+                                          "y", 1, sensor_msgs::msg::PointField::FLOAT32,
+                                          "z", 1, sensor_msgs::msg::PointField::FLOAT32,
+                                          "rgb", 1, sensor_msgs::msg::PointField::FLOAT32);
+        }
+
+        sl::Vector4<float>* cpu_cloud = mCloud.getPtr<sl::float4>();
+
+        // Data copy
+        float* ptCloudPtr = (float*)(&mPointcloudMsg->data[0]);
+
+        #pragma omp parallel for
+        for (size_t i = 0; i < ptsCount; ++i) {
+            ptCloudPtr[i * 4 + 0] = cpu_cloud[i][0];
+            ptCloudPtr[i * 4 + 1] = cpu_cloud[i][1];
+            ptCloudPtr[i * 4 + 2] = cpu_cloud[i][2];
+            ptCloudPtr[i * 4 + 3] = cpu_cloud[i][3];
+        }
+
+        // Pointcloud publishing
+        mPubPointcloud->publish(mPointcloudMsg);
+    }
+
+    void ZedCameraComponent::pointcloudThreadFunc() {
+        std::unique_lock<std::mutex> lock(mPcMutex);
+        while (!mThreadStop) {
+            while (!mPcDataReady) {  // loop to avoid spurious wakeups
+                if (mPcDataReadyCondVar.wait_for(lock, std::chrono::milliseconds(500)) == std::cv_status::timeout) {
+                    // Check thread stopping
+                    if (mThreadStop) {
+                        break;
+                    } else {
+                        continue;
+                    }
+                }
+
+                publishPointCloud();
+                mPcDataReady = false;
+            }
+        }
+
+        RCLCPP_DEBUG(get_logger(), "Pointcloud thread finished");
     }
 }
 

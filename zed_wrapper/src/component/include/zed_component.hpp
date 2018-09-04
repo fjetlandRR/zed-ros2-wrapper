@@ -23,6 +23,8 @@
 #include "rcutils/logging_macros.h"
 #include "sensor_msgs/msg/image.hpp"
 #include "sensor_msgs/msg/camera_info.hpp"
+#include "sensor_msgs/msg/point_cloud2.hpp"
+#include "stereo_msgs/msg/disparity_image.hpp"
 
 #include "sl/Camera.hpp"
 
@@ -31,8 +33,12 @@ namespace stereolabs {
     // >>>>> Typedefs to simplify declarations
     typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::Image>> imagePub;
     typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::CameraInfo>> camInfoPub;
+    typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<stereo_msgs::msg::DisparityImage>> disparityPub;
+
+    typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::PointCloud2>> pointcloudPub;
 
     typedef std::shared_ptr<sensor_msgs::msg::CameraInfo> camInfoMsgPtr;
+    typedef std::shared_ptr<sensor_msgs::msg::PointCloud2> pointcloudMsgPtr;
     // <<<<< Typedefs to simplify declarations
 
     /// ZedCameraComponent inheriting from rclcpp_lifecycle::LifecycleNode
@@ -135,13 +141,14 @@ namespace stereolabs {
 
       protected:
         void zedGrabThreadFunc();
+        void pointcloudThreadFunc();
 
         void initPublishers();
 
         void publishImages(rclcpp::Time timeStamp);
         void publishDepthData(rclcpp::Time timeStamp);
 
-        /* \brief Get the information of the ZED cameras and store them in an
+        /** \brief Get the information of the ZED cameras and store them in an
          * information message
          * \param zed : the sl::zed::Camera* pointer to an instance
          * \param left_cam_info_msg : the information message to fill with the left
@@ -156,14 +163,14 @@ namespace stereolabs {
                          std::string leftFrameId, std::string rightFrameId,
                          bool rawParam = false);
 
-        /* \brief Publish the informations of a camera with a ros Publisher
+        /** \brief Publish the informations of a camera with a ros Publisher
          * \param cam_info_msg : the information message to publish
          * \param pub_cam_info : the publisher object to use
          * \param timeStamp : the ros::Time to stamp the message
          */
         void publishCamInfo(camInfoMsgPtr camInfoMsg, camInfoPub pubCamInfo, rclcpp::Time timeStamp);
 
-        /* \brief Publish a cv::Mat image with a ros Publisher
+        /** \brief Publish a cv::Mat image with a ros Publisher
          * \param img : the image to publish
          * \param pub_img : the publisher object to use (different image publishers
          * exist)
@@ -173,23 +180,37 @@ namespace stereolabs {
          */
         void publishImage(cv::Mat img, imagePub pubImg, std::string imgFrameId, rclcpp::Time timeStamp);
 
-        /* \brief Publish a cv::Mat depth image with a ros Publisher
+        /** \brief Publish a cv::Mat depth image with a ros Publisher
          * \param depth : the depth image to publish
          * \param timeStamp : the ros::Time to stamp the depth image
          */
         void publishDepth(cv::Mat depth, rclcpp::Time timeStamp);
 
+        /** \brief Publish a cv::Mat disparity image with a ros Publisher
+         * \param disparity : the disparity image to publish
+         * \param timestamp : the ros::Time to stamp the depth image
+         */
+        void publishDisparity(cv::Mat disparity, rclcpp::Time timestamp);
+
+        /** \brief Publish a pointCloud with a ros Publisher
+         */
+        void publishPointCloud();
+
       private:
         // Status variables
         rcl_lifecycle_transition_key_t mPrevTransition = lifecycle_msgs::msg::Transition::TRANSITION_CREATE;
 
-        // Last received frame time
+        // Timestamps
         rclcpp::Time mLastFrameTime;
+        rclcpp::Time mPointCloudTime;
 
         // Grab thread
         std::thread mGrabThread;
         bool mThreadStop = false;
         int mCamTimeoutMsec = 5000; // Error generated if camera is not available after timeout
+
+        // Pointcloud thread
+        std::thread mPcThread; // Point Cloud thread
 
         // ZED SDK
         sl::Camera mZed;
@@ -237,6 +258,10 @@ namespace stereolabs {
         camInfoPub mPubDepthCamInfo;
         camInfoPub mPubConfidenceCamInfo;
 
+        disparityPub mPubDisparity;
+
+        pointcloudPub mPubPointcloud;
+
         // Topics
         std::string mLeftTopic;
         std::string mLeftRawTopic;
@@ -255,6 +280,8 @@ namespace stereolabs {
         std::string mConfImgTopic;
         std::string mConfMapTopic;
         std::string mConfidenceCamInfoTopic;
+        std::string mDispTopic;
+        std::string mPointcloudTopic;
 
         // Messages
         // Camera info
@@ -266,6 +293,8 @@ namespace stereolabs {
         camInfoMsgPtr mRightCamInfoRawMsg;
         camInfoMsgPtr mDepthCamInfoMsg;
         camInfoMsgPtr mConfidenceCamInfoMsg;
+        // Pointcloud
+        pointcloudMsgPtr mPointcloudMsg;
 
         // Frame IDs
         std::string mRightCamFrameId;
@@ -274,6 +303,9 @@ namespace stereolabs {
         std::string mLeftCamOptFrameId;
         std::string mDepthFrameId;
         std::string mDepthOptFrameId;
+
+        // SL Pointcloud
+        sl::Mat mCloud;
 
         // OpenCV Mats
         int mCamWidth;
@@ -287,6 +319,9 @@ namespace stereolabs {
 
         // Thread Sync
         std::mutex mCamDataMutex;
+        std::mutex mPcMutex;
+        std::condition_variable mPcDataReadyCondVar;
+        bool mPcDataReady = false;
     };
 }
 
