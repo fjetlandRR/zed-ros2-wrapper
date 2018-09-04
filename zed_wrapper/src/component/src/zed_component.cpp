@@ -1074,7 +1074,7 @@ namespace stereolabs {
     }
 }
 
-#include "class_loader/class_loader_register_macro.h"
+#include "class_loader/register_macro.hpp"
 
 // Register the component with class_loader.
 // This acts as a sort of entry point, allowing the component to be discoverable when its library
