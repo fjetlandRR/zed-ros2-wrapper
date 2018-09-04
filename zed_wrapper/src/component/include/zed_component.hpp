@@ -225,6 +225,7 @@ namespace stereolabs {
         imagePub mPubRight;
         imagePub mPubRawRight;
         imagePub mPubDepth;
+        imagePub mPubConfImg;
 
         camInfoPub mPubRgbCamInfo;
         camInfoPub mPubRgbCamInfoRaw;
@@ -233,6 +234,7 @@ namespace stereolabs {
         camInfoPub mPubRightCamInfo;
         camInfoPub mPubRightCamInfoRaw;
         camInfoPub mPubDepthCamInfo;
+        camInfoPub mPubConfImgCamInfo;
 
         // Topics
         std::string mLeftTopic;
@@ -249,6 +251,9 @@ namespace stereolabs {
         std::string mRgbCamInfoRawTopic;
         std::string mDepthTopic;
         std::string mDepthCamInfoTopic;
+        std::string mConfImgTopic;
+        std::string mConfImgCamInfoTopic;
+
 
         // Messages
         // Camera info
@@ -259,6 +264,7 @@ namespace stereolabs {
         camInfoMsgPtr mLeftCamInfoRawMsg;
         camInfoMsgPtr mRightCamInfoRawMsg;
         camInfoMsgPtr mDepthCamInfoMsg;
+        camInfoMsgPtr mConfImgCamInfoMsg;
 
         // Frame IDs
         std::string mRightCamFrameId;

@@ -152,7 +152,7 @@ namespace stereolabs {
         mLeftCamInfoRawTopic = topicPrefix + "left/" + cam_info_raw_topic;
         mRightTopic = topicPrefix + "right/" + img_topic;
         mRightRawTopic = topicPrefix + "right/" + img_raw_topic;
-        mRightCamInfoTopic = topicPrefix + "right/" + cam_info_topic;;
+        mRightCamInfoTopic = topicPrefix + "right/" + cam_info_topic;
         mRightCamInfoRawTopic = topicPrefix + "right/" + cam_info_raw_topic;
         mRgbTopic = topicPrefix + "rgb/" + img_topic;
         mRgbRawTopic = topicPrefix + "rgb/" + img_raw_topic;
@@ -167,6 +167,9 @@ namespace stereolabs {
             mDepthTopic += "depth_registered";
         }
         std::string mDepthCamInfoTopic = topicPrefix + "depth/camera_info";
+
+        mConfImgTopic = topicPrefix + "confidence/image";
+        mConfImgCamInfoTopic = topicPrefix + "confidence/camera_info";
         // <<<<< Image topics
 
         // >>>>> Create Image publishers
@@ -184,6 +187,8 @@ namespace stereolabs {
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mRightRawTopic.c_str());
         mPubDepth = create_publisher<sensor_msgs::msg::Image>(mDepthTopic, custom_camera_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mDepthTopic.c_str());
+        mPubConfImg = create_publisher<sensor_msgs::msg::Image>(mConfImgTopic, custom_camera_qos_profile);
+        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mConfImgTopic.c_str());
         // <<<<< Create Image publishers
 
         // >>>>> Create Camera Info publishers
@@ -201,6 +206,8 @@ namespace stereolabs {
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mRightCamInfoRawTopic.c_str());
         mPubDepthCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mDepthCamInfoTopic, custom_camera_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mDepthCamInfoTopic.c_str());
+        mPubConfImgCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mConfImgCamInfoTopic, custom_camera_qos_profile);
+        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mConfImgCamInfoTopic.c_str());
         // <<<<< Create Camera Info publishers
     }
 
@@ -400,6 +407,7 @@ namespace stereolabs {
         mRgbCamInfoMsg = mLeftCamInfoMsg;
         mRgbCamInfoRawMsg = mLeftCamInfoRawMsg;
         mDepthCamInfoMsg = mLeftCamInfoMsg;
+        mConfImgCamInfoMsg = mLeftCamInfoMsg;
         // <<<<< Images info
 
         RCLCPP_INFO(get_logger(), "ZED configured");
@@ -434,6 +442,7 @@ namespace stereolabs {
         mPubRight->on_activate();
         mPubRawRight->on_activate();
         mPubDepth->on_activate();
+        mPubConfImg->on_activate();
 
         mPubRgbCamInfo->on_activate();
         mPubRgbCamInfoRaw->on_activate();
@@ -442,9 +451,7 @@ namespace stereolabs {
         mPubRightCamInfo->on_activate();
         mPubRightCamInfoRaw->on_activate();
         mPubDepthCamInfo->on_activate();
-
-        //mPubConfImg->on_activate();
-        //mPubConfImgCamInfo->on_activate();
+        mPubConfImgCamInfo->on_activate();
         // <<<<< Publishers activation
 
         // >>>>> Start ZED thread
@@ -488,7 +495,8 @@ namespace stereolabs {
         mPubRawLeft->on_deactivate();
         mPubRight->on_deactivate();
         mPubRawRight->on_deactivate();
-        mPubDepth->on_activate();
+        mPubDepth->on_deactivate();
+        mPubConfImg->on_deactivate();
 
         mPubRgbCamInfo->on_deactivate();
         mPubRgbCamInfoRaw->on_deactivate();
@@ -497,6 +505,7 @@ namespace stereolabs {
         mPubRightCamInfo->on_deactivate();
         mPubRightCamInfoRaw->on_deactivate();
         mPubDepthCamInfo->on_deactivate();
+        mPubConfImgCamInfo->on_deactivate();
         // <<<<< Publishers deactivation
 
         // We return a success and hence invoke the transition to the next
@@ -579,11 +588,12 @@ namespace stereolabs {
             size_t leftSub = count_subscribers(mLeftTopic);         // mPubLeft subscribers
             size_t leftRawSub = count_subscribers(mLeftRawTopic);   // mPubRawLeft subscribers
             size_t rightSub = count_subscribers(mRightTopic);       // mPubRight subscribers
-            size_t rightRawSub = count_subscribers(mRightRawTopic); //mPubRawRight subscribers
+            size_t rightRawSub = count_subscribers(mRightRawTopic); // mPubRawRight subscribers
             size_t depthSub = count_subscribers(mDepthTopic);       // mPubDepth subscribers
+            size_t confImgSub = count_subscribers(mConfImgTopic);   // mConfImg subscribers
 
             bool pubImages = ((rgbSub + rgbRawSub + leftSub + leftRawSub + rightSub + rightRawSub) > 0);
-            bool pubDepthData = (depthSub > 0);
+            bool pubDepthData = ((depthSub + confImgSub) > 0);
 
             bool runLoop = pubImages | pubDepthData;
             //<<<<< Subscribers check
@@ -765,16 +775,27 @@ namespace stereolabs {
 
     void ZedCameraComponent::publishDepthData(rclcpp::Time timeStamp) {
         size_t depthSub = count_subscribers(mDepthTopic);       // mPubDepth subscribers
+        size_t confImgSub = count_subscribers(mConfImgTopic);
 
-        sl::Mat depthZEDMat;
+        sl::Mat depthZEDMat, confImgZedMat, confMapZedMat;
 
         // >>>>>  Publish the depth image if someone has subscribed to
-        if (depthSub > 0 /*|| disparitySubnumber*/ > 0) {
+        if (depthSub > 0 /*|| dispImgSub > 0*/) {
             mZed.retrieveMeasure(depthZEDMat, sl::MEASURE_DEPTH, sl::MEM_CPU, mMatWidth, mMatHeight);
             publishCamInfo(mDepthCamInfoMsg, mPubDepthCamInfo, timeStamp);
-            publishDepth(sl_tools::toCVMat(depthZEDMat), timeStamp); // in meters
+            publishDepth(sl_tools::toCVMat(depthZEDMat), timeStamp);
         }
         // <<<<<  Publish the depth image if someone has subscribed to
+
+        // >>>>>  Publish the confidence image if someone has subscribed to
+        if (confImgSub > 0) {
+            mZed.retrieveImage(confImgZedMat, sl::VIEW_CONFIDENCE, sl::MEM_CPU, mMatWidth, mMatHeight);
+            cv::cvtColor(sl_tools::toCVMat(confImgZedMat), mCvConfImRGB, CV_RGBA2RGB);
+            publishCamInfo(mConfImgCamInfoMsg, mPubConfImgCamInfo, timeStamp);
+            publishImage(mCvConfImRGB, mPubConfImg, mDepthOptFrameId, timeStamp);
+        }
+        // <<<<<  Publish the confidence image if someone has subscribed to
+
     }
 
     void ZedCameraComponent::fillCamInfo(sl::Camera& zed, std::shared_ptr<sensor_msgs::msg::CameraInfo> leftCamInfoMsg,
