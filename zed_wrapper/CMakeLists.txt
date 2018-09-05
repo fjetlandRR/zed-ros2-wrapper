@@ -55,6 +55,7 @@ find_package(rmw_implementation REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(stereo_msgs REQUIRED)
+find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
@@ -83,6 +84,7 @@ include_directories(
     ${std_msgs_INCLUDE_DIRS}
     ${sensor_msgs_INCLUDE_DIRS}
     ${stereo_msgs_INCLUDE_DIRS}
+    ${tf2_INCLUDE_DIRS}
     ${tf2_ros_INCLUDE_DIRS}
     ${tf2_INCLUDE_DIRS}
     ${tf2_geometry_msgs_INCLUDE_DIRS}
@@ -118,7 +120,7 @@ set(COMPONENT_SRC
 )
 
 ###############################################################################
-# ZED COMPONENT and ZED EXECUTABLE
+# ZED COMPONENT PLUGIN and ZED EXECUTABLE
 
 # create ament index resource which references the libraries in the binary dir
 set(node_plugins "")
@@ -136,8 +138,8 @@ ament_target_dependencies(zed_component
   std_msgs
   sensor_msgs
   stereo_msgs
-  tf2_ros
   tf2
+  tf2_ros  
   tf2_geometry_msgs
   nav_msgs
 )

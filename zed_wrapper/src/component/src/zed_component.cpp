@@ -11,6 +11,9 @@
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 #include <sensor_msgs/msg/point_field.hpp>
 
+#include <tf2_msgs/msg/tf_message.hpp>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+
 using namespace std::chrono_literals;
 
 #ifndef TIMER_ELAPSED
@@ -141,14 +144,14 @@ namespace stereolabs {
 
         // >>>>> Image publishers QOS
         // https://github.com/ros2/ros2/wiki/About-Quality-of-Service-Settings
-        rmw_qos_profile_t custom_camera_qos_profile = rmw_qos_profile_default; // Default QOS profile
+        rmw_qos_profile_t camera_qos_profile = rmw_qos_profile_sensor_data; // Default QOS profile
 
-        custom_camera_qos_profile.reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE; // to be sure to publish images
-        custom_camera_qos_profile.history = RMW_QOS_POLICY_HISTORY_KEEP_LAST;// KEEP_LAST enforces a limit on the number of messages that are saved, specified by the "depth" parameter
-        custom_camera_qos_profile.depth = 1; // Depth represents how many messages to store in history when the history policy is KEEP_LAST.
-        custom_camera_qos_profile.durability = RMW_QOS_POLICY_DURABILITY_SYSTEM_DEFAULT;
+        //        camera_qos_profile.reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE; // to be sure to publish images
+        //        camera_qos_profile.history = RMW_QOS_POLICY_HISTORY_KEEP_LAST;// KEEP_LAST enforces a limit on the number of messages that are saved, specified by the "depth" parameter
+        //        camera_qos_profile.depth = 1; // Depth represents how many messages to store in history when the history policy is KEEP_LAST.
+        //        camera_qos_profile.durability = RMW_QOS_POLICY_DURABILITY_SYSTEM_DEFAULT;
 
-        // >>>>> Message topics
+        // >>>>> Video topics
         std::string img_topic = "image_rect_color";
         std::string img_raw_topic = "image_raw_color";
         std::string cam_info_topic = "camera_info";
@@ -166,7 +169,9 @@ namespace stereolabs {
         mRgbRawTopic = topicPrefix + "rgb/" + img_raw_topic;
         mRgbCamInfoTopic = topicPrefix + "rgb/" + cam_info_topic;
         mRgbCamInfoRawTopic = topicPrefix + "rgb/" + cam_info_raw_topic;
+        // <<<<< Video topics
 
+        // >>>>> Depth Topics
         mDepthTopic = topicPrefix + "depth/";
         if (mOpenniDepthMode) {
             RCLCPP_INFO(get_logger(), "Openni depth mode activated");
@@ -183,55 +188,93 @@ namespace stereolabs {
         mDispTopic = topicPrefix + "disparity/disparity_image";
 
         mPointcloudTopic = topicPrefix + "point_cloud/cloud_registered";
-        // <<<<< Message topics
+        // <<<<< Depth Topics
 
-        // >>>>> Create Image publishers
-        mPubRgb = create_publisher<sensor_msgs::msg::Image>(mRgbTopic, custom_camera_qos_profile);
+        // >>>>> Tracking topics
+        mPoseTfTopic = topicPrefix + "transform/pose";
+        mOdomTfTopic = topicPrefix + "transform/odom";
+        mImuTfTopic = topicPrefix + "transform/imu";
+
+        mPoseTopic = topicPrefix + "pose";
+        mOdomTopic = topicPrefix + "odom";
+        // <<<<< Tracking topics
+
+        // >>>>> Create Video publishers
+        mPubRgb = create_publisher<sensor_msgs::msg::Image>(mRgbTopic, camera_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mRgbTopic.c_str());
-        mPubRawRgb = create_publisher<sensor_msgs::msg::Image>(mRgbRawTopic, custom_camera_qos_profile);
+        mPubRawRgb = create_publisher<sensor_msgs::msg::Image>(mRgbRawTopic, camera_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mRgbRawTopic.c_str());
-        mPubLeft = create_publisher<sensor_msgs::msg::Image>(mLeftTopic, custom_camera_qos_profile);
+        mPubLeft = create_publisher<sensor_msgs::msg::Image>(mLeftTopic, camera_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mLeftTopic.c_str());
-        mPubRawLeft = create_publisher<sensor_msgs::msg::Image>(mLeftRawTopic, custom_camera_qos_profile);
+        mPubRawLeft = create_publisher<sensor_msgs::msg::Image>(mLeftRawTopic, camera_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mLeftRawTopic.c_str());
-        mPubRight = create_publisher<sensor_msgs::msg::Image>(mRightTopic, custom_camera_qos_profile);
+        mPubRight = create_publisher<sensor_msgs::msg::Image>(mRightTopic, camera_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mRightTopic.c_str());
-        mPubRawRight = create_publisher<sensor_msgs::msg::Image>(mRightRawTopic, custom_camera_qos_profile);
+        mPubRawRight = create_publisher<sensor_msgs::msg::Image>(mRightRawTopic, camera_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mRightRawTopic.c_str());
-        mPubDepth = create_publisher<sensor_msgs::msg::Image>(mDepthTopic, custom_camera_qos_profile);
+        mPubDepth = create_publisher<sensor_msgs::msg::Image>(mDepthTopic, camera_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mDepthTopic.c_str());
-        mPubConfImg = create_publisher<sensor_msgs::msg::Image>(mConfImgTopic, custom_camera_qos_profile);
+        mPubConfImg = create_publisher<sensor_msgs::msg::Image>(mConfImgTopic, camera_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mConfImgTopic.c_str());
-        mPubConfMap = create_publisher<sensor_msgs::msg::Image>(mConfMapTopic, custom_camera_qos_profile);
+        mPubConfMap = create_publisher<sensor_msgs::msg::Image>(mConfMapTopic, camera_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mConfMapTopic.c_str());
-        // <<<<< Create Image publishers
+        // <<<<< Create Video publishers
 
         // >>>>> Create Camera Info publishers
-        mPubRgbCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mRgbCamInfoTopic, custom_camera_qos_profile);
+        mPubRgbCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mRgbCamInfoTopic, camera_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mRgbCamInfoTopic.c_str());
-        mPubRgbCamInfoRaw = create_publisher<sensor_msgs::msg::CameraInfo>(mRgbCamInfoRawTopic, custom_camera_qos_profile);
+        mPubRgbCamInfoRaw = create_publisher<sensor_msgs::msg::CameraInfo>(mRgbCamInfoRawTopic, camera_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mRgbCamInfoRawTopic.c_str());
-        mPubLeftCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mLeftCamInfoTopic, custom_camera_qos_profile);
+        mPubLeftCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mLeftCamInfoTopic, camera_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mLeftCamInfoTopic.c_str());
-        mPubLeftCamInfoRaw = create_publisher<sensor_msgs::msg::CameraInfo>(mLeftCamInfoRawTopic, custom_camera_qos_profile);
+        mPubLeftCamInfoRaw = create_publisher<sensor_msgs::msg::CameraInfo>(mLeftCamInfoRawTopic, camera_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mLeftCamInfoRawTopic.c_str());
-        mPubRightCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mRightCamInfoTopic, custom_camera_qos_profile);
+        mPubRightCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mRightCamInfoTopic, camera_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mRightCamInfoTopic.c_str());
-        mPubRightCamInfoRaw = create_publisher<sensor_msgs::msg::CameraInfo>(mRightCamInfoRawTopic, custom_camera_qos_profile);
+        mPubRightCamInfoRaw = create_publisher<sensor_msgs::msg::CameraInfo>(mRightCamInfoRawTopic, camera_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mRightCamInfoRawTopic.c_str());
-        mPubDepthCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mDepthCamInfoTopic, custom_camera_qos_profile);
+        mPubDepthCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mDepthCamInfoTopic, camera_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mDepthCamInfoTopic.c_str());
-        mPubConfidenceCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mConfidenceCamInfoTopic, custom_camera_qos_profile);
-        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mConfidenceCamInfoTopic.c_str());
-        // <<<<< Create Camera Info publishers
+        mPubConfidenceCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mConfidenceCamInfoTopic, camera_qos_profile);
+        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mConfidenceCamInfoTopic.c_str());        // <<<<< Create Camera Info publishers
 
-        // Disparity Publisher
-        mPubDisparity = create_publisher<stereo_msgs::msg::DisparityImage>(mDispTopic, custom_camera_qos_profile);
-        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mDispTopic.c_str());
 
-        // Pointcloud Publisher
-        mPubPointcloud = create_publisher<sensor_msgs::msg::PointCloud2>(mPointcloudTopic, custom_camera_qos_profile);
+        // >>>>> Create Depth Publishers
+        // https://github.com/ros2/ros2/wiki/About-Quality-of-Service-Settings
+        rmw_qos_profile_t depth_qos_profile = rmw_qos_profile_sensor_data; // Default QOS profile
+
+        //        depth_qos_profile.durability = RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL;
+        //        depth_qos_profile.history = RMW_QOS_POLICY_HISTORY_KEEP_LAST;
+        //        depth_qos_profile.depth = 1;
+        //        depth_qos_profile.reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+
+        mPubPointcloud = create_publisher<sensor_msgs::msg::PointCloud2>(mPointcloudTopic, depth_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mPointcloudTopic.c_str());
+
+        mPubDisparity = create_publisher<stereo_msgs::msg::DisparityImage>(mDispTopic, depth_qos_profile);
+        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mDispTopic.c_str());
+        // <<<<< Create Depth Publishers
+
+        // >>>>> Create Tracking publishers
+        // https://github.com/ros2/ros2/wiki/About-Quality-of-Service-Settings
+        rmw_qos_profile_t tf_qos_profile = rmw_qos_profile_default; // Default QOS profile
+
+        tf_qos_profile.durability = RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL;
+        tf_qos_profile.history = RMW_QOS_POLICY_HISTORY_KEEP_ALL;
+        tf_qos_profile.reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+
+        mPubPoseTransf = create_publisher<geometry_msgs::msg::TransformStamped>(mPoseTfTopic, tf_qos_profile);
+        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mPoseTfTopic.c_str());
+        mPubOdomTransf = create_publisher<geometry_msgs::msg::TransformStamped>(mOdomTfTopic, tf_qos_profile);
+        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mOdomTfTopic.c_str());
+        mPubImuTransf = create_publisher<geometry_msgs::msg::TransformStamped>(mImuTfTopic, tf_qos_profile);
+        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mImuTfTopic.c_str());
+
+        mPubPose = create_publisher<geometry_msgs::msg::PoseStamped>(mPoseTopic, tf_qos_profile);
+        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mPoseTopic.c_str());
+        mPubOdom = create_publisher<nav_msgs::msg::Odometry>(mOdomTopic, tf_qos_profile);
+        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mOdomTopic.c_str());
+        // <<<<< Create Tracking publishers
     }
 
     rcl_lifecycle_transition_key_t ZedCameraComponent::on_configure(const rclcpp_lifecycle::State&) {
@@ -261,7 +304,22 @@ namespace stereolabs {
 
         mDepthFrameId = mLeftCamFrameId;
         mDepthOptFrameId = mLeftCamOptFrameId;
+
+        mMapFrameId = "map";
+        mOdometryFrameId = "odom";
+        mBaseFrameId = "base_link";
+        mCameraFrameId = "zed_camera_center";
+        mImuFrameId = "zed_imu_link";
         // <<<<< Frame IDs
+
+        // >>>>> Transformation
+        mTfBuffer = std::make_shared<tf2_ros::Buffer>();
+        mTfListener = std::make_shared<tf2_ros::TransformListener>(*mTfBuffer);
+
+        //        mTransformPoseBroadcaster = std::make_shared<tf2_ros::TransformBroadcaster>(shared_from_this());  // TODO enable when TransformBroadcaster can be used with LifecycleNode
+        //        mTransformOdomBroadcaster = std::make_shared<tf2_ros::TransformBroadcaster>(shared_from_this());  // TODO enable when TransformBroadcaster can be used with LifecycleNode
+        //        mTransformImuBroadcaster = std::make_shared<tf2_ros::TransformBroadcaster>(shared_from_this());  // TODO enable when TransformBroadcaster can be used with LifecycleNode
+        // <<<<< Transformation
 
         // >>>>> Create camera info
         mRgbCamInfoMsg = std::make_shared<sensor_msgs::msg::CameraInfo>();
@@ -310,6 +368,8 @@ namespace stereolabs {
         }
 
         mThreadStop = false;
+        mTrackingActive = false;
+        mTrackingReady = false;
 
         if (mZedSerialNumber == 0) {
             mZedParams.camera_linux_id = mZedId;
@@ -586,6 +646,67 @@ namespace stereolabs {
         return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
     }
 
+    void ZedCameraComponent::set_pose(float xt, float yt, float zt, float rr,
+                                      float pr, float yr) {
+        // ROS pose
+        tf2::Quaternion q;
+        q.setRPY(rr, pr, yr);
+        tf2::Vector3 orig(xt, yt, zt);
+        mBase2OdomTransf.setOrigin(orig);
+        mBase2OdomTransf.setRotation(q);
+        mOdom2MapTransf.setIdentity();
+        // SL pose
+        sl::float4 q_vec;
+        q_vec[0] = q.x();
+        q_vec[1] = q.y();
+        q_vec[2] = q.z();
+        q_vec[3] = q.w();
+        sl::Orientation r(q_vec);
+        mInitialPoseSl.setTranslation(sl::Translation(xt, yt, zt));
+        mInitialPoseSl.setOrientation(r);
+    }
+
+    void ZedCameraComponent::start_tracking() {
+        RCLCPP_INFO(get_logger(), "Starting Tracking");
+
+        // TODO Get params from server
+
+        if (mZedRealCamModel == sl::MODEL_ZED_M) {
+            // TODO Get param from server
+            RCLCPP_INFO(get_logger(), "Init Odometry with first IMU data : %s", mInitOdomWithPose ? "TRUE" : "FALSE");
+        } else {
+            mInitOdomWithPose = false;
+        }
+
+        if (mInitialTrackPose.size() != 6) {
+            RCLCPP_WARN(get_logger(), "Invalid Initial Pose size (&d). Using Identity", mInitialTrackPose.size());
+            mInitialPoseSl.setIdentity();
+            mOdom2MapTransf.setIdentity();
+            mOdom2MapTransf.setIdentity();
+        } else {
+            set_pose(mInitialTrackPose[0], mInitialTrackPose[1], mInitialTrackPose[2],
+                     mInitialTrackPose[3], mInitialTrackPose[4], mInitialTrackPose[5]);
+        }
+
+        if (mOdometryDb != "" && !sl_tools::file_exist(mOdometryDb)) {
+            mOdometryDb = "";
+            RCLCPP_WARN(get_logger(), "odometry_DB path doesn't exist or is unreachable.");
+        }
+
+        // Tracking parameters
+        sl::TrackingParameters trackParams;
+        trackParams.area_file_path = mOdometryDb.c_str();
+        trackParams.enable_pose_smoothing = mPoseSmoothing;
+        RCLCPP_INFO(get_logger(), "Pose Smoothing : %s", trackParams.enable_pose_smoothing ? "TRUE" : "FALSE");
+        trackParams.enable_spatial_memory = mSpatialMemory;
+        RCLCPP_INFO(get_logger(), "Spatial Memory : %s", trackParams.enable_spatial_memory ? "TRUE" : "FALSE");
+        trackParams.initial_world_transform = mInitialPoseSl;
+
+        mZed.enableTracking(trackParams);
+        mTrackingActive = true;
+        RCLCPP_INFO(get_logger(), "Tracking ENABLED");
+    }
+
     void ZedCameraComponent::zedGrabThreadFunc() {
         RCLCPP_INFO(get_logger(), "ZED thread started");
 
@@ -599,7 +720,7 @@ namespace stereolabs {
         } else {
             startTime = sl_tools::slTime2Ros(mZed.getTimestamp(sl::TIME_REFERENCE_CURRENT));
         }
-        mLastFrameTime = startTime;
+        mLastGrabTimestamp = startTime;
         // <<<<< Last frame time initialization
 
         // >>>>> Grab parameters
@@ -638,20 +759,32 @@ namespace stereolabs {
             size_t confMapSub = count_subscribers(mConfMapTopic);   // mPubConfMap subscribers
             size_t dispSub = count_subscribers(mDispTopic);         // mPubDisparity subscribers
             size_t cloudSub = count_subscribers(mPointcloudTopic);  // mPubPointcloud subscribers
+            size_t poseSub = count_subscribers(mPoseTopic);         // mPubPose subscribers
+            size_t odomSub = count_subscribers(mOdomTopic);         // mPubOdom subscribers
 
             bool pubImages = ((rgbSub + rgbRawSub + leftSub + leftRawSub + rightSub + rightRawSub) > 0);
             bool pubDepthData = ((depthSub + confImgSub + confMapSub + dispSub + cloudSub) > 0);
+            bool pubTrackingData = ((poseSub + odomSub) > 0);
 
-            bool runLoop = pubImages | pubDepthData;
+            bool runLoop = pubImages | pubDepthData | pubTrackingData;
             //<<<<< Subscribers check
 
             if (runLoop) {
                 // Timestamp
-                rclcpp::Time frameTime;
+                rclcpp::Time grabTimestamp;
                 if (mSvoMode) {
-                    frameTime = now();
+                    grabTimestamp = now();
                 } else {
-                    frameTime = sl_tools::slTime2Ros(mZed.getTimestamp(sl::TIME_REFERENCE_IMAGE));
+                    grabTimestamp = sl_tools::slTime2Ros(mZed.getTimestamp(sl::TIME_REFERENCE_IMAGE));
+                }
+
+                bool enableTracking = mDepthStabilization || pubTrackingData || pubDepthData;
+
+                if ((enableTracking) && !mTrackingActive) { // Start the tracking
+                    start_tracking();
+                } else if (!mDepthStabilization && !pubDepthData && !pubTrackingData && mTrackingActive) {  // Stop the tracking
+                    mZed.disableTracking();
+                    mTrackingActive = false;
                 }
 
                 if (pubDepthData) {
@@ -687,7 +820,7 @@ namespace stereolabs {
 
                     rclcpp::Time now = sl_tools::slTime2Ros(mZed.getTimestamp(sl::TIME_REFERENCE_CURRENT));
 
-                    rcl_time_point_value_t elapsed = (now - mLastFrameTime).nanoseconds();
+                    rcl_time_point_value_t elapsed = (now - mLastGrabTimestamp).nanoseconds();
                     rcl_time_point_value_t timeout = rclcpp::Duration(5, 0).nanoseconds();
 
                     if (elapsed > timeout && !mSvoMode) {
@@ -698,19 +831,152 @@ namespace stereolabs {
                     continue;
                 }
 
-                mLastFrameTime = frameTime;
+                mLastGrabTimestamp = grabTimestamp;
 
                 mCamDataMutex.lock();
 
                 if (pubImages) {
-                    publishImages(frameTime);
+                    publishImages(grabTimestamp);
                 }
 
                 if (pubDepthData) {
-                    publishDepthData(frameTime);
+                    publishDepthData(grabTimestamp);
                 }
 
                 mCamDataMutex.unlock();
+
+
+                // >>>>> Transform from base to sensor
+                tf2::Transform sensor_to_base_transf;
+
+                // Look up the transformation from base frame to camera link
+                try {
+                    double seconds = RCL_NS_TO_S(static_cast<double>(grabTimestamp.nanoseconds()));
+                    // Save the transformation from base to frame
+                    geometry_msgs::msg::TransformStamped s2b =
+                        mTfBuffer->lookupTransform(mBaseFrameId, mDepthFrameId, tf2::timeFromSec(seconds));
+                    // Get the TF2 transformation
+                    tf2::fromMsg(s2b.transform, sensor_to_base_transf);
+                } catch (tf2::TransformException& ex) {
+                    RCLCPP_WARN(get_logger(), "The tf from '%s' to '%s' does not seem to be available, "
+                                "will assume it as identity!",
+                                mDepthFrameId.c_str(), mBaseFrameId.c_str());
+                    RCLCPP_WARN(get_logger(), "Transform error: %s", ex.what());
+                    sensor_to_base_transf.setIdentity();
+                }
+                // <<<<< Transform from base to sensor
+
+
+                // >>>>> Publish the odometry if someone has subscribed to
+                if (pubDepthData || pubTrackingData) {
+                    if (!mInitOdomWithPose) {
+                        sl::Pose deltaOdom;
+                        sl::TRACKING_STATE status = mZed.getPosition(deltaOdom, sl::REFERENCE_FRAME_CAMERA);
+
+                        if (status == sl::TRACKING_STATE_OK || status == sl::TRACKING_STATE_SEARCHING || status == sl::TRACKING_STATE_FPS_TOO_LOW) {
+                            // Transform ZED delta odom pose in TF2 Transformation
+                            geometry_msgs::msg::Transform deltaTransf;
+                            sl::Translation translation = deltaOdom.getTranslation();
+                            sl::Orientation quat = deltaOdom.getOrientation();
+                            deltaTransf.translation.x = translation(0);
+                            deltaTransf.translation.y = translation(1);
+                            deltaTransf.translation.z = translation(2);
+                            deltaTransf.rotation.x = quat(0);
+                            deltaTransf.rotation.y = quat(1);
+                            deltaTransf.rotation.z = quat(2);
+                            deltaTransf.rotation.w = quat(3);
+                            tf2::Transform deltaOdomTf;
+                            tf2::fromMsg(deltaTransf, deltaOdomTf);
+                            // delta odom from sensor to base frame
+                            tf2::Transform deltaOdomTf_base =
+                                sensor_to_base_transf * deltaOdomTf * sensor_to_base_transf.inverse();
+
+                            // Propagate Odom transform in time
+                            mBase2OdomTransf = mBase2OdomTransf * deltaOdomTf_base;
+                            // Publish odometry message
+                            publishOdom(mBase2OdomTransf, grabTimestamp);
+                            mTrackingReady = true;
+                        } else {
+                            RCLCPP_DEBUG(get_logger(), "ODOM -> Tracking Status: %d", static_cast<int>(status));
+                        }
+                    }
+                }
+                // <<<<< Publish the odometry if someone has subscribed to
+
+                // >>>>> Publish the zed camera pose if someone has subscribed to
+                if (pubDepthData || pubTrackingData) {
+
+                    static sl::TRACKING_STATE oldStatus;
+                    sl::TRACKING_STATE status = mZed.getPosition(mLastZedPose, sl::REFERENCE_FRAME_WORLD);
+
+                    if (status == sl::TRACKING_STATE_OK || status == sl::TRACKING_STATE_SEARCHING /*|| status == sl::TRACKING_STATE_FPS_TOO_LOW*/) {
+                        // Transform ZED pose in TF2 Transformation
+                        geometry_msgs::msg::Transform sens2mapTransf;
+                        sl::Translation translation = mLastZedPose.getTranslation();
+                        sl::Orientation quat = mLastZedPose.getOrientation();
+                        sens2mapTransf.translation.x = translation(0);
+                        sens2mapTransf.translation.y = translation(1);
+                        sens2mapTransf.translation.z = translation(2);
+                        sens2mapTransf.rotation.x = quat(0);
+                        sens2mapTransf.rotation.y = quat(1);
+                        sens2mapTransf.rotation.z = quat(2);
+                        sens2mapTransf.rotation.w = quat(3);
+                        tf2::Transform sens_to_map_transf;
+                        tf2::fromMsg(sens2mapTransf, sens_to_map_transf);
+                        // Transformation from camera sensor to base frame
+                        /*tf2::Transform base_to_map_transform =
+                            sensor_to_base_transf * sens_to_map_transf * sensor_to_base_transf.inverse();*/
+
+                        tf2::Transform base_to_map_transform = (sensor_to_base_transf * sens_to_map_transf.inverse()).inverse();
+
+                        bool initOdom = false;
+
+                        //                        if (!(mTerrainMap || mFloorAlignment)) {
+                        //                            initOdom = mInitOdomWithPose;
+                        //                        } else {
+                        initOdom = (status == sl::TRACKING_STATE_OK) & mInitOdomWithPose;
+                        //                        }
+
+                        if (initOdom || mResetOdom) {
+                            // Propagate Odom transform in time
+                            mBase2OdomTransf = base_to_map_transform;
+                            base_to_map_transform.setIdentity();
+
+                            if (odomSub > 0) {
+                                // Publish odometry message
+                                publishOdom(mBase2OdomTransf, grabTimestamp);
+                            }
+
+                            mInitOdomWithPose = false;
+                            mResetOdom = false;
+                        } else {
+                            // Transformation from map to odometry frame
+                            mOdom2MapTransf = base_to_map_transform * mBase2OdomTransf.inverse();
+                        }
+
+                        // Publish Pose message
+                        publishPose(grabTimestamp);
+                        mTrackingReady = true;
+                    } else {
+                        RCLCPP_DEBUG(get_logger(), "MAP -> Tracking Status: %d", static_cast<int>(status));
+                    }
+
+                    oldStatus = status;
+                }
+                // <<<<<< Publish the zed camera pose if someone has subscribed to
+
+                // >>>>> Publish pose TFs only if enabled
+                if (mPublishTf) {
+                    // Note, the frame is published, but its values will only change if
+                    // someone has subscribed to odom
+                    publishOdomFrame(mBase2OdomTransf, grabTimestamp); // publish the base Frame in odometry frame
+                    if (mPublishMapTf) {
+                        // Note, the frame is published, but its values will only change if
+                        // someone has subscribed to map
+                        publishPoseFrame(mOdom2MapTransf, grabTimestamp); // publish the odometry Frame in map frame
+                    }
+                }
+                // <<<<< Publish pose TFs only if enabled
 
                 // >>>>> Thread sleep
                 TIMER_ELAPSED;
@@ -967,10 +1233,8 @@ namespace stereolabs {
     }
 
     void ZedCameraComponent::publishCamInfo(camInfoMsgPtr camInfoMsg, camInfoPub pubCamInfo, rclcpp::Time timeStamp) {
-        static int seq = 0;
         camInfoMsg->header.stamp = timeStamp;
         pubCamInfo->publish(camInfoMsg);
-        seq++;
     }
 
     void ZedCameraComponent::publishImage(cv::Mat img,
@@ -1071,6 +1335,114 @@ namespace stereolabs {
         }
 
         RCLCPP_DEBUG(get_logger(), "Pointcloud thread finished");
+    }
+
+    void ZedCameraComponent::publishOdomFrame(tf2::Transform odomTransf, rclcpp::Time timeStamp) {
+        geometry_msgs::msg::TransformStamped transformStamped;
+        transformStamped.header.stamp = timeStamp;
+        transformStamped.header.frame_id = mOdometryFrameId;
+        transformStamped.child_frame_id = mBaseFrameId;
+        // conversion from Tranform to message
+        transformStamped.transform = tf2::toMsg(odomTransf);
+        // Publish transformation
+        //mTransformOdomBroadcaster.sendTransform(transformStamped); // TODO enable when TransformBroadcaster can be used with LifecycleNode
+        mPubPoseTransf->publish(transformStamped);
+    }
+
+    void ZedCameraComponent::publishPoseFrame(tf2::Transform baseTransform, rclcpp::Time timeStamp) {
+        geometry_msgs::msg::TransformStamped transformStamped;
+        transformStamped.header.stamp = timeStamp;
+        transformStamped.header.frame_id = mMapFrameId;
+        transformStamped.child_frame_id = mOdometryFrameId;
+        // conversion from Tranform to message
+        transformStamped.transform = tf2::toMsg(baseTransform);
+        // Publish transformation
+        //mTransformPoseBroadcaster.sendTransform(transformStamped); // TODO enable when TransformBroadcaster can be used with LifecycleNode
+        mPubOdomTransf->publish(transformStamped);
+    }
+
+    void ZedCameraComponent::publishImuFrame(tf2::Transform imuTransform, rclcpp::Time timeStamp) {
+        geometry_msgs::msg::TransformStamped transformStamped;
+        transformStamped.header.stamp = timeStamp;
+        transformStamped.header.frame_id = mCameraFrameId;
+        transformStamped.child_frame_id = mImuFrameId;
+        // conversion from Tranform to message
+        transformStamped.transform = tf2::toMsg(imuTransform);
+        // Publish transformation
+        //mTransformImuBroadcaster.sendTransform(transformStamped); // TODO enable when TransformBroadcaster can be used with LifecycleNode
+        mPubImuTransf->publish(transformStamped);
+    }
+
+    void ZedCameraComponent::publishOdom(tf2::Transform base2odomTransf, rclcpp::Time timeStamp) {
+        nav_msgs::msg::Odometry odom;
+        odom.header.stamp = timeStamp;
+        odom.header.frame_id = mOdometryFrameId; // odom_frame
+        odom.child_frame_id = mBaseFrameId;      // camera_frame
+        // conversion from Tranform to message
+        geometry_msgs::msg::Transform base2odom = tf2::toMsg(base2odomTransf);
+        // Add all value in odometry message
+        odom.pose.pose.position.x = base2odom.translation.x;
+        odom.pose.pose.position.y = base2odom.translation.y;
+        odom.pose.pose.position.z = base2odom.translation.z;
+        odom.pose.pose.orientation.x = base2odom.rotation.x;
+        odom.pose.pose.orientation.y = base2odom.rotation.y;
+        odom.pose.pose.orientation.z = base2odom.rotation.z;
+        odom.pose.pose.orientation.w = base2odom.rotation.w;
+        // Publish odometry message
+        mPubOdom->publish(odom);
+    }
+
+    void ZedCameraComponent::publishPose(rclcpp::Time timeStamp) {
+        tf2::Transform base_pose;
+        base_pose.setIdentity();
+
+        if (mPublishMapTf) {
+            // Look up the transformation from base frame to map
+            try {
+                // Save the transformation from base to frame
+                geometry_msgs::msg::TransformStamped b2m =
+                    mTfBuffer->lookupTransform(mMapFrameId, mBaseFrameId, tf2::TimePointZero);
+                // Get the TF2 transformation
+                tf2::fromMsg(b2m.transform, base_pose);
+            } catch (tf2::TransformException& ex) {
+                RCLCPP_WARN(get_logger(), "The tf from '%s' to '%s' does not seem to be available, "
+                            "will assume it as identity!",
+                            mBaseFrameId.c_str(), mMapFrameId.c_str());
+                RCLCPP_WARN(get_logger(), "Transform error: %s", ex.what());
+            }
+        } else {
+            // Look up the transformation from base frame to odom frame
+            try {
+                // Save the transformation from base to frame
+                geometry_msgs::msg::TransformStamped b2o =
+                    mTfBuffer->lookupTransform(mOdometryFrameId, mBaseFrameId, tf2::TimePointZero);
+                // Get the TF2 transformation
+                tf2::fromMsg(b2o.transform, base_pose);
+            } catch (tf2::TransformException& ex) {
+                RCLCPP_WARN(get_logger(), "The tf from '%s' to '%s' does not seem to be available, "
+                            "will assume it as identity!",
+                            mBaseFrameId.c_str(), mOdometryFrameId.c_str());
+                RCLCPP_WARN(get_logger(), "Transform error: %s", ex.what());
+            }
+        }
+
+        geometry_msgs::msg::PoseStamped pose;
+
+        pose.header.stamp = timeStamp;
+        pose.header.frame_id = mPublishMapTf ? mMapFrameId : mOdometryFrameId; // frame
+        // conversion from Tranform to message
+        geometry_msgs::msg::Transform base2frame = tf2::toMsg(base_pose);
+        // Add all value in Pose message
+        pose.pose.position.x = base2frame.translation.x;
+        pose.pose.position.y = base2frame.translation.y;
+        pose.pose.position.z = base2frame.translation.z;
+        pose.pose.orientation.x = base2frame.rotation.x;
+        pose.pose.orientation.y = base2frame.rotation.y;
+        pose.pose.orientation.z = base2frame.rotation.z;
+        pose.pose.orientation.w = base2frame.rotation.w;
+
+        // Publish pose stamped message
+        mPubPose->publish(pose);
     }
 }
 

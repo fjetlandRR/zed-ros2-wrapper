@@ -26,6 +26,14 @@
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include "stereo_msgs/msg/disparity_image.hpp"
 
+#include "tf2_ros/transform_broadcaster.h"
+#include "tf2_ros/transform_listener.h"
+
+#include "geometry_msgs/msg/transform_stamped.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+
+#include "nav_msgs/msg/odometry.hpp"
+
 #include "sl/Camera.hpp"
 
 namespace stereolabs {
@@ -36,6 +44,11 @@ namespace stereolabs {
     typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<stereo_msgs::msg::DisparityImage>> disparityPub;
 
     typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::PointCloud2>> pointcloudPub;
+
+    typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<geometry_msgs::msg::TransformStamped>> transformPub;
+
+    typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<geometry_msgs::msg::PoseStamped>> posePub;
+    typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<nav_msgs::msg::Odometry>> odomPub;
 
     typedef std::shared_ptr<sensor_msgs::msg::CameraInfo> camInfoMsgPtr;
     typedef std::shared_ptr<sensor_msgs::msg::PointCloud2> pointcloudMsgPtr;
@@ -196,12 +209,54 @@ namespace stereolabs {
          */
         void publishPointCloud();
 
+        /* \brief Publish the pose of the camera in "Map" frame as a transformation
+         * \param baseTransform : Transformation representing the camera pose from
+         * odom frame to map frame
+         * \param timeStamp : the ros::Time to stamp the image
+         */
+        void publishPoseFrame(tf2::Transform baseTransform, rclcpp::Time timeStamp);
+
+        /* \brief Publish the odometry of the camera in "Odom" frame as a
+         * transformation
+         * \param odomTransf : Transformation representing the camera pose from
+         * base frame to odom frame
+         * \param timeStamp : the ros::Time to stamp the image
+         */
+        void publishOdomFrame(tf2::Transform odomTransf, rclcpp::Time timeStamp);
+
+        /* \brief Publish the pose of the imu in "Odom" frame as a transformation
+         * \param imuTransform : Transformation representing the imu pose from base
+         * frame to odom framevoid
+         * \param timeStamp : the ros::Time to stamp the image
+         */
+        void publishImuFrame(tf2::Transform imuTransform, rclcpp::Time timeStamp);
+
+        /* \brief Publish the pose of the camera in "Map" frame with a ros Publisher
+         * \param timeStamp : the ros::Time to stamp the image
+         */
+        void publishPose(rclcpp::Time timeStamp);
+
+        /* \brief Publish the pose of the camera in "Odom" frame with a ros Publisher
+         * \param base2odomTransf : Transformation representing the camera pose
+         * from base frame to odom frame
+         * \param timeStamp : the ros::Time to stamp the image
+         */
+        void publishOdom(tf2::Transform base2odomTransf, rclcpp::Time timeStamp);
+
+        /* \brief Utility to initialize the pose variables
+         */
+        void set_pose(float xt, float yt, float zt, float rr, float pr, float yr);
+
+        /* \bried Start tracking loading the parameters from param server
+         */
+        void start_tracking();
+
       private:
         // Status variables
         rcl_lifecycle_transition_key_t mPrevTransition = lifecycle_msgs::msg::Transition::TRANSITION_CREATE;
 
         // Timestamps
-        rclcpp::Time mLastFrameTime;
+        rclcpp::Time mLastGrabTimestamp;
         rclcpp::Time mPointCloudTime;
 
         // Grab thread
@@ -212,10 +267,15 @@ namespace stereolabs {
         // Pointcloud thread
         std::thread mPcThread; // Point Cloud thread
 
+        // Flags
+        bool mPoseSmoothing = false;
+        bool mSpatialMemory = false;
+        bool mInitOdomWithPose = true;
+
         // ZED SDK
         sl::Camera mZed;
 
-        // ZED params
+        // Params
         sl::InitParameters mZedParams;
         int mZedId = 0;
         unsigned int mZedSerialNumber = 0;
@@ -223,6 +283,7 @@ namespace stereolabs {
         sl::MODEL mZedRealCamModel; // Camera model requested to SDK
         int mCamFrameRate = 30;
         std::string mSvoFilepath = "";
+        std::string mOdometryDb = "";
         bool mSvoMode = false;
         bool mVerbose = true;
         int mGpuId = -1;
@@ -232,6 +293,8 @@ namespace stereolabs {
         bool mCameraFlip = false;
         int mCamSensingMode = 0; // Default Sensing mode: SENSING_MODE_STANDARD
         bool mOpenniDepthMode = false; // 16 bit UC data in mm else 32F in m, for more info -> http://www.ros.org/reps/rep-0118.html
+        bool mPublishTf = true;
+        bool mPublishMapTf = true;
 
         // ZED dynamic params (TODO when available in ROS2)
         double mZedMatResizeFactor = 1.0; // Dynamic...
@@ -262,6 +325,13 @@ namespace stereolabs {
 
         pointcloudPub mPubPointcloud;
 
+        transformPub mPubPoseTransf;
+        transformPub mPubOdomTransf;
+        transformPub mPubImuTransf;
+
+        posePub mPubPose;
+        odomPub mPubOdom;
+
         // Topics
         std::string mLeftTopic;
         std::string mLeftRawTopic;
@@ -282,6 +352,11 @@ namespace stereolabs {
         std::string mConfidenceCamInfoTopic;
         std::string mDispTopic;
         std::string mPointcloudTopic;
+        std::string mPoseTfTopic;
+        std::string mOdomTfTopic;
+        std::string mImuTfTopic;
+        std::string mPoseTopic;
+        std::string mOdomTopic;
 
         // Messages
         // Camera info
@@ -304,6 +379,12 @@ namespace stereolabs {
         std::string mDepthFrameId;
         std::string mDepthOptFrameId;
 
+        std::string mMapFrameId;
+        std::string mOdometryFrameId;
+        std::string mBaseFrameId;
+        std::string mCameraFrameId;
+        std::string mImuFrameId;
+
         // SL Pointcloud
         sl::Mat mCloud;
 
@@ -322,6 +403,27 @@ namespace stereolabs {
         std::mutex mPcMutex;
         std::condition_variable mPcDataReadyCondVar;
         bool mPcDataReady = false;
+
+        // ROS TF2
+        //std::shared_ptr<tf2_ros::TransformBroadcaster> mTransformPoseBroadcaster; // TODO enable when TransformBroadcaster can be used with LifecycleNode
+        //std::shared_ptr<tf2_ros::TransformBroadcaster> mTransformOdomBroadcaster; // TODO enable when TransformBroadcaster can be used with LifecycleNode
+        //std::shared_ptr<tf2_ros::TransformBroadcaster> mTransformImuBroadcaster; // TODO enable when TransformBroadcaster can be used with LifecycleNode
+
+        // TF2 Transforms
+        tf2::Transform mOdom2MapTransf;
+        tf2::Transform mBase2OdomTransf;
+
+        // TF2 Listener
+        std::shared_ptr<tf2_ros::Buffer> mTfBuffer;
+        std::shared_ptr<tf2_ros::TransformListener> mTfListener;
+
+        // Tracking
+        bool mTrackingActive = false;
+        bool mTrackingReady = false;
+        bool mResetOdom = false;
+        sl::Pose mLastZedPose; // Sensor to Map transform
+        sl::Transform mInitialPoseSl;
+        std::vector<float> mInitialTrackPose;
     };
 }
 

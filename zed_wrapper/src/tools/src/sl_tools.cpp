@@ -200,13 +200,13 @@ namespace sl_tools {
 
     std::shared_ptr<sensor_msgs::msg::Image> imageToROSmsg(cv::Mat img,
             const std::string encodingType,
-            std::string frameId, rclcpp::Time t) {
+            std::string frameId, rclcpp::Time timeStamp) {
 
         std::shared_ptr<sensor_msgs::msg::Image> ptr = std::make_shared<sensor_msgs::msg::Image>();
 
         sensor_msgs::msg::Image& imgMessage = *ptr;
 
-        imgMessage.header.stamp = t;
+        imgMessage.header.stamp = timeStamp;
         imgMessage.header.frame_id = frameId;
         imgMessage.height = static_cast<unsigned int>(img.rows);
         imgMessage.width = static_cast<unsigned int>(img.cols);

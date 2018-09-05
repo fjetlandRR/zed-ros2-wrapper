@@ -73,11 +73,11 @@ namespace sl_tools {
      * \param img : the image to publish
      * \param encodingType : the sensor_msgs::image_encodings encoding type
      * \param frameId : the id of the reference frame of the image
-     * \param t : the ros::Time to stamp the image
+     * \param timeStamp : the ros::Time to stamp the image
      */
     std::shared_ptr<sensor_msgs::msg::Image> imageToROSmsg(cv::Mat img,
             const std::string encodingType,
-            std::string frameId, rclcpp::Time t);
+            std::string frameId, rclcpp::Time timeStamp);
 
     // TODO Remove when it will be available in Terrain SDK
     inline float packColor(sl::uchar3 colorIn) {
