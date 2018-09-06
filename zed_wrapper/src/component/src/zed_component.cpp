@@ -38,8 +38,6 @@ namespace stereolabs {
 
         RCLCPP_DEBUG(get_logger(), "ZED node: %s", get_name());
         RCLCPP_DEBUG(get_logger(), "ZED namespace: %s", get_namespace());
-        RCLCPP_DEBUG(get_logger(), "LifecycleNode node: %s", rclcpp_lifecycle::LifecycleNode::get_name());
-        RCLCPP_DEBUG(get_logger(), "LifecycleNode namespace: %s", rclcpp_lifecycle::LifecycleNode::get_namespace());
     }
 
     rcl_lifecycle_transition_key_t ZedCameraComponent::on_shutdown(const rclcpp_lifecycle::State& previous_state) {
@@ -257,22 +255,23 @@ namespace stereolabs {
 
         // >>>>> Create Tracking publishers
         // https://github.com/ros2/ros2/wiki/About-Quality-of-Service-Settings
-        rmw_qos_profile_t tf_qos_profile = rmw_qos_profile_default; // Default QOS profile
+        rmw_qos_profile_t tracking_qos_profile = rmw_qos_profile_default; //rmw_qos_profile_sensor_data; // Default QOS profile
 
-        tf_qos_profile.durability = RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL;
-        tf_qos_profile.history = RMW_QOS_POLICY_HISTORY_KEEP_ALL;
-        tf_qos_profile.reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+        tracking_qos_profile.durability = RMW_QOS_POLICY_DURABILITY_SYSTEM_DEFAULT;
+        tracking_qos_profile.history = RMW_QOS_POLICY_HISTORY_KEEP_LAST;
+        tracking_qos_profile.depth = 2;
+        tracking_qos_profile.reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
 
-        mPubPoseTransf = create_publisher<geometry_msgs::msg::TransformStamped>(mPoseTfTopic, tf_qos_profile);
+        mPubPoseTransf = create_publisher<geometry_msgs::msg::TransformStamped>(mPoseTfTopic, tracking_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mPoseTfTopic.c_str());
-        mPubOdomTransf = create_publisher<geometry_msgs::msg::TransformStamped>(mOdomTfTopic, tf_qos_profile);
+        mPubOdomTransf = create_publisher<geometry_msgs::msg::TransformStamped>(mOdomTfTopic, tracking_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mOdomTfTopic.c_str());
-        mPubImuTransf = create_publisher<geometry_msgs::msg::TransformStamped>(mImuTfTopic, tf_qos_profile);
+        mPubImuTransf = create_publisher<geometry_msgs::msg::TransformStamped>(mImuTfTopic, tracking_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mImuTfTopic.c_str());
 
-        mPubPose = create_publisher<geometry_msgs::msg::PoseStamped>(mPoseTopic, tf_qos_profile);
+        mPubPose = create_publisher<geometry_msgs::msg::PoseStamped>(mPoseTopic, tracking_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mPoseTopic.c_str());
-        mPubOdom = create_publisher<nav_msgs::msg::Odometry>(mOdomTopic, tf_qos_profile);
+        mPubOdom = create_publisher<nav_msgs::msg::Odometry>(mOdomTopic, tracking_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mOdomTopic.c_str());
         // <<<<< Create Tracking publishers
     }
@@ -291,6 +290,13 @@ namespace stereolabs {
         return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_ERROR;
 #endif
         // <<<<< Check SDK version
+
+        mInitialTrackPose.resize(6);
+        for (size_t i = 0; i < 6; i++) {
+            mInitialTrackPose[i] = 0.0f;
+        }
+        mOdom2MapTransf.setIdentity();
+        mBase2OdomTransf.setIdentity();
 
         // >>>>> Load params from param server
         // TODO load params from param server
@@ -333,6 +339,12 @@ namespace stereolabs {
 
         // Create pointcloud message
         mPointcloudMsg = std::make_shared<sensor_msgs::msg::PointCloud2>();
+
+        // >>>>> Create TF2 messages
+        mPoseTransfStampedMsg = std::make_shared<geometry_msgs::msg::TransformStamped>();
+        mOdomTransfStampedMsg = std::make_shared<geometry_msgs::msg::TransformStamped>();
+        mImuTransfStampedMsg = std::make_shared<geometry_msgs::msg::TransformStamped>();
+        // <<<<< Create TF2 messages
 
         // Initialize Message Publishers
         initPublishers();
@@ -543,6 +555,13 @@ namespace stereolabs {
         mPubDisparity->on_activate();
 
         mPubPointcloud->on_activate();
+
+        mPubPoseTransf->on_activate();
+        mPubOdomTransf->on_activate();
+        mPubImuTransf->on_activate();
+
+        mPubPose->on_activate();
+        mPubOdom->on_activate();
         // <<<<< Publishers activation
 
         // >>>>> Start Pointcloud thread
@@ -610,6 +629,13 @@ namespace stereolabs {
         mPubDisparity->on_deactivate();
 
         mPubPointcloud->on_deactivate();
+
+        mPubPoseTransf->on_deactivate();
+        mPubOdomTransf->on_deactivate();
+        mPubImuTransf->on_deactivate();
+
+        mPubPose->on_deactivate();
+        mPubOdom->on_deactivate();
         // <<<<< Publishers deactivation
 
         // We return a success and hence invoke the transition to the next
@@ -682,7 +708,7 @@ namespace stereolabs {
             RCLCPP_WARN(get_logger(), "Invalid Initial Pose size (&d). Using Identity", mInitialTrackPose.size());
             mInitialPoseSl.setIdentity();
             mOdom2MapTransf.setIdentity();
-            mOdom2MapTransf.setIdentity();
+            mBase2OdomTransf.setIdentity();
         } else {
             set_pose(mInitialTrackPose[0], mInitialTrackPose[1], mInitialTrackPose[2],
                      mInitialTrackPose[3], mInitialTrackPose[4], mInitialTrackPose[5]);
@@ -787,7 +813,7 @@ namespace stereolabs {
                     mTrackingActive = false;
                 }
 
-                if (pubDepthData) {
+                if (pubDepthData || pubTrackingData) {
                     int actual_confidence = mZed.getConfidenceThreshold();
 
                     if (actual_confidence != mCamConfidence) {
@@ -825,7 +851,8 @@ namespace stereolabs {
 
                     if (elapsed > timeout && !mSvoMode) {
                         // TODO Better handle the error: throw exception?
-                        throw std::runtime_error("ZED Camera timeout");
+                        //throw std::runtime_error("ZED Camera timeout");
+                        RCLCPP_WARN(get_logger(), "Camera Timeout");
                     }
 
                     continue;
@@ -865,7 +892,6 @@ namespace stereolabs {
                     sensor_to_base_transf.setIdentity();
                 }
                 // <<<<< Transform from base to sensor
-
 
                 // >>>>> Publish the odometry if someone has subscribed to
                 if (pubDepthData || pubTrackingData) {
@@ -1000,7 +1026,7 @@ namespace stereolabs {
                     rateWarnCount = 0;
                 }
 
-                RCLCPP_DEBUG(get_logger(), "Thread freq: %g Hz", 1000.0 / elapsed);
+                //RCLCPP_DEBUG(get_logger(), "Thread freq: %g Hz", 1000.0 / elapsed);
                 // <<<<< Thread sleep
             } else {
                 static int noSubInfoCount = 0;
@@ -1013,6 +1039,25 @@ namespace stereolabs {
 
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));  // No subscribers, we just wait
                 loop_rate.reset();
+
+                // Publish odometry tf only if enabled
+                if (mPublishTf) {
+                    rclcpp::Time t;
+
+                    if (mSvoMode) {
+                        t = now();
+                    } else {
+                        t = sl_tools::slTime2Ros(mZed.getTimestamp(sl::TIME_REFERENCE_CURRENT));
+                    }
+
+                    t = now();
+
+                    publishOdomFrame(mBase2OdomTransf, t); // publish the base Frame in odometry frame
+
+                    if (mPublishMapTf) {
+                        publishPoseFrame(mOdom2MapTransf, t); // publish the odometry Frame in map frame
+                    }
+                }
             }
         }
 
@@ -1338,39 +1383,42 @@ namespace stereolabs {
     }
 
     void ZedCameraComponent::publishOdomFrame(tf2::Transform odomTransf, rclcpp::Time timeStamp) {
-        geometry_msgs::msg::TransformStamped transformStamped;
-        transformStamped.header.stamp = timeStamp;
-        transformStamped.header.frame_id = mOdometryFrameId;
-        transformStamped.child_frame_id = mBaseFrameId;
         // conversion from Tranform to message
-        transformStamped.transform = tf2::toMsg(odomTransf);
+        mOdomTransfStampedMsg->transform = tf2::toMsg(odomTransf);
+
+        mOdomTransfStampedMsg->header.stamp = timeStamp;
+        mOdomTransfStampedMsg->header.frame_id = mOdometryFrameId;
+        mOdomTransfStampedMsg->child_frame_id = mBaseFrameId;
+
         // Publish transformation
         //mTransformOdomBroadcaster.sendTransform(transformStamped); // TODO enable when TransformBroadcaster can be used with LifecycleNode
-        mPubPoseTransf->publish(transformStamped);
+        mPubOdomTransf->publish(mOdomTransfStampedMsg);
     }
 
     void ZedCameraComponent::publishPoseFrame(tf2::Transform baseTransform, rclcpp::Time timeStamp) {
-        geometry_msgs::msg::TransformStamped transformStamped;
-        transformStamped.header.stamp = timeStamp;
-        transformStamped.header.frame_id = mMapFrameId;
-        transformStamped.child_frame_id = mOdometryFrameId;
         // conversion from Tranform to message
-        transformStamped.transform = tf2::toMsg(baseTransform);
+        mPoseTransfStampedMsg->transform = tf2::toMsg(baseTransform);
+
+        mPoseTransfStampedMsg->header.stamp = timeStamp;
+        mPoseTransfStampedMsg->header.frame_id = mMapFrameId;
+        mPoseTransfStampedMsg->child_frame_id = mOdometryFrameId;
+
         // Publish transformation
         //mTransformPoseBroadcaster.sendTransform(transformStamped); // TODO enable when TransformBroadcaster can be used with LifecycleNode
-        mPubOdomTransf->publish(transformStamped);
+        mPubPoseTransf->publish(mPoseTransfStampedMsg);
     }
 
     void ZedCameraComponent::publishImuFrame(tf2::Transform imuTransform, rclcpp::Time timeStamp) {
-        geometry_msgs::msg::TransformStamped transformStamped;
-        transformStamped.header.stamp = timeStamp;
-        transformStamped.header.frame_id = mCameraFrameId;
-        transformStamped.child_frame_id = mImuFrameId;
         // conversion from Tranform to message
-        transformStamped.transform = tf2::toMsg(imuTransform);
+        mImuTransfStampedMsg->transform = tf2::toMsg(imuTransform);
+
+        mImuTransfStampedMsg->header.stamp = timeStamp;
+        mImuTransfStampedMsg->header.frame_id = mCameraFrameId;
+        mImuTransfStampedMsg->child_frame_id = mImuFrameId;
+
         // Publish transformation
         //mTransformImuBroadcaster.sendTransform(transformStamped); // TODO enable when TransformBroadcaster can be used with LifecycleNode
-        mPubImuTransf->publish(transformStamped);
+        mPubImuTransf->publish(mImuTransfStampedMsg);
     }
 
     void ZedCameraComponent::publishOdom(tf2::Transform base2odomTransf, rclcpp::Time timeStamp) {
@@ -1409,6 +1457,7 @@ namespace stereolabs {
                             "will assume it as identity!",
                             mBaseFrameId.c_str(), mMapFrameId.c_str());
                 RCLCPP_WARN(get_logger(), "Transform error: %s", ex.what());
+                base_pose.setIdentity();
             }
         } else {
             // Look up the transformation from base frame to odom frame
@@ -1423,6 +1472,7 @@ namespace stereolabs {
                             "will assume it as identity!",
                             mBaseFrameId.c_str(), mOdometryFrameId.c_str());
                 RCLCPP_WARN(get_logger(), "Transform error: %s", ex.what());
+                base_pose.setIdentity();
             }
         }
 

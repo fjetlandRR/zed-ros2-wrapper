@@ -417,6 +417,10 @@ namespace stereolabs {
         std::shared_ptr<tf2_ros::Buffer> mTfBuffer;
         std::shared_ptr<tf2_ros::TransformListener> mTfListener;
 
+        geometry_msgs::msg::TransformStamped::SharedPtr mPoseTransfStampedMsg; // To be used for intra process communication using zero_copy
+        geometry_msgs::msg::TransformStamped::SharedPtr mOdomTransfStampedMsg; // To be used for intra process communication using zero_copy
+        geometry_msgs::msg::TransformStamped::SharedPtr mImuTransfStampedMsg;  // To be used for intra process communication using zero_copy
+
         // Tracking
         bool mTrackingActive = false;
         bool mTrackingReady = false;

@@ -115,8 +115,12 @@ set(NODE_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/zed_wrapper_container.cpp
 )
 
-set(COMPONENT_SRC
+set(ZED_COMPONENT_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/component/src/zed_component.cpp
+)
+
+set(TF2_COMPONENT_SRC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/component/src/zed_tf2_broadcaster.cpp
 )
 
 ###############################################################################
@@ -125,7 +129,7 @@ set(COMPONENT_SRC
 # create ament index resource which references the libraries in the binary dir
 set(node_plugins "")
 
-add_library(zed_component SHARED ${TOOLS_SRC} ${COMPONENT_SRC})
+add_library(zed_component SHARED ${TOOLS_SRC} ${ZED_COMPONENT_SRC})
 target_compile_definitions(zed_component PRIVATE "ZED_BUILDING_DLL")
 target_link_libraries(zed_component
     ${rclcpp_lifecycle_LIBRARIES}
@@ -146,15 +150,34 @@ ament_target_dependencies(zed_component
 rclcpp_register_node_plugins(zed_component "stereolabs::ZedCameraComponent")
 set(node_plugins "${node_plugins}stereolabs::ZedCameraComponent;$<TARGET_FILE:zed_component>\n")
 
+add_library(zed_tf2_broadcaster SHARED ${TF2_COMPONENT_SRC})
+target_compile_definitions(zed_tf2_broadcaster PRIVATE "ZED_BUILDING_DLL")
+target_link_libraries(zed_tf2_broadcaster
+    ${rclcpp_LIBRARIES}
+    ${tf2_LIBRARIES}
+    ${tf2_ros_LIBRARIES}
+    ${tf2_geometry_msgs_LIBRARIES}
+)
+ament_target_dependencies(zed_component
+  rclcpp
+  tf2
+  tf2_ros
+  tf2_geometry_msgs
+)
+rclcpp_register_node_plugins(zed_tf2_broadcaster "stereolabs::ZedTF2Broadcaster")
+set(node_plugins "${node_plugins}stereolabs::ZedTF2Broadcaster;$<TARGET_FILE:zed_tf2_broadcaster>\n")
+
 add_executable(zed_wrapper_node ${NODE_SRC})
 target_link_libraries(zed_wrapper_node
     zed_component
-    ${LINK_LIBRARIES}
+    zed_tf2_broadcaster
 )
 ament_target_dependencies(zed_wrapper_node
   rclcpp
   class_loader
-  zed_component)
+  zed_component
+  zed_tf2_broadcaster
+)
 
 # Install executable
 install(
@@ -162,9 +185,17 @@ install(
     DESTINATION lib/${PROJECT_NAME}
 )
 
-# Install plugin library
+
+# Install plugins
 install(
     TARGETS zed_component
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+)
+
+install(
+    TARGETS zed_tf2_broadcaster
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin
