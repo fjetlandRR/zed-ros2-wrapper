@@ -150,21 +150,22 @@ namespace stereolabs {
         // >>>>> Video topics
         std::string img_topic = "image_rect_color";
         std::string img_raw_topic = "image_raw_color";
-        std::string cam_info_topic = "camera_info";
-        std::string cam_info_raw_topic = "camera_info_raw";
+        std::string cam_info_topic = "/camera_info";
         // Set the default topic names
         mLeftTopic = topicPrefix + "left/" + img_topic;
+        mLeftCamInfoTopic = mLeftTopic + cam_info_topic;
         mLeftRawTopic = topicPrefix + "left/" + img_raw_topic;
-        mLeftCamInfoTopic = topicPrefix + "left/" + cam_info_topic;
-        mLeftCamInfoRawTopic = topicPrefix + "left/" + cam_info_raw_topic;
+        mLeftCamInfoRawTopic = mLeftRawTopic + cam_info_topic;
+
         mRightTopic = topicPrefix + "right/" + img_topic;
+        mRightCamInfoTopic = mRightTopic + cam_info_topic;
         mRightRawTopic = topicPrefix + "right/" + img_raw_topic;
-        mRightCamInfoTopic = topicPrefix + "right/" + cam_info_topic;
-        mRightCamInfoRawTopic = topicPrefix + "right/" + cam_info_raw_topic;
+        mRightCamInfoRawTopic = mRightRawTopic + cam_info_topic;
+
         mRgbTopic = topicPrefix + "rgb/" + img_topic;
+        mRgbCamInfoTopic = mRgbTopic + cam_info_topic;
         mRgbRawTopic = topicPrefix + "rgb/" + img_raw_topic;
-        mRgbCamInfoTopic = topicPrefix + "rgb/" + cam_info_topic;
-        mRgbCamInfoRawTopic = topicPrefix + "rgb/" + cam_info_raw_topic;
+        mRgbCamInfoRawTopic = mRgbRawTopic + cam_info_topic;
         // <<<<< Video topics
 
         // >>>>> Depth Topics
@@ -175,11 +176,11 @@ namespace stereolabs {
         } else {
             mDepthTopic += "depth_registered";
         }
-        std::string mDepthCamInfoTopic = topicPrefix + "depth/camera_info";
+        std::string mDepthCamInfoTopic = mDepthTopic + cam_info_topic;
 
         mConfImgTopic = topicPrefix + "confidence/image";
+        mConfidenceCamInfoTopic = mConfImgTopic + cam_info_topic;
         mConfMapTopic = topicPrefix + "confidence/map";
-        mConfidenceCamInfoTopic = topicPrefix + "confidence/camera_info";
 
         mDispTopic = topicPrefix + "disparity/disparity_image";
 
@@ -256,10 +257,10 @@ namespace stereolabs {
         // https://github.com/ros2/ros2/wiki/About-Quality-of-Service-Settings
         rmw_qos_profile_t tracking_qos_profile = rmw_qos_profile_default; //rmw_qos_profile_sensor_data; // Default QOS profile
 
-        tracking_qos_profile.durability = RMW_QOS_POLICY_DURABILITY_SYSTEM_DEFAULT;
+        tracking_qos_profile.durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
         tracking_qos_profile.history = RMW_QOS_POLICY_HISTORY_KEEP_LAST;
         tracking_qos_profile.depth = 2;
-        tracking_qos_profile.reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+        tracking_qos_profile.reliability = RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT;
 
         mPubPoseTransf = create_publisher<geometry_msgs::msg::TransformStamped>(mPoseTfTopic, tracking_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mPoseTfTopic.c_str());
@@ -783,10 +784,12 @@ namespace stereolabs {
             size_t cloudSub = count_subscribers(mPointcloudTopic);  // mPubPointcloud subscribers
             size_t poseSub = count_subscribers(mPoseTopic);         // mPubPose subscribers
             size_t odomSub = count_subscribers(mOdomTopic);         // mPubOdom subscribers
+            size_t poseTfSub = count_subscribers(mPoseTfTopic);     // mPubPoseTransf subscribers
+            size_t odomTfSub = count_subscribers(mOdomTfTopic);     // mPubOdomTransf subscribers
 
             bool pubImages = ((rgbSub + rgbRawSub + leftSub + leftRawSub + rightSub + rightRawSub) > 0);
             bool pubDepthData = ((depthSub + confImgSub + confMapSub + dispSub + cloudSub) > 0);
-            bool pubTrackingData = ((poseSub + odomSub) > 0);
+            bool pubTrackingData = ((poseSub + odomSub + poseTfSub + odomTfSub) > 0);
 
             bool runLoop = pubImages | pubDepthData | pubTrackingData;
             //<<<<< Subscribers check
@@ -1401,6 +1404,8 @@ namespace stereolabs {
         // Publish transformation
         //mTransformOdomBroadcaster.sendTransform(transformStamped); // TODO enable when TransformBroadcaster can be used with LifecycleNode
         mPubOdomTransf->publish(mOdomTransfStampedMsg);
+
+        //RCLCPP_DEBUG(get_logger(), "Published ODOM FRAME");
     }
 
     void ZedCameraComponent::publishPoseFrame(tf2::Transform baseTransform, rclcpp::Time timeStamp) {
@@ -1414,6 +1419,8 @@ namespace stereolabs {
         // Publish transformation
         //mTransformPoseBroadcaster.sendTransform(transformStamped); // TODO enable when TransformBroadcaster can be used with LifecycleNode
         mPubPoseTransf->publish(mPoseTransfStampedMsg);
+
+        //RCLCPP_DEBUG(get_logger(), "Published POSE FRAME");
     }
 
     void ZedCameraComponent::publishImuFrame(tf2::Transform imuTransform, rclcpp::Time timeStamp) {
