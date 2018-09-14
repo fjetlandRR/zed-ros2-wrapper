@@ -233,18 +233,14 @@ namespace stereolabs {
         mPubDepthCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mDepthCamInfoTopic, camera_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mDepthCamInfoTopic.c_str());
         mPubConfidenceCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mConfidenceCamInfoTopic, camera_qos_profile);
-        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'",
-                    mConfidenceCamInfoTopic.c_str());        // <<<<< Create Camera Info publishers
+        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mConfidenceCamInfoTopic.c_str());
+        // <<<<< Create Camera Info publishers
 
 
         // >>>>> Create Depth Publishers
         // https://github.com/ros2/ros2/wiki/About-Quality-of-Service-Settings
         rmw_qos_profile_t depth_qos_profile = rmw_qos_profile_sensor_data; // Default QOS profile
-
-        //        depth_qos_profile.durability = RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL;
-        //        depth_qos_profile.history = RMW_QOS_POLICY_HISTORY_KEEP_LAST;
-        //        depth_qos_profile.depth = 1;
-        //        depth_qos_profile.reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+        depth_qos_profile.depth = 2;
 
         mPubPointcloud = create_publisher<sensor_msgs::msg::PointCloud2>(mPointcloudTopic, depth_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mPointcloudTopic.c_str());
@@ -255,7 +251,7 @@ namespace stereolabs {
 
         // >>>>> Create Tracking publishers
         // https://github.com/ros2/ros2/wiki/About-Quality-of-Service-Settings
-        rmw_qos_profile_t tracking_qos_profile = rmw_qos_profile_default; //rmw_qos_profile_sensor_data; // Default QOS profile
+        rmw_qos_profile_t tracking_qos_profile = rmw_qos_profile_default;  // Default QOS profile
 
         tracking_qos_profile.durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
         tracking_qos_profile.history = RMW_QOS_POLICY_HISTORY_KEEP_LAST;
