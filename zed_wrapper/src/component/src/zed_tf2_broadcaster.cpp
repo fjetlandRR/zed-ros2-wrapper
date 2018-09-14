@@ -49,8 +49,6 @@ namespace stereolabs {
             mTransformPoseBroadcaster = std::make_shared<tf2_ros::TransformBroadcaster>(shared_from_this());
         }
 
-        (*msg)->
-
         mTransformPoseBroadcaster->sendTransform(*msg);
     }
 

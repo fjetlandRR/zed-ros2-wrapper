@@ -9,8 +9,6 @@
 #include <string>
 #include <thread>
 
-#include <opencv2/core/core.hpp>
-
 #include "lifecycle_msgs/msg/state.hpp"
 #include "lifecycle_msgs/msg/transition.hpp"
 
@@ -191,19 +189,19 @@ namespace stereolabs {
          * image frames exist)
          * \param timeStamp : the ros::Time to stamp the image
          */
-        void publishImage(cv::Mat img, imagePub pubImg, std::string imgFrameId, rclcpp::Time timeStamp);
+        void publishImage(sl::Mat img, imagePub pubImg, std::string imgFrameId, rclcpp::Time timeStamp);
 
         /** \brief Publish a cv::Mat depth image with a ros Publisher
          * \param depth : the depth image to publish
          * \param timeStamp : the ros::Time to stamp the depth image
          */
-        void publishDepth(cv::Mat depth, rclcpp::Time timeStamp);
+        void publishDepth(sl::Mat depth, rclcpp::Time timeStamp);
 
         /** \brief Publish a cv::Mat disparity image with a ros Publisher
          * \param disparity : the disparity image to publish
          * \param timestamp : the ros::Time to stamp the depth image
          */
-        void publishDisparity(cv::Mat disparity, rclcpp::Time timestamp);
+        void publishDisparity(sl::Mat disparity, rclcpp::Time timestamp);
 
         /** \brief Publish a pointCloud with a ros Publisher
          */
@@ -292,7 +290,8 @@ namespace stereolabs {
         int mDepthStabilization = 1;
         bool mCameraFlip = false;
         int mCamSensingMode = 0; // Default Sensing mode: SENSING_MODE_STANDARD
-        bool mOpenniDepthMode = false; // 16 bit UC data in mm else 32F in m, for more info -> http://www.ros.org/reps/rep-0118.html
+        bool mOpenniDepthMode =
+            false; // 16 bit UC data in mm else 32F in m, for more info -> http://www.ros.org/reps/rep-0118.html
         bool mPublishTf = true;
         bool mPublishMapTf = true;
 
@@ -388,15 +387,11 @@ namespace stereolabs {
         // SL Pointcloud
         sl::Mat mCloud;
 
-        // OpenCV Mats
+        // Mats
         int mCamWidth;
         int mCamHeight;
         int mMatWidth;
         int mMatHeight;
-        cv::Mat mCvLeftImRGB;
-        cv::Mat mCvRightImRGB;
-        cv::Mat mCvConfImRGB;
-        cv::Mat mCvConfMapFloat;
 
         // Thread Sync
         std::mutex mCamDataMutex;
@@ -417,9 +412,12 @@ namespace stereolabs {
         std::shared_ptr<tf2_ros::Buffer> mTfBuffer;
         std::shared_ptr<tf2_ros::TransformListener> mTfListener;
 
-        geometry_msgs::msg::TransformStamped::SharedPtr mPoseTransfStampedMsg; // To be used for intra process communication using zero_copy
-        geometry_msgs::msg::TransformStamped::SharedPtr mOdomTransfStampedMsg; // To be used for intra process communication using zero_copy
-        geometry_msgs::msg::TransformStamped::SharedPtr mImuTransfStampedMsg;  // To be used for intra process communication using zero_copy
+        geometry_msgs::msg::TransformStamped::SharedPtr
+        mPoseTransfStampedMsg; // To be used for intra process communication using zero_copy
+        geometry_msgs::msg::TransformStamped::SharedPtr
+        mOdomTransfStampedMsg; // To be used for intra process communication using zero_copy
+        geometry_msgs::msg::TransformStamped::SharedPtr
+        mImuTransfStampedMsg;  // To be used for intra process communication using zero_copy
 
         // Tracking
         bool mTrackingActive = false;

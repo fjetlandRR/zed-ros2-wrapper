@@ -3,9 +3,6 @@
 #include "sl_tools.h"
 #include <string>
 
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/highgui.hpp>
-
 #include <sensor_msgs/distortion_models.hpp>
 #include <sensor_msgs/image_encodings.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
@@ -22,7 +19,8 @@ using namespace std::chrono_literals;
 
 namespace stereolabs {
 
-    ZedCameraComponent::ZedCameraComponent(const std::string& node_name, const std::string& ros_namespace, bool intra_process_comms)
+    ZedCameraComponent::ZedCameraComponent(const std::string& node_name, const std::string& ros_namespace,
+                                           bool intra_process_comms)
         : rclcpp_lifecycle::LifecycleNode(node_name, ros_namespace, intra_process_comms) {
 
 #ifndef NDEBUG
@@ -234,7 +232,8 @@ namespace stereolabs {
         mPubDepthCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mDepthCamInfoTopic, camera_qos_profile);
         RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mDepthCamInfoTopic.c_str());
         mPubConfidenceCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mConfidenceCamInfoTopic, camera_qos_profile);
-        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mConfidenceCamInfoTopic.c_str());        // <<<<< Create Camera Info publishers
+        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'",
+                    mConfidenceCamInfoTopic.c_str());        // <<<<< Create Camera Info publishers
 
 
         // >>>>> Create Depth Publishers
@@ -496,9 +495,6 @@ namespace stereolabs {
         mMatHeight = static_cast<int>(mCamHeight * mZedMatResizeFactor);
         RCLCPP_INFO(get_logger(), "Data size: %d x %d (Resize factor: %g)", mMatWidth, mMatHeight, mZedMatResizeFactor);
 
-        cv::Size cvSize(mMatWidth, mMatWidth);
-        mCvLeftImRGB = cv::Mat(cvSize, CV_8UC3);
-        mCvRightImRGB = cv::Mat(cvSize, CV_8UC3);
         // Create and fill the camera information messages
         fillCamInfo(mZed, mLeftCamInfoMsg, mRightCamInfoMsg, mLeftCamOptFrameId, mRightCamOptFrameId);
         fillCamInfo(mZed, mLeftCamInfoRawMsg, mRightCamInfoRawMsg, mLeftCamOptFrameId, mRightCamOptFrameId, true);
@@ -899,7 +895,8 @@ namespace stereolabs {
                         sl::Pose deltaOdom;
                         sl::TRACKING_STATE status = mZed.getPosition(deltaOdom, sl::REFERENCE_FRAME_CAMERA);
 
-                        if (status == sl::TRACKING_STATE_OK || status == sl::TRACKING_STATE_SEARCHING || status == sl::TRACKING_STATE_FPS_TOO_LOW) {
+                        if (status == sl::TRACKING_STATE_OK || status == sl::TRACKING_STATE_SEARCHING ||
+                            status == sl::TRACKING_STATE_FPS_TOO_LOW) {
                             // Transform ZED delta odom pose in TF2 Transformation
                             geometry_msgs::msg::Transform deltaTransf;
                             sl::Translation translation = deltaOdom.getTranslation();
@@ -935,7 +932,8 @@ namespace stereolabs {
                     static sl::TRACKING_STATE oldStatus;
                     sl::TRACKING_STATE status = mZed.getPosition(mLastZedPose, sl::REFERENCE_FRAME_WORLD);
 
-                    if (status == sl::TRACKING_STATE_OK || status == sl::TRACKING_STATE_SEARCHING /*|| status == sl::TRACKING_STATE_FPS_TOO_LOW*/) {
+                    if (status == sl::TRACKING_STATE_OK ||
+                        status == sl::TRACKING_STATE_SEARCHING /*|| status == sl::TRACKING_STATE_FPS_TOO_LOW*/) {
                         // Transform ZED pose in TF2 Transformation
                         geometry_msgs::msg::Transform sens2mapTransf;
                         sl::Translation translation = mLastZedPose.getTranslation();
@@ -957,12 +955,7 @@ namespace stereolabs {
 
                         bool initOdom = false;
 
-                        //                        if (!(mTerrainMap || mFloorAlignment)) {
-                        //                            initOdom = mInitOdomWithPose;
-                        //                        } else {
                         initOdom = (status == sl::TRACKING_STATE_OK) & mInitOdomWithPose;
-                        //                        }
-
                         if (initOdom || mResetOdom) {
                             // Propagate Odom transform in time
                             mBase2OdomTransf = base_to_map_transform;
@@ -1078,16 +1071,15 @@ namespace stereolabs {
         if (leftSubnumber > 0 || rgbSubnumber > 0) {
             // Retrieve RGBA Left image
             mZed.retrieveImage(leftZEDMat, sl::VIEW_LEFT, sl::MEM_CPU, mMatWidth, mMatHeight);
-            cv::cvtColor(sl_tools::toCVMat(leftZEDMat), mCvLeftImRGB, CV_RGBA2RGB);
 
             if (leftSubnumber > 0) {
                 publishCamInfo(mLeftCamInfoMsg, mPubLeftCamInfo, timeStamp);
-                publishImage(mCvLeftImRGB, mPubLeft, mLeftCamOptFrameId, timeStamp);
+                publishImage(leftZEDMat, mPubLeft, mLeftCamOptFrameId, timeStamp);
             }
 
             if (rgbSubnumber > 0) {
                 publishCamInfo(mRgbCamInfoMsg, mPubRgbCamInfo, timeStamp);
-                publishImage(mCvLeftImRGB, mPubRgb, mDepthOptFrameId, timeStamp); // rgb is the left image
+                publishImage(leftZEDMat, mPubRgb, mDepthOptFrameId, timeStamp); // rgb is the left image
             }
         }
         // <<<<< Publish the left == rgb image if someone has subscribed to
@@ -1096,16 +1088,15 @@ namespace stereolabs {
         if (leftRawSubnumber > 0 || rgbRawSubnumber > 0) {
             // Retrieve RGBA Left image
             mZed.retrieveImage(leftZEDMat, sl::VIEW_LEFT_UNRECTIFIED, sl::MEM_CPU, mMatWidth, mMatHeight);
-            cv::cvtColor(sl_tools::toCVMat(leftZEDMat), mCvLeftImRGB, CV_RGBA2RGB);
 
             if (leftRawSubnumber > 0) {
                 publishCamInfo(mLeftCamInfoRawMsg, mPubLeftCamInfoRaw, timeStamp);
-                publishImage(mCvLeftImRGB, mPubRawLeft, mLeftCamOptFrameId, timeStamp);
+                publishImage(leftZEDMat, mPubRawLeft, mLeftCamOptFrameId, timeStamp);
             }
 
             if (rgbRawSubnumber > 0) {
                 publishCamInfo(mRgbCamInfoRawMsg, mPubRgbCamInfoRaw, timeStamp);
-                publishImage(mCvLeftImRGB, mPubRawRgb, mDepthOptFrameId, timeStamp);
+                publishImage(leftZEDMat, mPubRawRgb, mDepthOptFrameId, timeStamp);
             }
         }
         // <<<<< Publish the left_raw == rgb_raw image if someone has subscribed to
@@ -1114,9 +1105,9 @@ namespace stereolabs {
         if (rightSubnumber > 0) {
             // Retrieve RGBA Right image
             mZed.retrieveImage(rightZEDMat, sl::VIEW_RIGHT, sl::MEM_CPU, mMatWidth, mMatHeight);
-            cv::cvtColor(sl_tools::toCVMat(rightZEDMat), mCvRightImRGB, CV_RGBA2RGB);
+
             publishCamInfo(mRightCamInfoMsg, mPubRightCamInfo, timeStamp);
-            publishImage(mCvRightImRGB, mPubRight, mRightCamOptFrameId, timeStamp);
+            publishImage(rightZEDMat, mPubRight, mRightCamOptFrameId, timeStamp);
         }
         // <<<<< Publish the right image if someone has subscribed to
 
@@ -1124,9 +1115,9 @@ namespace stereolabs {
         if (rightRawSubnumber > 0) {
             // Retrieve RGBA Right image
             mZed.retrieveImage(rightZEDMat, sl::VIEW_RIGHT_UNRECTIFIED, sl::MEM_CPU, mMatWidth, mMatHeight);
-            cv::cvtColor(sl_tools::toCVMat(rightZEDMat), mCvRightImRGB, CV_RGBA2RGB);
+
             publishCamInfo(mRightCamInfoRawMsg, mPubRightCamInfoRaw, timeStamp);
-            publishImage(mCvRightImRGB, mPubRawRight, mRightCamOptFrameId, timeStamp);
+            publishImage(rightZEDMat, mPubRawRight, mRightCamOptFrameId, timeStamp);
         }
         // <<<<< Publish the right image if someone has subscribed to
     }
@@ -1144,7 +1135,7 @@ namespace stereolabs {
         if (depthSub > 0 /*|| dispImgSub > 0*/) {
             mZed.retrieveMeasure(depthZEDMat, sl::MEASURE_DEPTH, sl::MEM_CPU, mMatWidth, mMatHeight);
             publishCamInfo(mDepthCamInfoMsg, mPubDepthCamInfo, timeStamp);
-            publishDepth(sl_tools::toCVMat(depthZEDMat), timeStamp);
+            publishDepth(depthZEDMat, timeStamp);
         }
         // <<<<<  Publish the depth image if someone has subscribed to
 
@@ -1154,16 +1145,14 @@ namespace stereolabs {
 
             if (confImgSub > 0) {
                 mZed.retrieveImage(confImgZedMat, sl::VIEW_CONFIDENCE, sl::MEM_CPU, mMatWidth, mMatHeight);
-                cv::cvtColor(sl_tools::toCVMat(confImgZedMat), mCvConfImRGB, CV_RGBA2RGB);
-                publishImage(mCvConfImRGB, mPubConfImg, mDepthOptFrameId, timeStamp);
+
+                publishImage(confImgZedMat, mPubConfImg, mDepthOptFrameId, timeStamp);
             }
 
             if (confMapSub > 0) {
                 mZed.retrieveMeasure(confMapZedMat, sl::MEASURE_CONFIDENCE, sl::MEM_CPU, mMatWidth, mMatHeight);
-                mCvConfMapFloat = sl_tools::toCVMat(confMapZedMat);
-                mPubConfMap->publish(sl_tools::imageToROSmsg(
-                                         mCvConfMapFloat, sensor_msgs::image_encodings::TYPE_32FC1,
-                                         mDepthOptFrameId, timeStamp));
+
+                mPubConfMap->publish(sl_tools::imageToROSmsg(confMapZedMat, mDepthOptFrameId, timeStamp));
             }
         }
         // <<<<<  Publish the confidence image and map if someone has subscribed to
@@ -1171,9 +1160,8 @@ namespace stereolabs {
         // >>>>> Publish the disparity image if someone has subscribed to
         if (dispSub > 0) {
             mZed.retrieveMeasure(disparityZEDMat, sl::MEASURE_DISPARITY, sl::MEM_CPU, mMatWidth, mMatHeight);
-            // Need to flip sign, but cause of this is not sure
-            cv::Mat disparity = sl_tools::toCVMat(disparityZEDMat) * -1.0;
-            publishDisparity(disparity, timeStamp);
+
+            publishDisparity(disparityZEDMat, timeStamp);
         }
         // <<<<< Publish the disparity image if someone has subscribed to
 
@@ -1249,11 +1237,10 @@ namespace stereolabs {
         }
 
         if (rawParam) {
-            cv::Mat R_ = sl_tools::convertRodrigues(zedParam.R);
-            float* p = (float*)(R_.data);
-
-            for (size_t i = 0; i < 9; i++) {
-                rightCamInfoMsg->r[i] = static_cast<double>(p[i]);
+            std::vector<float> R_ = sl_tools::convertRodrigues(zedParam.R);
+            float* p = R_.data();
+            for (int i = 0; i < 9; i++) {
+                rightCamInfoMsg->r[i] = p[i];
             }
         }
 
@@ -1282,35 +1269,55 @@ namespace stereolabs {
         pubCamInfo->publish(camInfoMsg);
     }
 
-    void ZedCameraComponent::publishImage(cv::Mat img,
+    void ZedCameraComponent::publishImage(sl::Mat img,
                                           imagePub pubImg,
                                           std::string imgFrameId, rclcpp::Time timeStamp) {
-        pubImg->publish(sl_tools::imageToROSmsg(img, sensor_msgs::image_encodings::BGR8, imgFrameId, timeStamp)) ;
+        pubImg->publish(sl_tools::imageToROSmsg(img, imgFrameId, timeStamp)) ;
     }
 
-    void ZedCameraComponent::publishDepth(cv::Mat depth, rclcpp::Time timeStamp) {
-        std::string encoding;
+    void ZedCameraComponent::publishDepth(sl::Mat depth, rclcpp::Time t) {
 
-        if (mOpenniDepthMode) {
-            depth *= 1000.0f;
-            depth.convertTo(depth, CV_16UC1); // in mm, rounded
-            encoding = sensor_msgs::image_encodings::TYPE_16UC1;
-        } else {
-            encoding = sensor_msgs::image_encodings::TYPE_32FC1;
+        if (!mOpenniDepthMode) {
+            mPubDepth->publish(sl_tools::imageToROSmsg(depth, mDepthOptFrameId, t));
+            return;
         }
 
-        mPubDepth->publish(sl_tools::imageToROSmsg(depth, encoding, mDepthOptFrameId, timeStamp));
+        // OPENNI CONVERSION (meter -> millimeters - float32 -> uint16)
+        std::shared_ptr<sensor_msgs::msg::Image> depthMessage = std::make_shared<sensor_msgs::msg::Image>();
 
-        //        cv::imshow("Depth Image", depth);
-        //        cv::waitKey(1);
+        depthMessage->header.stamp = t;
+        depthMessage->header.frame_id = mDepthOptFrameId;
+        depthMessage->height = depth.getHeight();
+        depthMessage->width = depth.getWidth();
+
+        int num = 1; // for endianness detection
+        depthMessage->is_bigendian = !(*(char*)&num == 1);
+
+        depthMessage->step = depthMessage->width * sizeof(uint16_t);
+        depthMessage->encoding = sensor_msgs::image_encodings::MONO16;
+
+        size_t size = depthMessage->step * depthMessage->height;
+        depthMessage->data.resize(size);
+
+        uint16_t* data = (uint16_t*)(&depthMessage->data[0]);
+
+        int dataSize = depthMessage->width * depthMessage->height;
+        sl::float1* depthDataPtr = depth.getPtr<sl::float1>();
+
+        for (int i = 0; i < dataSize; i++) {
+            *(data++) = static_cast<uint16_t>(std::round(*(depthDataPtr++) * 1000));    // in mm, rounded
+        }
+
+        mPubDepth->publish(depthMessage);
     }
 
-    void ZedCameraComponent::publishDisparity(cv::Mat disparity, rclcpp::Time timestamp) {
-        sl::CameraInformation zedParam =
-            mZed.getCameraInformation(sl::Resolution(mMatWidth, mMatHeight));
+
+    void ZedCameraComponent::publishDisparity(sl::Mat disparity, rclcpp::Time timestamp) {
+        sl::CameraInformation zedParam = mZed.getCameraInformation(sl::Resolution(mMatWidth, mMatHeight));
+
         std::shared_ptr<sensor_msgs::msg::Image> disparity_image =
-            sl_tools::imageToROSmsg(disparity, sensor_msgs::image_encodings::TYPE_32FC1,
-                                    mDepthOptFrameId, timestamp);
+            sl_tools::imageToROSmsg(disparity, mDepthOptFrameId, timestamp);
+
         stereo_msgs::msg::DisparityImage msg;
         msg.image = *disparity_image;
         msg.header = msg.image.header;
@@ -1318,6 +1325,7 @@ namespace stereolabs {
         msg.t = zedParam.calibration_parameters.T.x;
         msg.min_disparity = msg.f * msg.t / mZed.getDepthMaxRangeValue();
         msg.max_disparity = msg.f * msg.t / mZed.getDepthMinRangeValue();
+
         mPubDisparity->publish(msg);
     }
 
