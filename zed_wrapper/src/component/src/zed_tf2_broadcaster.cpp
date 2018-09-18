@@ -56,6 +56,8 @@ namespace stereolabs {
             mTransformPoseBroadcaster = std::make_shared<tf2_ros::TransformBroadcaster>(shared_from_this());
         }
 
+        msg->header.stamp = this->now();
+
         mTransformPoseBroadcaster->sendTransform(*msg);
         //RCLCPP_DEBUG(get_logger(), "Broadcasted POSE FRAME");
     }
@@ -67,6 +69,8 @@ namespace stereolabs {
             mTransformOdomBroadcaster = std::make_shared<tf2_ros::TransformBroadcaster>(shared_from_this());
         }
 
+        msg->header.stamp = this->now();
+
         mTransformOdomBroadcaster->sendTransform(*msg);
         //RCLCPP_DEBUG(get_logger(), "Broadcasted ODOM FRAME");
     }
@@ -77,6 +81,8 @@ namespace stereolabs {
         if (mTransformImuBroadcaster == nullptr) {
             mTransformImuBroadcaster = std::make_shared<tf2_ros::TransformBroadcaster>(shared_from_this());
         }
+
+        msg->header.stamp = this->now();
 
         mTransformImuBroadcaster->sendTransform(*msg);
     }

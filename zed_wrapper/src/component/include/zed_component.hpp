@@ -158,6 +158,7 @@ namespace stereolabs {
 
         void publishImages(rclcpp::Time timeStamp);
         void publishDepthData(rclcpp::Time timeStamp);
+        void publishPoses(rclcpp::Time timeStamp);
 
         /** \brief Get the information of the ZED cameras and store them in an
          * information message

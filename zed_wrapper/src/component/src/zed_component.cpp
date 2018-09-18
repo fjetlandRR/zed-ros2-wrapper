@@ -785,19 +785,12 @@ namespace stereolabs {
 
             bool pubImages = ((rgbSub + rgbRawSub + leftSub + leftRawSub + rightSub + rightRawSub) > 0);
             bool pubDepthData = ((depthSub + confImgSub + confMapSub + dispSub + cloudSub) > 0);
-            bool pubTrackingData = ((poseSub + odomSub + poseTfSub + odomTfSub) > 0);
+            bool pubTrackingData = pubDepthData | ((poseSub + odomSub + poseTfSub + odomTfSub) > 0);
 
             bool runLoop = pubImages | pubDepthData | pubTrackingData;
             //<<<<< Subscribers check
 
             if (runLoop) {
-                // Timestamp
-                rclcpp::Time grabTimestamp;
-                if (mSvoMode) {
-                    grabTimestamp = now();
-                } else {
-                    grabTimestamp = sl_tools::slTime2Ros(mZed.getTimestamp(sl::TIME_REFERENCE_IMAGE));
-                }
 
                 bool enableTracking = mDepthStabilization || pubTrackingData || pubDepthData;
 
@@ -829,6 +822,15 @@ namespace stereolabs {
                 // ZED grab
                 grab_status = mZed.grab(runParams);
 
+                // >>>>> Timestamp
+                rclcpp::Time grabTimestamp;
+                if (mSvoMode) {
+                    grabTimestamp = now();
+                } else {
+                    grabTimestamp = sl_tools::slTime2Ros(mZed.getTimestamp(sl::TIME_REFERENCE_IMAGE));
+                }
+                // <<<<< Timestamp
+
                 if (grab_status != sl::ERROR_CODE::SUCCESS) {
                     // Detect if a error occurred (for example:
                     // the zed have been disconnected) and
@@ -853,6 +855,7 @@ namespace stereolabs {
                     continue;
                 }
 
+                // Last frame timestamp
                 mLastGrabTimestamp = grabTimestamp;
 
                 mCamDataMutex.lock();
@@ -867,134 +870,9 @@ namespace stereolabs {
 
                 mCamDataMutex.unlock();
 
-
-                // >>>>> Transform from base to sensor
-                tf2::Transform sensor_to_base_transf;
-
-                // Look up the transformation from base frame to camera link
-                try {
-                    double seconds = RCL_NS_TO_S(static_cast<double>(grabTimestamp.nanoseconds()));
-                    // Save the transformation from base to frame
-                    geometry_msgs::msg::TransformStamped s2b =
-                        mTfBuffer->lookupTransform(mBaseFrameId, mDepthFrameId, tf2::timeFromSec(seconds));
-                    // Get the TF2 transformation
-                    tf2::fromMsg(s2b.transform, sensor_to_base_transf);
-                } catch (tf2::TransformException& ex) {
-                    RCLCPP_WARN(get_logger(), "The tf from '%s' to '%s' does not seem to be available, "
-                                "will assume it as identity!",
-                                mDepthFrameId.c_str(), mBaseFrameId.c_str());
-                    RCLCPP_WARN(get_logger(), "Transform error: %s", ex.what());
-                    sensor_to_base_transf.setIdentity();
+                if (pubTrackingData) {
+                    publishPoses(grabTimestamp);
                 }
-                // <<<<< Transform from base to sensor
-
-                // >>>>> Publish the odometry if someone has subscribed to
-                if (pubDepthData || pubTrackingData) {
-                    if (!mInitOdomWithPose) {
-                        sl::Pose deltaOdom;
-                        sl::TRACKING_STATE status = mZed.getPosition(deltaOdom, sl::REFERENCE_FRAME_CAMERA);
-
-                        if (status == sl::TRACKING_STATE_OK || status == sl::TRACKING_STATE_SEARCHING ||
-                            status == sl::TRACKING_STATE_FPS_TOO_LOW) {
-                            // Transform ZED delta odom pose in TF2 Transformation
-                            geometry_msgs::msg::Transform deltaTransf;
-                            sl::Translation translation = deltaOdom.getTranslation();
-                            sl::Orientation quat = deltaOdom.getOrientation();
-                            deltaTransf.translation.x = translation(0);
-                            deltaTransf.translation.y = translation(1);
-                            deltaTransf.translation.z = translation(2);
-                            deltaTransf.rotation.x = quat(0);
-                            deltaTransf.rotation.y = quat(1);
-                            deltaTransf.rotation.z = quat(2);
-                            deltaTransf.rotation.w = quat(3);
-                            tf2::Transform deltaOdomTf;
-                            tf2::fromMsg(deltaTransf, deltaOdomTf);
-                            // delta odom from sensor to base frame
-                            tf2::Transform deltaOdomTf_base =
-                                sensor_to_base_transf * deltaOdomTf * sensor_to_base_transf.inverse();
-
-                            // Propagate Odom transform in time
-                            mBase2OdomTransf = mBase2OdomTransf * deltaOdomTf_base;
-                            // Publish odometry message
-                            publishOdom(mBase2OdomTransf, grabTimestamp);
-                            mTrackingReady = true;
-                        } else {
-                            RCLCPP_DEBUG(get_logger(), "ODOM -> Tracking Status: %d", static_cast<int>(status));
-                        }
-                    }
-                }
-                // <<<<< Publish the odometry if someone has subscribed to
-
-                // >>>>> Publish the zed camera pose if someone has subscribed to
-                if (pubDepthData || pubTrackingData) {
-
-                    static sl::TRACKING_STATE oldStatus;
-                    sl::TRACKING_STATE status = mZed.getPosition(mLastZedPose, sl::REFERENCE_FRAME_WORLD);
-
-                    if (status == sl::TRACKING_STATE_OK ||
-                        status == sl::TRACKING_STATE_SEARCHING /*|| status == sl::TRACKING_STATE_FPS_TOO_LOW*/) {
-                        // Transform ZED pose in TF2 Transformation
-                        geometry_msgs::msg::Transform sens2mapTransf;
-                        sl::Translation translation = mLastZedPose.getTranslation();
-                        sl::Orientation quat = mLastZedPose.getOrientation();
-                        sens2mapTransf.translation.x = translation(0);
-                        sens2mapTransf.translation.y = translation(1);
-                        sens2mapTransf.translation.z = translation(2);
-                        sens2mapTransf.rotation.x = quat(0);
-                        sens2mapTransf.rotation.y = quat(1);
-                        sens2mapTransf.rotation.z = quat(2);
-                        sens2mapTransf.rotation.w = quat(3);
-                        tf2::Transform sens_to_map_transf;
-                        tf2::fromMsg(sens2mapTransf, sens_to_map_transf);
-                        // Transformation from camera sensor to base frame
-                        /*tf2::Transform base_to_map_transform =
-                            sensor_to_base_transf * sens_to_map_transf * sensor_to_base_transf.inverse();*/
-
-                        tf2::Transform base_to_map_transform = (sensor_to_base_transf * sens_to_map_transf.inverse()).inverse();
-
-                        bool initOdom = false;
-
-                        initOdom = (status == sl::TRACKING_STATE_OK) & mInitOdomWithPose;
-                        if (initOdom || mResetOdom) {
-                            // Propagate Odom transform in time
-                            mBase2OdomTransf = base_to_map_transform;
-                            base_to_map_transform.setIdentity();
-
-                            if (odomSub > 0) {
-                                // Publish odometry message
-                                publishOdom(mBase2OdomTransf, grabTimestamp);
-                            }
-
-                            mInitOdomWithPose = false;
-                            mResetOdom = false;
-                        } else {
-                            // Transformation from map to odometry frame
-                            mOdom2MapTransf = base_to_map_transform * mBase2OdomTransf.inverse();
-                        }
-
-                        // Publish Pose message
-                        publishPose(grabTimestamp);
-                        mTrackingReady = true;
-                    } else {
-                        RCLCPP_DEBUG(get_logger(), "MAP -> Tracking Status: %d", static_cast<int>(status));
-                    }
-
-                    oldStatus = status;
-                }
-                // <<<<<< Publish the zed camera pose if someone has subscribed to
-
-                // >>>>> Publish pose TFs only if enabled
-                if (mPublishTf) {
-                    // Note, the frame is published, but its values will only change if
-                    // someone has subscribed to odom
-                    publishOdomFrame(mBase2OdomTransf, grabTimestamp); // publish the base Frame in odometry frame
-                    if (mPublishMapTf) {
-                        // Note, the frame is published, but its values will only change if
-                        // someone has subscribed to map
-                        publishPoseFrame(mOdom2MapTransf, grabTimestamp); // publish the odometry Frame in map frame
-                    }
-                }
-                // <<<<< Publish pose TFs only if enabled
 
                 // >>>>> Thread sleep
                 TIMER_ELAPSED;
@@ -1182,6 +1060,125 @@ namespace stereolabs {
             }
         }
         // <<<<< Publish the point cloud if someone has subscribed to
+    }
+
+    void ZedCameraComponent::publishPoses(rclcpp::Time timeStamp) {
+        // >>>>> Transform from base to sensor
+        tf2::Transform sensor_to_base_transf;
+
+        // Look up the transformation from base frame to camera link
+        try {
+            //double seconds = RCL_NS_TO_S(static_cast<double>(timeStamp.nanoseconds()));
+            // Save the transformation from base to frame
+            geometry_msgs::msg::TransformStamped s2b =
+                mTfBuffer->lookupTransform(mBaseFrameId, mDepthFrameId, tf2::timeFromSec(0));
+            // Get the TF2 transformation
+            tf2::fromMsg(s2b.transform, sensor_to_base_transf);
+        } catch (tf2::TransformException& ex) {
+            RCLCPP_WARN(get_logger(), "The tf from '%s' to '%s' does not seem to be available, "
+                        "will assume it as identity!",
+                        mDepthFrameId.c_str(), mBaseFrameId.c_str());
+            RCLCPP_WARN(get_logger(), "Transform error: %s", ex.what());
+            sensor_to_base_transf.setIdentity();
+        }
+        // <<<<< Transform from base to sensor
+
+        // >>>>> Publish the odometry if someone has subscribed to
+        if (!mInitOdomWithPose) {
+            sl::Pose deltaOdom;
+            sl::TRACKING_STATE status = mZed.getPosition(deltaOdom, sl::REFERENCE_FRAME_CAMERA);
+
+            if (status == sl::TRACKING_STATE_OK || status == sl::TRACKING_STATE_SEARCHING ||
+                status == sl::TRACKING_STATE_FPS_TOO_LOW) {
+                // Transform ZED delta odom pose in TF2 Transformation
+                geometry_msgs::msg::Transform deltaTransf;
+                sl::Translation translation = deltaOdom.getTranslation();
+                sl::Orientation quat = deltaOdom.getOrientation();
+                deltaTransf.translation.x = translation(0);
+                deltaTransf.translation.y = translation(1);
+                deltaTransf.translation.z = translation(2);
+                deltaTransf.rotation.x = quat(0);
+                deltaTransf.rotation.y = quat(1);
+                deltaTransf.rotation.z = quat(2);
+                deltaTransf.rotation.w = quat(3);
+                tf2::Transform deltaOdomTf;
+                tf2::fromMsg(deltaTransf, deltaOdomTf);
+
+                // delta odom from sensor to base frame
+                tf2::Transform deltaOdomTf_base =
+                    sensor_to_base_transf * deltaOdomTf * sensor_to_base_transf.inverse();
+
+                // Propagate Odom transform in time
+                mBase2OdomTransf = mBase2OdomTransf * deltaOdomTf_base;
+                // Publish odometry message
+                publishOdom(mBase2OdomTransf, timeStamp);
+                mTrackingReady = true;
+            } else {
+                RCLCPP_DEBUG(get_logger(), "ODOM -> Tracking Status: %d", static_cast<int>(status));
+            }
+        }
+        // <<<<< Publish the odometry if someone has subscribed to
+
+        // >>>>> Publish the zed camera pose if someone has subscribed to
+        sl::TRACKING_STATE status = mZed.getPosition(mLastZedPose, sl::REFERENCE_FRAME_WORLD);
+
+        if (status == sl::TRACKING_STATE_OK ||
+            status == sl::TRACKING_STATE_SEARCHING /*|| status == sl::TRACKING_STATE_FPS_TOO_LOW*/) {
+            // Transform ZED pose in TF2 Transformation
+            geometry_msgs::msg::Transform sens2mapTransf;
+            sl::Translation translation = mLastZedPose.getTranslation();
+            sl::Orientation quat = mLastZedPose.getOrientation();
+            sens2mapTransf.translation.x = translation(0);
+            sens2mapTransf.translation.y = translation(1);
+            sens2mapTransf.translation.z = translation(2);
+            sens2mapTransf.rotation.x = quat(0);
+            sens2mapTransf.rotation.y = quat(1);
+            sens2mapTransf.rotation.z = quat(2);
+            sens2mapTransf.rotation.w = quat(3);
+            tf2::Transform sens_to_map_transf;
+            tf2::fromMsg(sens2mapTransf, sens_to_map_transf);
+
+            tf2::Transform base_to_map_transform = (sensor_to_base_transf * sens_to_map_transf.inverse()).inverse();
+
+            bool initOdom = false;
+
+            initOdom = (status == sl::TRACKING_STATE_OK) & mInitOdomWithPose;
+
+            if (initOdom || mResetOdom) {
+                // Propagate Odom transform in time
+                mBase2OdomTransf = base_to_map_transform;
+                base_to_map_transform.setIdentity();
+
+                // Publish odometry message
+                publishOdom(mBase2OdomTransf, timeStamp);
+
+                mInitOdomWithPose = false;
+                mResetOdom = false;
+            } else {
+                // Transformation from map to odometry frame
+                mOdom2MapTransf = base_to_map_transform * mBase2OdomTransf.inverse();
+            }
+
+            // Publish Pose message
+            publishPose(timeStamp);
+            mTrackingReady = true;
+        } else {
+            RCLCPP_DEBUG(get_logger(), "MAP -> Tracking Status: %d", static_cast<int>(status));
+        }
+        // <<<<<< Publish the zed camera pose if someone has subscribed to
+
+        // >>>>> Publish pose TFs only if enabled
+        if (mPublishTf) {
+            // Note, the frame is published, but its values will only change if
+            // someone has subscribed to odom
+            publishOdomFrame(mBase2OdomTransf, timeStamp); // publish the base Frame in odometry frame
+            if (mPublishMapTf) {
+                // Note, the frame is published, but its values will only change if
+                // someone has subscribed to map
+                publishPoseFrame(mOdom2MapTransf, timeStamp); // publish the odometry Frame in map frame
+            }
+        }
+        // <<<<< Publish pose TFs only if enabled
 
     }
 
@@ -1458,9 +1455,10 @@ namespace stereolabs {
         if (mPublishMapTf) {
             // Look up the transformation from base frame to map
             try {
+                //double seconds = RCL_NS_TO_S(static_cast<double>(timeStamp.nanoseconds()));
                 // Save the transformation from base to frame
                 geometry_msgs::msg::TransformStamped b2m =
-                    mTfBuffer->lookupTransform(mMapFrameId, mBaseFrameId, tf2::TimePointZero);
+                    mTfBuffer->lookupTransform(mMapFrameId, mBaseFrameId, tf2::timeFromSec(0));
                 // Get the TF2 transformation
                 tf2::fromMsg(b2m.transform, base_pose);
             } catch (tf2::TransformException& ex) {
@@ -1473,9 +1471,10 @@ namespace stereolabs {
         } else {
             // Look up the transformation from base frame to odom frame
             try {
+                //double seconds = RCL_NS_TO_S(static_cast<double>(timeStamp.nanoseconds()));
                 // Save the transformation from base to frame
                 geometry_msgs::msg::TransformStamped b2o =
-                    mTfBuffer->lookupTransform(mOdometryFrameId, mBaseFrameId, tf2::TimePointZero);
+                    mTfBuffer->lookupTransform(mOdometryFrameId, mBaseFrameId, tf2::timeFromSec(0));
                 // Get the TF2 transformation
                 tf2::fromMsg(b2o.transform, base_pose);
             } catch (tf2::TransformException& ex) {
