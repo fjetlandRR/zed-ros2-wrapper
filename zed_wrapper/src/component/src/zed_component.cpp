@@ -1461,6 +1461,15 @@ namespace stereolabs {
                     mTfBuffer->lookupTransform(mMapFrameId, mBaseFrameId, tf2::timeFromSec(0));
                 // Get the TF2 transformation
                 tf2::fromMsg(b2m.transform, base_pose);
+
+                double now_sec = RCL_NS_TO_S(static_cast<double>(now().nanoseconds()));
+                RCLCPP_DEBUG(get_logger(), "[POSE] Now:\t\t%f", now_sec);
+
+                double tr_sec = static_cast<double>(b2m.header.stamp.sec) + static_cast<double>(b2m.header.stamp.nanosec) / 1e9;
+                RCLCPP_DEBUG(get_logger(), "[POSE] TF stamp:\t%f", tr_sec);
+
+                RCLCPP_DEBUG(get_logger(), "[POSE] Diff:\t%f", now_sec - tr_sec);
+
             } catch (tf2::TransformException& ex) {
                 RCLCPP_WARN(get_logger(), "The tf from '%s' to '%s' does not seem to be available, "
                             "will assume it as identity!",
@@ -1468,7 +1477,7 @@ namespace stereolabs {
                 RCLCPP_WARN(get_logger(), "Transform error: %s", ex.what());
                 base_pose.setIdentity();
             }
-        } else {
+        } /*else*/ {
             // Look up the transformation from base frame to odom frame
             try {
                 //double seconds = RCL_NS_TO_S(static_cast<double>(timeStamp.nanoseconds()));
@@ -1477,6 +1486,14 @@ namespace stereolabs {
                     mTfBuffer->lookupTransform(mOdometryFrameId, mBaseFrameId, tf2::timeFromSec(0));
                 // Get the TF2 transformation
                 tf2::fromMsg(b2o.transform, base_pose);
+
+                double now_sec = RCL_NS_TO_S(static_cast<double>(now().nanoseconds()));
+                RCLCPP_DEBUG(get_logger(), "[ODOM] Now:\t\t%f", now_sec);
+
+                double tr_sec = static_cast<double>(b2o.header.stamp.sec) + static_cast<double>(b2o.header.stamp.nanosec) / 1e9;
+                RCLCPP_DEBUG(get_logger(), "[ODOM] TF stamp:\t%f", tr_sec);
+
+                RCLCPP_DEBUG(get_logger(), "[ODOM] Diff:\t%f", now_sec - tr_sec);
             } catch (tf2::TransformException& ex) {
                 RCLCPP_WARN(get_logger(), "The tf from '%s' to '%s' does not seem to be available, "
                             "will assume it as identity!",
