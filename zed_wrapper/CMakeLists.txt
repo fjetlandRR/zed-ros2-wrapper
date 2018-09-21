@@ -110,11 +110,6 @@ set(NODE_SRC
 set(ZED_COMPONENT_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/component/src/zed_component.cpp
 )
-
-set(TF2_COMPONENT_SRC
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/component/src/zed_tf2_broadcaster.cpp
-)
-
 ###############################################################################
 # ZED COMPONENT PLUGIN and ZED EXECUTABLE
 
@@ -135,40 +130,21 @@ ament_target_dependencies(zed_component
   sensor_msgs
   stereo_msgs
   tf2
-  tf2_ros  
+  tf2_ros
   tf2_geometry_msgs
   nav_msgs
 )
 rclcpp_register_node_plugins(zed_component "stereolabs::ZedCameraComponent")
 set(node_plugins "${node_plugins}stereolabs::ZedCameraComponent;$<TARGET_FILE:zed_component>\n")
 
-add_library(zed_tf2_broadcaster SHARED ${TF2_COMPONENT_SRC})
-target_compile_definitions(zed_tf2_broadcaster PRIVATE "ZED_BUILDING_DLL")
-target_link_libraries(zed_tf2_broadcaster
-    ${rclcpp_LIBRARIES}
-    ${tf2_LIBRARIES}
-    ${tf2_ros_LIBRARIES}
-    ${tf2_geometry_msgs_LIBRARIES}
-)
-ament_target_dependencies(zed_component
-  rclcpp
-  tf2
-  tf2_ros
-  tf2_geometry_msgs
-)
-rclcpp_register_node_plugins(zed_tf2_broadcaster "stereolabs::ZedTF2Broadcaster")
-set(node_plugins "${node_plugins}stereolabs::ZedTF2Broadcaster;$<TARGET_FILE:zed_tf2_broadcaster>\n")
-
 add_executable(zed_wrapper_node ${NODE_SRC})
 target_link_libraries(zed_wrapper_node
     zed_component
-    zed_tf2_broadcaster
 )
 ament_target_dependencies(zed_wrapper_node
   rclcpp
   class_loader
   zed_component
-  zed_tf2_broadcaster
 )
 
 # Install executable
@@ -177,17 +153,9 @@ install(
     DESTINATION lib/${PROJECT_NAME}
 )
 
-
 # Install plugins
 install(
     TARGETS zed_component
-    ARCHIVE DESTINATION lib
-    LIBRARY DESTINATION lib
-    RUNTIME DESTINATION bin
-)
-
-install(
-    TARGETS zed_tf2_broadcaster
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin
