@@ -315,7 +315,7 @@ namespace stereolabs {
         // <<<<< Frame IDs
 
         // >>>>> Transformation
-        mTfBuffer = std::make_shared<tf2_ros::Buffer>();
+        mTfBuffer = std::make_shared<tf2_ros::Buffer>(get_clock());
         mTfListener = std::make_shared<tf2_ros::TransformListener>(*mTfBuffer);
 
         //        mTransformPoseBroadcaster = std::make_shared<tf2_ros::TransformBroadcaster>(shared_from_this());  // TODO enable when TransformBroadcaster can be used with LifecycleNode
