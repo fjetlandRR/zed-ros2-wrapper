@@ -1,0 +1,11 @@
+# config/zedm_yaml
+# Parameters for Stereolabs ZED mini camera
+---
+
+zed:
+    zed_node:
+        ros__parameters:
+            general:
+                camera_model: 1 # `0`: ZED, `1`: ZEDM
+            depth:
+                max_depth: 10

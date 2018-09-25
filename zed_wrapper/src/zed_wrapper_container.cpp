@@ -1,8 +1,10 @@
-#include "zed_component.hpp"
-
+#include <stdlib.h>
 #include <rclcpp/rclcpp.hpp>
 
+#include "zed_component.hpp"
+
 int main(int argc, char* argv[]) {
+
     // force flush of the stdout buffer.
     // this ensures a correct sync of all prints
     // even when executed simultaneously within the launch file.

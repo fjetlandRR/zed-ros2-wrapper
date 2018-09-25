@@ -21,7 +21,9 @@ namespace stereolabs {
         : rclcpp_lifecycle::LifecycleNode(node_name, ros_namespace, intra_process_comms) {
 
 #ifndef NDEBUG
-        rcutils_ret_t res = rcutils_logging_set_logger_level(get_name(), RCUTILS_LOG_SEVERITY_DEBUG);
+        std::string logger = ros_namespace.empty() ? "" : ros_namespace + ".";
+        logger += node_name;
+        rcutils_ret_t res = rcutils_logging_set_logger_level(logger.c_str(), RCUTILS_LOG_SEVERITY_DEBUG);
 
         if (res != RCUTILS_RET_OK) {
             RCLCPP_INFO(get_logger(), "Error setting DEBUG logger");
@@ -494,6 +496,7 @@ namespace stereolabs {
 
         // >>>>> Start Pointcloud thread
         mPcDataReady = false;
+        RCLCPP_DEBUG(get_logger(), "on_activate -> mPcDataReady FALSE")
         mPcThread = std::thread(&ZedCameraComponent::pointcloudThreadFunc, this);
         // <<<<< Start Pointcloud thread
 
@@ -884,6 +887,7 @@ namespace stereolabs {
 
                 // Signal Pointcloud thread that a new pointcloud is ready
                 mPcDataReady = true;
+                RCLCPP_DEBUG(get_logger(), "publishDepthData -> mPcDataReady TRUE")
 
                 mPcDataReadyCondVar.notify_one();
             }
@@ -1077,19 +1081,25 @@ namespace stereolabs {
     void ZedCameraComponent::pointcloudThreadFunc() {
         std::unique_lock<std::mutex> lock(mPcMutex);
         while (!mThreadStop) {
-            while (!mPcDataReady) {  // loop to avoid spurious wakeups
+
+            RCLCPP_DEBUG(get_logger(), "pointcloudThreadFunc -> mPcDataReady value: %s", mPcDataReady ? "TRUE" : "FALSE");
+
+            while (!mPcDataReady) { // loop to avoid spurious wakeups
                 if (mPcDataReadyCondVar.wait_for(lock, std::chrono::milliseconds(500)) == std::cv_status::timeout) {
                     // Check thread stopping
                     if (mThreadStop) {
                         break;
                     } else {
+                        RCLCPP_DEBUG(get_logger(), "pointcloudThreadFunc -> WAIT FOR CLOUD DATA");
                         continue;
                     }
                 }
-
-                publishPointCloud();
-                mPcDataReady = false;
             }
+
+            publishPointCloud();
+            mPcDataReady = false;
+            RCLCPP_DEBUG(get_logger(), "pointcloudThreadFunc -> mPcDataReady FALSE")
+
         }
 
         RCLCPP_DEBUG(get_logger(), "Pointcloud thread finished");

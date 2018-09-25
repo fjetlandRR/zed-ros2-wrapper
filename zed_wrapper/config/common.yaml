@@ -1,0 +1,43 @@
+# config/common_yaml
+# Common parameters to Stereolabs ZED and ZED mini cameras
+#
+# Note: the parameter svo_file is passed as exe argumet
+---
+
+zed:
+    zed_node:
+        ros__parameters:
+            general:
+                publish_tf: true
+                publish_map_tf: true
+                camera_flip: false
+                zed_id: 0
+                serial_number: 0
+                resolution: 2 # '0': HD2K, '1': HD1080, '2': HD720, '3': VGA
+                verbose: true
+                mat_resize_factor: 1.0
+                frame_rate: 30
+                gpu_id: -1
+            video:
+                gain: 80
+                exposure: 80
+                auto_exposure: true
+                rgb_topic: "rgb/image_rect_color"
+                rgb_raw_topic: "rgb/image_raw_color"
+                left_topic: "left/image_raw_color"
+                left_raw_topic: "left/image_raw_color"
+                right_topic: "right/image_raw_color"
+                right_raw_topic: "right/image_raw_color"      
+            depth:
+                quality: 1 # '0': NONE, '1': PERFORMANCE, '2': MEDIUM, '3': QUALITY, '4': ULTRA
+                sensing_mode: 0 # '0': STANDARD, '1': FILL
+                confidence: 80
+                depth_stabilization: 1 # `0`: disabled, `1`: enabled
+                depth_topic: "depth/depth_registered"
+                point_cloud_topic: "point_cloud/cloud_registered"
+                disparity_topic: "disparity/disparity_image"
+                confidence_img_topic: "confidence/confidence_image"
+                confidence_map_topic: "confidence/confidence_map"
+            tracking:
+                dummy: 1
+                
