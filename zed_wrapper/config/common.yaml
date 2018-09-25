@@ -15,13 +15,13 @@ zed:
                 serial_number: 0
                 resolution: 2 # '0': HD2K, '1': HD1080, '2': HD720, '3': VGA
                 verbose: true
-                mat_resize_factor: 1.0
+                mat_resize_factor: 1.0 #Dynamic
                 frame_rate: 30
                 gpu_id: -1
             video:
-                gain: 80
-                exposure: 80
-                auto_exposure: true
+                gain: 80 #Dynamic
+                exposure: 80 #Dynamic
+                auto_exposure: true #Dynamic
                 rgb_topic: "rgb/image_rect_color"
                 rgb_raw_topic: "rgb/image_raw_color"
                 left_topic: "left/image_raw_color"
@@ -31,7 +31,7 @@ zed:
             depth:
                 quality: 1 # '0': NONE, '1': PERFORMANCE, '2': MEDIUM, '3': QUALITY, '4': ULTRA
                 sensing_mode: 0 # '0': STANDARD, '1': FILL
-                confidence: 80
+                confidence: 80 #Dynamic
                 depth_stabilization: 1 # `0`: disabled, `1`: enabled
                 depth_topic: "depth/depth_registered"
                 point_cloud_topic: "point_cloud/cloud_registered"
@@ -39,5 +39,39 @@ zed:
                 confidence_img_topic: "confidence/confidence_image"
                 confidence_map_topic: "confidence/confidence_map"
             tracking:
-                dummy: 1
+                pose_frame: 'map'
+                odometry_frame: 'odom'
+                base_frame: 'zed_camera_center'
+                left_camera_frame: 'zed_left_camera_frame'
+                left_camera_optical_frame: 'zed_left_camera_optical_frame'
+                right_camera_frame: 'zed_right_camera_frame'
+                right_camera_optical_frame: 'zed_right_camera_optical_frame'
+                odometry_db: '""'
+                openni_depth_mode: 0 # '0': 32bit float meters, '1': 16bit uchar millimeters
+                pose_smoothing: 0 # `0`: disabled, `1`: enabled
+                spatial_memory: false
+                floor_alignment: true
+                initial_tracking_pose: [0.0,0.0,0.0, 0.0,0.0,0.0] # [X, Y, Z, R, P, Y]
+                pose_topic: 'pose'
+                odometry_topic: 'odom'
+                init_odom_with_first_valid_pose: true                
+                path_pub_rate: 2.0
+                path_max_count: -1
+                publish_pose_covariance: true
                 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

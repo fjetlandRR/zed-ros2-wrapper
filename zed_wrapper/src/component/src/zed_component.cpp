@@ -3,6 +3,7 @@
 #include "sl_tools.h"
 #include <string>
 
+#include <rclcpp/parameter_client.hpp>
 #include <sensor_msgs/distortion_models.hpp>
 #include <sensor_msgs/image_encodings.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
@@ -135,6 +136,100 @@ namespace stereolabs {
         return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
     }
 
+    void ZedCameraComponent::initParameters() {
+        rclcpp::Parameter paramVal;
+        std::string paramName;
+
+        // >>>>> General parameters
+        paramName = "general.camera_model_";
+        if (get_parameter(paramName, paramVal)) {
+            mZedUserCamModel = paramVal.as_int();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), "PARAM - Camera model: %d (%s)",
+                    mZedUserCamModel, sl::toString(static_cast<sl::MODEL>(mZedUserCamModel)).c_str());
+
+        paramName = "general.camera_flip";
+        if (get_parameter(paramName, paramVal)) {
+            mCameraFlip = paramVal.as_bool();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), "PARAM - Camera flip: %s", mCameraFlip ? "TRUE" : "FALSE");
+
+        paramName = "general.zed_id";
+        if (get_parameter(paramName, paramVal)) {
+            mZedId = paramVal.as_int();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), "PARAM - ZED ID: %d", mZedId);
+
+        paramName = "general.serial_number";
+        if (get_parameter(paramName, paramVal)) {
+            mZedSerialNumber = static_cast<unsigned int>(paramVal.as_int());
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), "PARAM - ZED serial number: %u", mZedSerialNumber);
+
+        paramName = "general.resolution";
+        if (get_parameter(paramName, paramVal)) {
+            mZedResol = paramVal.as_int();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), "PARAM - ZED resolution: %d (%s)", mZedResol,
+                    sl::toString(static_cast<sl::RESOLUTION>(mZedResol)).c_str());
+
+        paramName = "general.verbose";
+        if (get_parameter(paramName, paramVal)) {
+            mVerbose = paramVal.as_bool();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), "PARAM - Verbose: %s", mVerbose ? "TRUE" : "FALSE");
+
+        paramName = "general.mat_resize_factor";
+        if (get_parameter(paramName, paramVal)) {
+            mZedMatResizeFactor = paramVal.as_double();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), "PARAM - Data resize factor: %g", mZedMatResizeFactor);
+
+        paramName = "general.frame_rate";
+        if (get_parameter(paramName, paramVal)) {
+            mCamFrameRate = paramVal.as_int();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), "PARAM - ZED framerate: %d", mCamFrameRate);
+
+        paramName = "general.gpu_id";
+        if (get_parameter(paramName, paramVal)) {
+            mGpuId = paramVal.as_int();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), "PARAM - GPU ID: %d", mGpuId);
+
+
+        // <<<<< General parameters
+
+        // >>>>>> TRACKING parameters
+        // TODO parse tracking parameters when TRACKING is available
+        // <<<<<< TRACKING parameters
+
+        // >>>>>> IMU parameters
+        if (mZedUserCamModel == 1) {
+            // TODO parse IMU parameters from zedm.yaml
+        }
+        // <<<<<< IMU parameters
+
+    }
+
     void ZedCameraComponent::initPublishers() {
 
         std::string topicPrefix = "~/";
@@ -258,7 +353,7 @@ namespace stereolabs {
         // <<<<< Check SDK version
 
         // >>>>> Load params from param server
-        // TODO load params from param server
+        initParameters();
         // <<<<< Load params from param server
 
         // >>>>> Frame IDs

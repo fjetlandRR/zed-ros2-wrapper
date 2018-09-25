@@ -8,4 +8,4 @@ zed:
             general:
                 camera_model: 0 # `0`: ZED, `1`: ZEDM
             depth:
-                max_depth: 20
+                max_depth: 20 #Dynamic

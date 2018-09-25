@@ -142,6 +142,7 @@ namespace stereolabs {
         void pointcloudThreadFunc();
 
         void initPublishers();
+        void initParameters();
 
         void publishImages(rclcpp::Time timeStamp);
         void publishDepthData(rclcpp::Time timeStamp);
