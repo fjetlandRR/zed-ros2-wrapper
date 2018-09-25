@@ -8,50 +8,51 @@ zed:
     zed_node:
         ros__parameters:
             general:
-                publish_tf: true
-                publish_map_tf: true
+                svo_file: '/home/walter/Documents/ZED/Walter_skeleton_issue-ZED_mini-HD720_SN10026869_15-32-27.svo'
                 camera_flip: false
                 zed_id: 0
                 serial_number: 0
-                resolution: 2 # '0': HD2K, '1': HD1080, '2': HD720, '3': VGA
+                resolution: 2                                                   # '0': HD2K, '1': HD1080, '2': HD720, '3': VGA
                 verbose: true
-                mat_resize_factor: 1.0 #Dynamic
+                mat_resize_factor: 1.0                                          # Dynamic
                 frame_rate: 30
                 gpu_id: -1
             video:
-                gain: 80 #Dynamic
-                exposure: 80 #Dynamic
-                auto_exposure: true #Dynamic
+                auto_exposure: true                                             # Dynamic
+                exposure: 80                                                    # Dynamic
+                gain: 80                                                        # Dynamic                                
                 rgb_topic: "rgb/image_rect_color"
                 rgb_raw_topic: "rgb/image_raw_color"
-                left_topic: "left/image_raw_color"
+                left_topic: "left/image_rect_color"
                 left_raw_topic: "left/image_raw_color"
-                right_topic: "right/image_raw_color"
+                right_topic: "right/image_rect_color"
                 right_raw_topic: "right/image_raw_color"      
             depth:
-                quality: 1 # '0': NONE, '1': PERFORMANCE, '2': MEDIUM, '3': QUALITY, '4': ULTRA
-                sensing_mode: 0 # '0': STANDARD, '1': FILL
-                confidence: 80 #Dynamic
-                depth_stabilization: 1 # `0`: disabled, `1`: enabled
+                quality: 1                                                      # '0': NONE, '1': PERFORMANCE, '2': MEDIUM, '3': QUALITY, '4': ULTRA
+                sensing_mode: 0                                                 # '0': STANDARD, '1': FILL
+                confidence: 80                                                  # Dynamic
+                depth_stabilization: 1                                          # `0`: disabled, `1`: enabled
+                openni_depth_mode: 0                                            # '0': 32bit float meters, '1': 16bit uchar millimeters
                 depth_topic: "depth/depth_registered"
                 point_cloud_topic: "point_cloud/cloud_registered"
                 disparity_topic: "disparity/disparity_image"
                 confidence_img_topic: "confidence/confidence_image"
                 confidence_map_topic: "confidence/confidence_map"
             tracking:
+                publish_tf: true
+                publish_map_tf: true
                 pose_frame: 'map'
                 odometry_frame: 'odom'
-                base_frame: 'zed_camera_center'
-                left_camera_frame: 'zed_left_camera_frame'
-                left_camera_optical_frame: 'zed_left_camera_optical_frame'
-                right_camera_frame: 'zed_right_camera_frame'
-                right_camera_optical_frame: 'zed_right_camera_optical_frame'
-                odometry_db: '""'
-                openni_depth_mode: 0 # '0': 32bit float meters, '1': 16bit uchar millimeters
-                pose_smoothing: 0 # `0`: disabled, `1`: enabled
+                base_frame: 'zed_camera_center'                                 # must be equal to the frame_id used in the URDF file
+                left_camera_frame: 'zed_left_camera_frame'                      # must be equal to the frame_id used in the URDF file
+                left_camera_optical_frame: 'zed_left_camera_optical_frame'      # must be equal to the frame_id used in the URDF file
+                right_camera_frame: 'zed_right_camera_frame'                    # must be equal to the frame_id used in the URDF file
+                right_camera_optical_frame: 'zed_right_camera_optical_frame'    # must be equal to the frame_id used in the URDF file
+                odometry_db: '""'                
+                pose_smoothing: 0                                               # `0`: disabled, `1`: enabled
                 spatial_memory: false
                 floor_alignment: true
-                initial_tracking_pose: [0.0,0.0,0.0, 0.0,0.0,0.0] # [X, Y, Z, R, P, Y]
+                initial_tracking_pose: [0.0,0.0,0.0, 0.0,0.0,0.0]               # [X, Y, Z, R, P, Y]
                 pose_topic: 'pose'
                 odometry_topic: 'odom'
                 init_odom_with_first_valid_pose: true                

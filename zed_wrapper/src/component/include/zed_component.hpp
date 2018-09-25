@@ -206,7 +206,7 @@ namespace stereolabs {
         // Grab thread
         std::thread mGrabThread;
         bool mThreadStop = false;
-        int mCamTimeoutMsec = 5000; // Error generated if camera is not available after timeout
+        int mZedTimeoutMsec = 5000; // Error generated if camera is not available after timeout
 
         // Pointcloud thread
         std::thread mPcThread; // Point Cloud thread
@@ -217,10 +217,10 @@ namespace stereolabs {
         // Params
         sl::InitParameters mZedParams;
         int mZedId = 0;
-        unsigned int mZedSerialNumber = 0;
+        int mZedSerialNumber = 0;
         int mZedUserCamModel = 1;   // Camera model set by ROS Param
         sl::MODEL mZedRealCamModel; // Camera model requested to SDK
-        int mCamFrameRate = 30;
+        int mZedFrameRate = 30;
         std::string mSvoFilepath = "";
         bool mSvoMode = false;
         bool mVerbose = true;
@@ -229,14 +229,17 @@ namespace stereolabs {
         int mZedQuality = 1; // Default quality: DEPTH_MODE_PERFORMANCE
         int mDepthStabilization = 1;
         bool mCameraFlip = false;
-        int mCamSensingMode = 0; // Default Sensing mode: SENSING_MODE_STANDARD
+        int mZedSensingMode = 0; // Default Sensing mode: SENSING_MODE_STANDARD
         bool mOpenniDepthMode = false; // 16 bit UC data in mm else 32F in m,
         // for more info -> http://www.ros.org/reps/rep-0118.html
 
-        // ZED dynamic params (TODO when available in ROS2)
+        // ZED dynamic params
         double mZedMatResizeFactor = 1.0; // Dynamic...
-        int mCamConfidence = 80; // Dynamic...
-        double mCamMaxDepth = 10.0; // Dynamic...
+        int mZedConfidence = 80; // Dynamic...
+        double mZedMaxDepth = 10.0; // Dynamic...
+        bool mZedAutoExposure; // Dynamic...
+        int mZedGain = 80; // Dynamic...
+        int mZedExposure = 80; // Dynamic...
 
         // Publishers
         imagePub mPubRgb;
@@ -312,10 +315,10 @@ namespace stereolabs {
         sl::Mat mCloud;
 
         // Mats
-        int mCamWidth;
-        int mCamHeight;
-        int mMatWidth;
-        int mMatHeight;
+        int mCamWidth;  // Camera frame width
+        int mCamHeight; // Camera frame height
+        int mMatWidth;  // Data width (mCamWidth*mZedMatResizeFactor)
+        int mMatHeight; // Data height (mCamHeight*mZedMatResizeFactor)
 
         // Thread Sync
         std::mutex mCamDataMutex;

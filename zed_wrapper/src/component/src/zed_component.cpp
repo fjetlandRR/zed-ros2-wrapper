@@ -140,14 +140,24 @@ namespace stereolabs {
         rclcpp::Parameter paramVal;
         std::string paramName;
 
-        // >>>>> General parameters
-        paramName = "general.camera_model_";
+        // >>>>> GENERAL parameters
+        RCLCPP_INFO(get_logger(), "*** GENERAL parameters ***");
+
+        paramName = "general.svo_file";
+        if (get_parameter(paramName, paramVal)) {
+            mSvoFilepath = paramVal.as_string();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * SVO: `%s`", mSvoFilepath.c_str());
+
+        paramName = "general.camera_model";
         if (get_parameter(paramName, paramVal)) {
             mZedUserCamModel = paramVal.as_int();
         } else {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
         }
-        RCLCPP_INFO(get_logger(), "PARAM - Camera model: %d (%s)",
+        RCLCPP_INFO(get_logger(), " * Camera model: %d (%s)",
                     mZedUserCamModel, sl::toString(static_cast<sl::MODEL>(mZedUserCamModel)).c_str());
 
         paramName = "general.camera_flip";
@@ -156,7 +166,7 @@ namespace stereolabs {
         } else {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
         }
-        RCLCPP_INFO(get_logger(), "PARAM - Camera flip: %s", mCameraFlip ? "TRUE" : "FALSE");
+        RCLCPP_INFO(get_logger(), " * Camera flip: %s", mCameraFlip ? "TRUE" : "FALSE");
 
         paramName = "general.zed_id";
         if (get_parameter(paramName, paramVal)) {
@@ -164,15 +174,15 @@ namespace stereolabs {
         } else {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
         }
-        RCLCPP_INFO(get_logger(), "PARAM - ZED ID: %d", mZedId);
+        RCLCPP_INFO(get_logger(), " * ZED ID: %d", mZedId);
 
         paramName = "general.serial_number";
         if (get_parameter(paramName, paramVal)) {
-            mZedSerialNumber = static_cast<unsigned int>(paramVal.as_int());
+            mZedSerialNumber = paramVal.as_int();
         } else {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
         }
-        RCLCPP_INFO(get_logger(), "PARAM - ZED serial number: %u", mZedSerialNumber);
+        RCLCPP_INFO(get_logger(), " * ZED serial number: %d", mZedSerialNumber);
 
         paramName = "general.resolution";
         if (get_parameter(paramName, paramVal)) {
@@ -180,7 +190,7 @@ namespace stereolabs {
         } else {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
         }
-        RCLCPP_INFO(get_logger(), "PARAM - ZED resolution: %d (%s)", mZedResol,
+        RCLCPP_INFO(get_logger(), " * ZED resolution: %d (%s)", mZedResol,
                     sl::toString(static_cast<sl::RESOLUTION>(mZedResol)).c_str());
 
         paramName = "general.verbose";
@@ -189,7 +199,7 @@ namespace stereolabs {
         } else {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
         }
-        RCLCPP_INFO(get_logger(), "PARAM - Verbose: %s", mVerbose ? "TRUE" : "FALSE");
+        RCLCPP_INFO(get_logger(), " * Verbose: %s", mVerbose ? "TRUE" : "FALSE");
 
         paramName = "general.mat_resize_factor";
         if (get_parameter(paramName, paramVal)) {
@@ -197,15 +207,15 @@ namespace stereolabs {
         } else {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
         }
-        RCLCPP_INFO(get_logger(), "PARAM - Data resize factor: %g", mZedMatResizeFactor);
+        RCLCPP_INFO(get_logger(), " * Data resize factor: %g [DYNAMIC]", mZedMatResizeFactor);
 
         paramName = "general.frame_rate";
         if (get_parameter(paramName, paramVal)) {
-            mCamFrameRate = paramVal.as_int();
+            mZedFrameRate = paramVal.as_int();
         } else {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
         }
-        RCLCPP_INFO(get_logger(), "PARAM - ZED framerate: %d", mCamFrameRate);
+        RCLCPP_INFO(get_logger(), " * ZED framerate: %d", mZedFrameRate);
 
         paramName = "general.gpu_id";
         if (get_parameter(paramName, paramVal)) {
@@ -213,17 +223,179 @@ namespace stereolabs {
         } else {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
         }
-        RCLCPP_INFO(get_logger(), "PARAM - GPU ID: %d", mGpuId);
+        RCLCPP_INFO(get_logger(), " * GPU ID: %d", mGpuId);
+        // <<<<< GENERAL parameters
 
+        // >>>>> VIDEO parameters
+        RCLCPP_INFO(get_logger(), "*** VIDEO parameters ***");
 
-        // <<<<< General parameters
+        paramName = "video.auto_exposure";
+        if (get_parameter(paramName, paramVal)) {
+            mZedAutoExposure = paramVal.as_bool();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * Auto exposure: %s [DYNAMIC]", mZedAutoExposure ? "TRUE" : "FALSE");
+
+        paramName = "video.exposure";
+        if (get_parameter(paramName, paramVal)) {
+            mZedExposure = paramVal.as_int();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * Exposure: %d [DYNAMIC]", mZedExposure);
+
+        paramName = "video.gain";
+        if (get_parameter(paramName, paramVal)) {
+            mZedGain = paramVal.as_int();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * Gain: %d [DYNAMIC]", mZedGain);
+
+        paramName = "video.rgb_topic";
+        if (get_parameter(paramName, paramVal)) {
+            mRgbTopic = paramVal.as_string();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * RGB topic: '%s'", mRgbTopic.c_str());
+
+        paramName = "video.rgb_raw_topic";
+        if (get_parameter(paramName, paramVal)) {
+            mRgbRawTopic = paramVal.as_string();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * RAW RGB topic: '%s'", mRgbRawTopic.c_str());
+
+        paramName = "video.left_topic";
+        if (get_parameter(paramName, paramVal)) {
+            mLeftTopic = paramVal.as_string();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * Left topic: '%s'", mLeftTopic.c_str());
+
+        paramName = "video.left_raw_topic";
+        if (get_parameter(paramName, paramVal)) {
+            mLeftRawTopic = paramVal.as_string();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * RAW Left topic: '%s'", mLeftRawTopic.c_str());
+
+        paramName = "video.right_topic";
+        if (get_parameter(paramName, paramVal)) {
+            mRightTopic = paramVal.as_string();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * Right topic: '%s'", mRightTopic.c_str());
+
+        paramName = "video.right_raw_topic";
+        if (get_parameter(paramName, paramVal)) {
+            mRightRawTopic = paramVal.as_string();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * RAW Right topic: '%s'", mRightRawTopic.c_str());
+        // <<<<< VIDEO parameters
+
+        // >>>>>> DEPTH parameters
+        RCLCPP_INFO(get_logger(), "*** DEPTH parameters ***");
+
+        paramName = "depth.quality";
+        if (get_parameter(paramName, paramVal)) {
+            mZedQuality = paramVal.as_int();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * Quality: %d (%s)", mZedQuality,
+                    sl::toString(static_cast<sl::DEPTH_MODE>(mZedQuality)).c_str());
+
+        paramName = "depth.sensing_mode";
+        if (get_parameter(paramName, paramVal)) {
+            mZedSensingMode = paramVal.as_int();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * Sensing mode: %d (%s)", mZedSensingMode,
+                    sl::toString(static_cast<sl::SENSING_MODE>(mZedSensingMode)).c_str());
+
+        paramName = "depth.confidence";
+        if (get_parameter(paramName, paramVal)) {
+            mZedConfidence = paramVal.as_int();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * Confidence: %d", mZedConfidence);
+
+        paramName = "depth.depth_stabilization";
+        if (get_parameter(paramName, paramVal)) {
+            mDepthStabilization = paramVal.as_int();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * Depth stabilization: %s", mDepthStabilization ? "ENABLED" : "DISABLED");
+
+        paramName = "depth.openni_depth_mode";
+        if (get_parameter(paramName, paramVal)) {
+            mOpenniDepthMode = paramVal.as_int();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * OpenNI mode: %s", mOpenniDepthMode == 0 ? "DISABLED" : "ENABLED");
+
+        paramName = "depth.depth_topic";
+        if (get_parameter(paramName, paramVal)) {
+            mDepthTopic = paramVal.as_string();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * Depth topic: '%s'", mDepthTopic.c_str());
+
+        paramName = "depth.point_cloud_topic";
+        if (get_parameter(paramName, paramVal)) {
+            mPointcloudTopic = paramVal.as_string();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * Pointcloud topic: '%s'", mPointcloudTopic.c_str());
+
+        paramName = "depth.disparity_topic";
+        if (get_parameter(paramName, paramVal)) {
+            mDispTopic = paramVal.as_string();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * Disparity topic: '%s'", mDispTopic.c_str());
+
+        paramName = "depth.confidence_map_topic";
+        if (get_parameter(paramName, paramVal)) {
+            mConfMapTopic = paramVal.as_string();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * Confidence map topic: '%s'", mConfMapTopic.c_str());
+
+        paramName = "depth.confidence_img_topic";
+        if (get_parameter(paramName, paramVal)) {
+            mConfImgTopic = paramVal.as_string();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * Confidence image topic: '%s'", mConfImgTopic.c_str());
+        // <<<<<< DEPTH parameters
 
         // >>>>>> TRACKING parameters
+        //RCLCPP_INFO(get_logger(), "*** TRACKING parameters ***" );
         // TODO parse tracking parameters when TRACKING is available
         // <<<<<< TRACKING parameters
 
         // >>>>>> IMU parameters
         if (mZedUserCamModel == 1) {
+            RCLCPP_INFO(get_logger(), "*** IMU parameters ***");
             // TODO parse IMU parameters from zedm.yaml
         }
         // <<<<<< IMU parameters
@@ -231,8 +403,14 @@ namespace stereolabs {
     }
 
     void ZedCameraComponent::initPublishers() {
+        RCLCPP_INFO(get_logger(), "*** PUBLISHED TOPICS ***");
 
-        std::string topicPrefix = "~/";
+        std::string topicPrefix = get_namespace();
+        if (topicPrefix.length() > 1) {
+            topicPrefix += "/";
+        }
+        topicPrefix += get_name();
+        topicPrefix += "/";
 
         // >>>>> Image publishers QOS
         // https://github.com/ros2/ros2/wiki/About-Quality-of-Service-Settings
@@ -285,42 +463,42 @@ namespace stereolabs {
 
         // >>>>> Create Video publishers
         mPubRgb = create_publisher<sensor_msgs::msg::Image>(mRgbTopic, camera_qos_profile);
-        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mRgbTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mRgbTopic.c_str());
         mPubRawRgb = create_publisher<sensor_msgs::msg::Image>(mRgbRawTopic, camera_qos_profile);
-        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mRgbRawTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mRgbRawTopic.c_str());
         mPubLeft = create_publisher<sensor_msgs::msg::Image>(mLeftTopic, camera_qos_profile);
-        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mLeftTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mLeftTopic.c_str());
         mPubRawLeft = create_publisher<sensor_msgs::msg::Image>(mLeftRawTopic, camera_qos_profile);
-        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mLeftRawTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mLeftRawTopic.c_str());
         mPubRight = create_publisher<sensor_msgs::msg::Image>(mRightTopic, camera_qos_profile);
-        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mRightTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mRightTopic.c_str());
         mPubRawRight = create_publisher<sensor_msgs::msg::Image>(mRightRawTopic, camera_qos_profile);
-        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mRightRawTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mRightRawTopic.c_str());
         mPubDepth = create_publisher<sensor_msgs::msg::Image>(mDepthTopic, camera_qos_profile);
-        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mDepthTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mDepthTopic.c_str());
         mPubConfImg = create_publisher<sensor_msgs::msg::Image>(mConfImgTopic, camera_qos_profile);
-        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mConfImgTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mConfImgTopic.c_str());
         mPubConfMap = create_publisher<sensor_msgs::msg::Image>(mConfMapTopic, camera_qos_profile);
-        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mConfMapTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mConfMapTopic.c_str());
         // <<<<< Create Video publishers
 
         // >>>>> Create Camera Info publishers
         mPubRgbCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mRgbCamInfoTopic, camera_qos_profile);
-        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mRgbCamInfoTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mRgbCamInfoTopic.c_str());
         mPubRgbCamInfoRaw = create_publisher<sensor_msgs::msg::CameraInfo>(mRgbCamInfoRawTopic, camera_qos_profile);
-        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mRgbCamInfoRawTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mRgbCamInfoRawTopic.c_str());
         mPubLeftCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mLeftCamInfoTopic, camera_qos_profile);
-        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mLeftCamInfoTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mLeftCamInfoTopic.c_str());
         mPubLeftCamInfoRaw = create_publisher<sensor_msgs::msg::CameraInfo>(mLeftCamInfoRawTopic, camera_qos_profile);
-        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mLeftCamInfoRawTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mLeftCamInfoRawTopic.c_str());
         mPubRightCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mRightCamInfoTopic, camera_qos_profile);
-        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mRightCamInfoTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mRightCamInfoTopic.c_str());
         mPubRightCamInfoRaw = create_publisher<sensor_msgs::msg::CameraInfo>(mRightCamInfoRawTopic, camera_qos_profile);
-        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mRightCamInfoRawTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mRightCamInfoRawTopic.c_str());
         mPubDepthCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mDepthCamInfoTopic, camera_qos_profile);
-        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mDepthCamInfoTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mDepthCamInfoTopic.c_str());
         mPubConfidenceCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mConfidenceCamInfoTopic, camera_qos_profile);
-        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mConfidenceCamInfoTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mConfidenceCamInfoTopic.c_str());
         // <<<<< Create Camera Info publishers
 
 
@@ -330,10 +508,10 @@ namespace stereolabs {
         depth_qos_profile.depth = 2;
 
         mPubPointcloud = create_publisher<sensor_msgs::msg::PointCloud2>(mPointcloudTopic, depth_qos_profile);
-        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mPointcloudTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mPointcloudTopic.c_str());
 
         mPubDisparity = create_publisher<stereo_msgs::msg::DisparityImage>(mDispTopic, depth_qos_profile);
-        RCLCPP_INFO(get_logger(), "Publishing data on topic '%s'", mDispTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mDispTopic.c_str());
         // <<<<< Create Depth Publishers
     }
 
@@ -388,11 +566,15 @@ namespace stereolabs {
 
         // >>>>> ZED configuration
         if (!mSvoFilepath.empty()) {
+            RCLCPP_INFO(get_logger(), "*** SVO OPENING ***");
+
             mZedParams.svo_input_filename = mSvoFilepath.c_str();
             mZedParams.svo_real_time_mode = true;
             mSvoMode = true;
         } else {
-            mZedParams.camera_fps = mCamFrameRate;
+            RCLCPP_INFO(get_logger(), "*** CAMERA OPENING ***");
+
+            mZedParams.camera_fps = mZedFrameRate;
             mZedParams.camera_resolution = static_cast<sl::RESOLUTION>(mZedResol);
 
             if (mZedSerialNumber == 0) {
@@ -445,7 +627,7 @@ namespace stereolabs {
 
                 TIMER_ELAPSED
 
-                if (elapsed > mCamTimeoutMsec) {
+                if (elapsed > mZedTimeoutMsec) {
                     RCUTILS_LOG_WARN_NAMED(get_name(), "Camera detection timeout");
 
                     return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_ERROR;
@@ -478,7 +660,7 @@ namespace stereolabs {
 
             TIMER_ELAPSED
 
-            if (elapsed > mCamTimeoutMsec) {
+            if (elapsed > mZedTimeoutMsec) {
                 RCUTILS_LOG_WARN_NAMED(get_name(), "Camera detection timeout");
 
                 return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_ERROR;
@@ -709,12 +891,12 @@ namespace stereolabs {
 
         // >>>>> Grab parameters
         sl::RuntimeParameters runParams;
-        runParams.sensing_mode = static_cast<sl::SENSING_MODE>(mCamSensingMode);
+        runParams.sensing_mode = static_cast<sl::SENSING_MODE>(mZedSensingMode);
         runParams.enable_depth = false;
         runParams.enable_point_cloud = false;
         // <<<<< Grab parameters
 
-        rclcpp::Rate loop_rate(mCamFrameRate);
+        rclcpp::Rate loop_rate(mZedFrameRate);
 
         INIT_TIMER;
 
@@ -754,14 +936,14 @@ namespace stereolabs {
                 if (pubDepthData) {
                     int actual_confidence = mZed.getConfidenceThreshold();
 
-                    if (actual_confidence != mCamConfidence) {
-                        mZed.setConfidenceThreshold(mCamConfidence);
+                    if (actual_confidence != mZedConfidence) {
+                        mZed.setConfidenceThreshold(mZedConfidence);
                     }
 
                     double actual_max_depth = static_cast<double>(mZed.getDepthMaxRangeValue());
 
-                    if (actual_max_depth != mCamMaxDepth) {
-                        mZed.setDepthMaxRangeValue(static_cast<double>(mCamMaxDepth));
+                    if (actual_max_depth != mZedMaxDepth) {
+                        mZed.setDepthMaxRangeValue(static_cast<double>(mZedMaxDepth));
                     }
 
                     runParams.enable_depth = true; // Ask to compute the depth
@@ -828,9 +1010,9 @@ namespace stereolabs {
                 if (!loop_rate.sleep()) {
                     rateWarnCount++;
 
-                    if (rateWarnCount == mCamFrameRate) {
+                    if (rateWarnCount == mZedFrameRate) {
                         RCLCPP_WARN(get_logger(),  "Expected cycle time: %g sec  - Real cycle time: %g sec ",
-                                    1.0 / mCamFrameRate, elapsed / 1000.0);
+                                    1.0 / mZedFrameRate, elapsed / 1000.0);
                         RCLCPP_INFO(get_logger(),  "Elaboration takes longer than requested "
                                     "by the FPS rate. Please consider to "
                                     "lower the 'frame_rate' setting.");

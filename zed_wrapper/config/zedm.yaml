@@ -6,9 +6,9 @@ zed:
     zed_node:
         ros__parameters:
             general:
-                camera_model: 1 # `0`: ZED, `1`: ZEDM
+                camera_model: 1                 # `0`: ZED, `1`: ZEDM
             depth:
-                max_depth: 10 #Dynamic
+                max_depth: 10                   # Dynamic
             tracking:
                 imu_frame: 'zed_imu_link'
                 imu_topic: 'imu/data'
