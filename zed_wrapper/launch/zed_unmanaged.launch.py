@@ -3,6 +3,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch_ros.actions import Node
+from launch_ros.actions import LifecycleNode
 
 def generate_launch_description():
 
@@ -25,16 +26,22 @@ def generate_launch_description():
 
     return LaunchDescription([
         # Robot State Publisher
-        Node(package='robot_state_publisher', 
-             node_executable='robot_state_publisher',
-             output='screen', 
-             arguments=[urdf]),
-        
+        Node( package='robot_state_publisher',
+              node_executable='robot_state_publisher',
+              output='screen',
+              arguments=[urdf]
+            ),
+
         # ZED
-        Node(package='stereolabs_zed', 
-             node_executable='zed_wrapper_node',
-             output='screen', 
-             arguments=['__params:='+config_common, # Common parameters
-                        '__params:='+config_camera  # Camera related parameters
-                       ])
+        LifecycleNode( node_namespace='zed',        # must match the namespace in config -> YAML
+                       node_name='zed_node',        # must match the node name in config -> YAML
+                       package='stereolabs_zed',
+                       node_executable='zed_wrapper_node',
+                       output='screen',
+                       parameters=[ config_common,  # Common parameters
+                                    config_camera ] # Camera related parameters
+                       #arguments=[ '__params:='+config_common, # Common parameters
+                       #            '__params:='+config_camera,  # Camera related parameters
+                       #          ]
+                      ),
     ])

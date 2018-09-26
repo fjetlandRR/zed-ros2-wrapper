@@ -146,10 +146,8 @@ namespace stereolabs {
         paramName = "general.svo_file";
         if (get_parameter(paramName, paramVal)) {
             mSvoFilepath = paramVal.as_string();
-        } else {
-            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+            RCLCPP_INFO(get_logger(), " * SVO: `%s`", mSvoFilepath.c_str());
         }
-        RCLCPP_INFO(get_logger(), " * SVO: `%s`", mSvoFilepath.c_str());
 
         paramName = "general.camera_model";
         if (get_parameter(paramName, paramVal)) {
@@ -1359,7 +1357,7 @@ namespace stereolabs {
         std::unique_lock<std::mutex> lock(mPcMutex);
         while (!mThreadStop) {
 
-            RCLCPP_DEBUG(get_logger(), "pointcloudThreadFunc -> mPcDataReady value: %s", mPcDataReady ? "TRUE" : "FALSE");
+            //RCLCPP_DEBUG(get_logger(), "pointcloudThreadFunc -> mPcDataReady value: %s", mPcDataReady ? "TRUE" : "FALSE");
 
             while (!mPcDataReady) { // loop to avoid spurious wakeups
                 if (mPcDataReadyCondVar.wait_for(lock, std::chrono::milliseconds(500)) == std::cv_status::timeout) {
@@ -1367,7 +1365,7 @@ namespace stereolabs {
                     if (mThreadStop) {
                         break;
                     } else {
-                        RCLCPP_DEBUG(get_logger(), "pointcloudThreadFunc -> WAIT FOR CLOUD DATA");
+                        //RCLCPP_DEBUG(get_logger(), "pointcloudThreadFunc -> WAIT FOR CLOUD DATA");
                         continue;
                     }
                 }
@@ -1379,7 +1377,7 @@ namespace stereolabs {
 
         }
 
-        RCLCPP_DEBUG(get_logger(), "Pointcloud thread finished");
+        //RCLCPP_DEBUG(get_logger(), "Pointcloud thread finished");
     }
 }
 
