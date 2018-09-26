@@ -28,14 +28,17 @@ namespace stereolabs {
 
         if (res != RCUTILS_RET_OK) {
             RCLCPP_INFO(get_logger(), "Error setting DEBUG logger");
+        } else {
+            RCLCPP_INFO(get_logger(), "Debug Mode enabled");
         }
 #endif
-        RCLCPP_DEBUG(get_logger(), "[ROS2] Using RMW_IMPLEMENTATION = %s", rmw_get_implementation_identifier());
 
         RCLCPP_INFO(get_logger(), "ZED Camera Component created");
 
-        RCLCPP_DEBUG(get_logger(), "ZED node: %s", get_name());
-        RCLCPP_DEBUG(get_logger(), "ZED namespace: %s", get_namespace());
+        RCLCPP_INFO(get_logger(), "ZED namespace: '%s'", get_namespace());
+        RCLCPP_INFO(get_logger(), "ZED node: '%s'", get_name());
+
+        RCLCPP_DEBUG(get_logger(), "[ROS2] Using RMW_IMPLEMENTATION = %s", rmw_get_implementation_identifier());
 
         RCLCPP_INFO(get_logger(), "Waiting for `CONFIGURE` request...");
     }
@@ -65,6 +68,7 @@ namespace stereolabs {
 
         // >>>>> Verify that ZED is not opened
         if (mZed.isOpened()) {
+            std::lock_guard<std::mutex> lock(mCloseZedMutex);
             mZed.close();
             RCLCPP_INFO(get_logger(), "ZED Closed");
         }
@@ -222,6 +226,54 @@ namespace stereolabs {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
         }
         RCLCPP_INFO(get_logger(), " * GPU ID: %d", mGpuId);
+
+        paramName = "general.base_frame";
+        if (get_parameter(paramName, paramVal)) {
+            mBaseFrameId = paramVal.as_string();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * BASE frame: '%s'", mBaseFrameId.c_str());
+
+        paramName = "general.camera_frame";
+        if (get_parameter(paramName, paramVal)) {
+            mCameraFrameId = paramVal.as_string();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * CAMERA CENTER frame: '%s'", mCameraFrameId.c_str());
+
+        paramName = "general.left_camera_frame";
+        if (get_parameter(paramName, paramVal)) {
+            mLeftCamFrameId = paramVal.as_string();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * LEFT CAMERA frame: '%s'", mLeftCamFrameId.c_str());
+
+        paramName = "general.left_camera_optical_frame";
+        if (get_parameter(paramName, paramVal)) {
+            mLeftCamOptFrameId = paramVal.as_string();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * LEFT CAMERA OPTICAL frame: '%s'", mLeftCamOptFrameId.c_str());
+
+        paramName = "general.right_camera_frame";
+        if (get_parameter(paramName, paramVal)) {
+            mRightCamFrameId = paramVal.as_string();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * RIGHT CAMERA frame: '%s'", mRightCamFrameId.c_str());
+
+        paramName = "general.right_camera_optical_frame";
+        if (get_parameter(paramName, paramVal)) {
+            mRightCamOptFrameId = paramVal.as_string();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * RIGHT CAMERA OPTICAL frame: '%s'", mRightCamOptFrameId.c_str());
         // <<<<< GENERAL parameters
 
         // >>>>> VIDEO parameters
@@ -394,7 +446,38 @@ namespace stereolabs {
         // >>>>>> IMU parameters
         if (mZedUserCamModel == 1) {
             RCLCPP_INFO(get_logger(), "*** IMU parameters ***");
-            // TODO parse IMU parameters from zedm.yaml
+
+            paramName = "imu.imu_frame";
+            if (get_parameter(paramName, paramVal)) {
+                mImuFrameId = paramVal.as_string();
+            } else {
+                RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+            }
+            RCLCPP_INFO(get_logger(), " * IMU frame: '%s'", mImuFrameId.c_str());
+
+            paramName = "imu.imu_topic";
+            if (get_parameter(paramName, paramVal)) {
+                mImuTopic = paramVal.as_string();
+            } else {
+                RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+            }
+            RCLCPP_INFO(get_logger(), " * IMU topic: '%s'", mImuTopic.c_str());
+
+            paramName = "imu.imu_raw_topic";
+            if (get_parameter(paramName, paramVal)) {
+                mImuRawTopic = paramVal.as_string();
+            } else {
+                RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+            }
+            RCLCPP_INFO(get_logger(), " * IMU RAW topic: '%s'", mImuRawTopic.c_str());
+
+            paramName = "imu.imu_pub_rate";
+            if (get_parameter(paramName, paramVal)) {
+                mImuPubRate = paramVal.as_double();
+            } else {
+                RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+            }
+            RCLCPP_INFO(get_logger(), " * IMU rate: %g Hz", mImuPubRate);
         }
         // <<<<<< IMU parameters
 
@@ -499,7 +582,6 @@ namespace stereolabs {
         RCLCPP_INFO(get_logger(), " * '%s'", mConfidenceCamInfoTopic.c_str());
         // <<<<< Create Camera Info publishers
 
-
         // >>>>> Create Depth Publishers
         // https://github.com/ros2/ros2/wiki/About-Quality-of-Service-Settings
         rmw_qos_profile_t depth_qos_profile = rmw_qos_profile_sensor_data; // Default QOS profile
@@ -511,6 +593,20 @@ namespace stereolabs {
         mPubDisparity = create_publisher<stereo_msgs::msg::DisparityImage>(mDispTopic, depth_qos_profile);
         RCLCPP_INFO(get_logger(), " * '%s'", mDispTopic.c_str());
         // <<<<< Create Depth Publishers
+
+        // >>>>> Create IMU Publishers
+        if (mImuPubRate > 0 && mZedUserCamModel == 1) {
+            // https://github.com/ros2/ros2/wiki/About-Quality-of-Service-Settings
+            rmw_qos_profile_t imu_qos_profile = rmw_qos_profile_sensor_data; // Default QOS profile
+            imu_qos_profile.depth = 2;
+
+            mPubImu = create_publisher<sensor_msgs::msg::Imu>(mImuTopic, imu_qos_profile);
+            RCLCPP_INFO(get_logger(), " * '%s'", mImuTopic.c_str());
+
+            mPubImuRaw = create_publisher<sensor_msgs::msg::Imu>(mImuRawTopic, imu_qos_profile);
+            RCLCPP_INFO(get_logger(), " * '%s'", mImuRawTopic.c_str());
+        }
+        // <<<<< Create IMU Publishers
     }
 
     rcl_lifecycle_transition_key_t ZedCameraComponent::on_configure(const rclcpp_lifecycle::State&) {
@@ -521,6 +617,8 @@ namespace stereolabs {
         RCLCPP_DEBUG(get_logger(), "on_configure() is called.");
 
         // >>>>> Check SDK version
+        RCLCPP_INFO(get_logger(), "SDK Version: %d.%d.%d - Build %d", ZED_SDK_MAJOR_VERSION, ZED_SDK_MINOR_VERSION,
+                    ZED_SDK_PATCH_VERSION, ZED_SDK_BUILD_ID);
 #if (ZED_SDK_MAJOR_VERSION<2 || (ZED_SDK_MAJOR_VERSION==2 && ZED_SDK_MINOR_VERSION<5))
         RCLCPP_ERROR(get_logger(), "ROS2 ZED node requires ZED SDK > v2.5.0");
 
@@ -533,17 +631,8 @@ namespace stereolabs {
         // <<<<< Load params from param server
 
         // >>>>> Frame IDs
-        mRightCamFrameId = "zed_right_camera_frame";
-        mRightCamOptFrameId = "zed_right_camera_optical_frame";
-        mLeftCamFrameId = "zed_left_camera_frame";
-        mLeftCamOptFrameId = "zed_left_camera_optical_frame";
-
         mDepthFrameId = mLeftCamFrameId;
         mDepthOptFrameId = mLeftCamOptFrameId;
-
-        mBaseFrameId = "base_link";
-        mCameraFrameId = "zed_camera_center";
-        mImuFrameId = "zed_imu_link";
         // <<<<< Frame IDs
 
         // >>>>> Create camera info
@@ -558,6 +647,11 @@ namespace stereolabs {
 
         // Create pointcloud message
         mPointcloudMsg = std::make_shared<sensor_msgs::msg::PointCloud2>();
+
+        // >>>>> Create IMU messages
+        mImuMsg = std::make_shared<sensor_msgs::msg::Imu>();
+        mImuMsgRaw = std::make_shared<sensor_msgs::msg::Imu>();
+        // <<<<< Create IMU messages
 
         // Initialize Message Publishers
         initPublishers();
@@ -767,6 +861,11 @@ namespace stereolabs {
         mPubDisparity->on_activate();
 
         mPubPointcloud->on_activate();
+
+        if (mImuPubRate > 0 && mZedRealCamModel == sl::MODEL_ZED_M) {
+            mPubImu->on_activate();
+            mPubImuRaw->on_activate();
+        }
         // <<<<< Publishers activation
 
         // >>>>> Start Pointcloud thread
@@ -779,6 +878,15 @@ namespace stereolabs {
         mThreadStop = false;
         mGrabThread = std::thread(&ZedCameraComponent::zedGrabThreadFunc, this);
         // <<<<< Start ZED thread
+
+        // >>>>> Start IMU timer
+        if (mImuPubRate > 0 && mZedRealCamModel == sl::MODEL_ZED_M) {
+            std::chrono::milliseconds imuPeriodMsec(static_cast<int>(1000.0 / mImuPubRate));
+
+            mImuTimer = create_wall_timer(std::chrono::duration_cast<std::chrono::nanoseconds>(imuPeriodMsec),
+                                          std::bind(&ZedCameraComponent::imuPubCallback, this));
+        }
+        // <<<<< Start IMU timer
 
         // We return a success and hence invoke the transition to the next
         // step: "active".
@@ -795,6 +903,12 @@ namespace stereolabs {
         mPrevTransition = lifecycle_msgs::msg::Transition::TRANSITION_DEACTIVATE;
 
         RCLCPP_DEBUG(get_logger(), "on_deactivate() is called.");
+
+        // >>>>> Stop IMU timer
+        if (mImuTimer) {
+            mImuTimer->cancel();
+        }
+        // <<<<< Stop IMU timer
 
         // >>>>> Verify that all the threads are not active
         try {
@@ -835,6 +949,11 @@ namespace stereolabs {
         mPubDisparity->on_deactivate();
 
         mPubPointcloud->on_deactivate();
+
+        if (mImuPubRate > 0 && mZedRealCamModel == sl::MODEL_ZED_M) {
+            mPubImu->on_deactivate();
+            mPubImuRaw->on_deactivate();
+        }
         // <<<<< Publishers deactivation
 
         // We return a success and hence invoke the transition to the next
@@ -855,6 +974,7 @@ namespace stereolabs {
 
         // >>>>> Close ZED if opened
         if (mZed.isOpened()) {
+            std::lock_guard<std::mutex> lock(mCloseZedMutex);
             mZed.close();
             RCLCPP_INFO(get_logger(), "ZED closed");
         }
@@ -927,10 +1047,10 @@ namespace stereolabs {
             bool pubImages = ((rgbSub + rgbRawSub + leftSub + leftRawSub + rightSub + rightRawSub) > 0);
             bool pubDepthData = ((depthSub + confImgSub + confMapSub + dispSub + cloudSub) > 0);
 
-            bool runLoop = pubImages | pubDepthData;
+            mRunGrabLoop = pubImages | pubDepthData;
             //<<<<< Subscribers check
 
-            if (runLoop) {
+            if (mRunGrabLoop) {
                 if (pubDepthData) {
                     int actual_confidence = mZed.getConfidenceThreshold();
 
@@ -1378,6 +1498,139 @@ namespace stereolabs {
         }
 
         //RCLCPP_DEBUG(get_logger(), "Pointcloud thread finished");
+    }
+
+    void ZedCameraComponent::imuPubCallback() {
+
+        std::lock_guard<std::mutex> lock(mCloseZedMutex);
+        if (!mZed.isOpened()) {
+            return;
+        }
+
+        uint32_t imu_SubNumber = count_subscribers(mImuTopic);
+        uint32_t imu_RawSubNumber = count_subscribers(mImuRawTopic);
+
+        if (imu_SubNumber < 1 && imu_RawSubNumber < 1) {
+            return;
+        }
+
+        rclcpp::Time t;
+        if (mSvoMode || !mRunGrabLoop) {
+            t = now();
+        } else {
+            t = mLastGrabTimestamp;
+        }
+
+        sl::IMUData imu_data;
+        mZed.getIMUData(imu_data, sl::TIME_REFERENCE_CURRENT);
+
+        if (imu_SubNumber > 0) {
+            sensor_msgs::msg::Imu imu_msg;
+            imu_msg.header.stamp = t;
+            imu_msg.header.frame_id = mCameraFrameId; // TODO Replace with 'mImuFrameId' when the tracking is available
+            imu_msg.orientation.x = imu_data.getOrientation()[0];
+            imu_msg.orientation.y = imu_data.getOrientation()[1];
+            imu_msg.orientation.z = imu_data.getOrientation()[2];
+            imu_msg.orientation.w = imu_data.getOrientation()[3];
+            imu_msg.angular_velocity.x = imu_data.angular_velocity[0];
+            imu_msg.angular_velocity.y = imu_data.angular_velocity[1];
+            imu_msg.angular_velocity.z = imu_data.angular_velocity[2];
+            imu_msg.linear_acceleration.x = imu_data.linear_acceleration[0];
+            imu_msg.linear_acceleration.y = imu_data.linear_acceleration[1];
+            imu_msg.linear_acceleration.z = imu_data.linear_acceleration[2];
+
+            //            for (int i = 0; i < 3; i += 3) {
+            //                imu_msg.orientation_covariance[i * 3 + 0] = imu_data.orientation_covariance.r[i * 3 + 0];
+            //                imu_msg.orientation_covariance[i * 3 + 1] = imu_data.orientation_covariance.r[i * 3 + 1];
+            //                imu_msg.orientation_covariance[i * 3 + 2] = imu_data.orientation_covariance.r[i * 3 + 2];
+            //                imu_msg.linear_acceleration_covariance[i * 3 + 0] = imu_data.linear_acceleration_convariance.r[i * 3 + 0];
+            //                imu_msg.linear_acceleration_covariance[i * 3 + 1] = imu_data.linear_acceleration_convariance.r[i * 3 + 1];
+            //                imu_msg.linear_acceleration_covariance[i * 3 + 2] = imu_data.linear_acceleration_convariance.r[i * 3 + 2];
+            //                imu_msg.angular_velocity_covariance[i * 3 + 0] = imu_data.angular_velocity_convariance.r[i * 3 + 0];
+            //                imu_msg.angular_velocity_covariance[i * 3 + 1] = imu_data.angular_velocity_convariance.r[i * 3 + 1];
+            //                imu_msg.angular_velocity_covariance[i * 3 + 2] = imu_data.angular_velocity_convariance.r[i * 3 + 2];
+            //            }
+
+            for (int i = 0; i < 9; i++) {
+                imu_msg.orientation_covariance[i] = imu_data.orientation_covariance.r[i];
+                imu_msg.linear_acceleration_covariance[i] = imu_data.linear_acceleration_convariance.r[i];
+                imu_msg.angular_velocity_covariance[i] = imu_data.angular_velocity_convariance.r[i];
+            }
+
+            mPubImu->publish(imu_msg);
+        }
+
+        if (imu_RawSubNumber > 0) {
+            sensor_msgs::msg::Imu imu_raw_msg;
+            imu_raw_msg.header.stamp = t;
+            imu_raw_msg.header.frame_id = mImuFrameId;
+            imu_raw_msg.angular_velocity.x = imu_data.angular_velocity[0];
+            imu_raw_msg.angular_velocity.y = imu_data.angular_velocity[1];
+            imu_raw_msg.angular_velocity.z = imu_data.angular_velocity[2];
+            imu_raw_msg.linear_acceleration.x = imu_data.linear_acceleration[0];
+            imu_raw_msg.linear_acceleration.y = imu_data.linear_acceleration[1];
+            imu_raw_msg.linear_acceleration.z = imu_data.linear_acceleration[2];
+
+            //            for (int i = 0; i < 3; i += 3) {
+            //                imu_raw_msg.linear_acceleration_covariance[i * 3 + 0] = imu_data.linear_acceleration_convariance.r[i * 3 + 0];
+            //                imu_raw_msg.linear_acceleration_covariance[i * 3 + 1] = imu_data.linear_acceleration_convariance.r[i * 3 + 1];
+            //                imu_raw_msg.linear_acceleration_covariance[i * 3 + 2] = imu_data.linear_acceleration_convariance.r[i * 3 + 2];
+            //                imu_raw_msg.angular_velocity_covariance[i * 3 + 0] = imu_data.angular_velocity_convariance.r[i * 3 + 0];
+            //                imu_raw_msg.angular_velocity_covariance[i * 3 + 1] = imu_data.angular_velocity_convariance.r[i * 3 + 1];
+            //                imu_raw_msg.angular_velocity_covariance[i * 3 + 2] = imu_data.angular_velocity_convariance.r[i * 3 + 2];
+            //            }
+
+            for (int i = 0; i < 9; i++) {
+                imu_raw_msg.linear_acceleration_covariance[i] = imu_data.linear_acceleration_convariance.r[i];
+                imu_raw_msg.angular_velocity_covariance[i] = imu_data.angular_velocity_convariance.r[i];
+            }
+
+            imu_raw_msg.orientation_covariance[0] = -1; // Orientation data is not available in "data_raw" -> See ROS REP145
+            // http://www.ros.org/reps/rep-0145.html#topics
+            mPubImuRaw->publish(imu_raw_msg);
+        }
+
+        // Publish IMU tf only if enabled
+        //        if (mPublishTf) {
+        //            // Camera to pose transform from TF buffer
+        //            tf2::Transform cam_to_pose;
+
+        //            std::string poseFrame;
+        //            // Look up the transformation from base frame to map link
+        //            try {
+        //                poseFrame = mPublishMapTf ? mMapFrameId : mOdometryFrameId;
+
+        //                // Save the transformation from base to frame
+        //                geometry_msgs::TransformStamped c2p =
+        //                    mTfBuffer->lookupTransform(poseFrame, mCameraFrameId, ros::Time(0));
+        //                // Get the TF2 transformation
+        //                tf2::fromMsg(c2p.transform, cam_to_pose);
+        //            } catch (tf2::TransformException& ex) {
+        //                NODELET_WARN_THROTTLE(
+        //                    10.0, "The tf from '%s' to '%s' does not seem to be available. "
+        //                    "IMU TF not published!",
+        //                    mCameraFrameId.c_str(), mMapFrameId.c_str());
+        //                NODELET_DEBUG_THROTTLE(1.0, "Transform error: %s", ex.what());
+        //                return;
+        //            }
+
+        //            // IMU Quaternion in Map frame
+        //            tf2::Quaternion imu_q;
+        //            imu_q.setX(mSignX * imu_data.getOrientation()[mIdxX]);
+        //            imu_q.setY(mSignY * imu_data.getOrientation()[mIdxY]);
+        //            imu_q.setZ(mSignZ * imu_data.getOrientation()[mIdxZ]);
+        //            imu_q.setW(imu_data.getOrientation()[3]);
+        //            // Pose Quaternion from ZED Camera
+        //            tf2::Quaternion map_q = cam_to_pose.getRotation();
+        //            // Difference between IMU and ZED Quaternion
+        //            tf2::Quaternion delta_q = imu_q * map_q.inverse();
+        //            tf2::Transform imu_pose;
+        //            imu_pose.setIdentity();
+        //            imu_pose.setRotation(delta_q);
+        //            // Note, the frame is published, but its values will only change if someone
+        //            // has subscribed to IMU
+        //            publishImuFrame(imu_pose, mFrameTimestamp); // publish the imu Frame
+        //        }
     }
 }
 

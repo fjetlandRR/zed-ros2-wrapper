@@ -22,7 +22,9 @@
 #include "sensor_msgs/msg/image.hpp"
 #include "sensor_msgs/msg/camera_info.hpp"
 #include "sensor_msgs/msg/point_cloud2.hpp"
+#include "sensor_msgs/msg/imu.hpp"
 #include "stereo_msgs/msg/disparity_image.hpp"
+
 
 #include "sl/Camera.hpp"
 
@@ -35,8 +37,11 @@ namespace stereolabs {
 
     typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::PointCloud2>> pointcloudPub;
 
+    typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::Imu>> imuPub;
+
     typedef std::shared_ptr<sensor_msgs::msg::CameraInfo> camInfoMsgPtr;
     typedef std::shared_ptr<sensor_msgs::msg::PointCloud2> pointcloudMsgPtr;
+    typedef std::shared_ptr<sensor_msgs::msg::Imu> imuMsgPtr;
     // <<<<< Typedefs to simplify declarations
 
     /// ZedCameraComponent inheriting from rclcpp_lifecycle::LifecycleNode
@@ -195,6 +200,11 @@ namespace stereolabs {
          */
         void publishPointCloud();
 
+        /* \brief Callback to publish IMU raw data with a ROS publisher.
+         * \param e : the ros::TimerEvent binded to the callback
+         */
+        void imuPubCallback();
+
       private:
         // Status variables
         rcl_lifecycle_transition_key_t mPrevTransition = lifecycle_msgs::msg::Transition::TRANSITION_CREATE;
@@ -206,10 +216,14 @@ namespace stereolabs {
         // Grab thread
         std::thread mGrabThread;
         bool mThreadStop = false;
+        bool mRunGrabLoop = false;
         int mZedTimeoutMsec = 5000; // Error generated if camera is not available after timeout
 
         // Pointcloud thread
         std::thread mPcThread; // Point Cloud thread
+
+        // IMU Timer
+        rclcpp::TimerBase::SharedPtr mImuTimer = nullptr;
 
         // ZED SDK
         sl::Camera mZed;
@@ -232,6 +246,8 @@ namespace stereolabs {
         int mZedSensingMode = 0; // Default Sensing mode: SENSING_MODE_STANDARD
         bool mOpenniDepthMode = false; // 16 bit UC data in mm else 32F in m,
         // for more info -> http://www.ros.org/reps/rep-0118.html
+
+        double mImuPubRate = 500.0;
 
         // ZED dynamic params
         double mZedMatResizeFactor = 1.0; // Dynamic...
@@ -265,6 +281,9 @@ namespace stereolabs {
 
         pointcloudPub mPubPointcloud;
 
+        imuPub mPubImu;
+        imuPub mPubImuRaw;
+
         // Topics
         std::string mLeftTopic;
         std::string mLeftRawTopic;
@@ -285,6 +304,8 @@ namespace stereolabs {
         std::string mConfidenceCamInfoTopic;
         std::string mDispTopic;
         std::string mPointcloudTopic;
+        std::string mImuTopic;
+        std::string mImuRawTopic;
 
         // Messages
         // Camera info
@@ -298,18 +319,22 @@ namespace stereolabs {
         camInfoMsgPtr mConfidenceCamInfoMsg;
         // Pointcloud
         pointcloudMsgPtr mPointcloudMsg;
+        // IMU
+        imuMsgPtr mImuMsg;
+        imuMsgPtr mImuMsgRaw;
 
         // Frame IDs
-        std::string mRightCamFrameId;
-        std::string mRightCamOptFrameId;
-        std::string mLeftCamFrameId;
-        std::string mLeftCamOptFrameId;
+        std::string mRightCamFrameId = "zed_right_camera_frame";
+        std::string mRightCamOptFrameId = "zed_right_camera_optical_frame";
+        std::string mLeftCamFrameId = "zed_left_camera_frame";
+        std::string mLeftCamOptFrameId = "zed_left_camera_optical_frame";
         std::string mDepthFrameId;
         std::string mDepthOptFrameId;
 
-        std::string mBaseFrameId;
-        std::string mCameraFrameId;
-        std::string mImuFrameId;
+        std::string mBaseFrameId = "base_link";
+        std::string mCameraFrameId = "zed_camera_center";
+
+        std::string mImuFrameId = "zed_imu_link";
 
         // SL Pointcloud
         sl::Mat mCloud;
@@ -321,6 +346,7 @@ namespace stereolabs {
         int mMatHeight; // Data height (mCamHeight*mZedMatResizeFactor)
 
         // Thread Sync
+        std::mutex mCloseZedMutex;
         std::mutex mCamDataMutex;
         std::mutex mPcMutex;
         std::condition_variable mPcDataReadyCondVar;

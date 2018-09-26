@@ -19,6 +19,12 @@ zed:
                 mat_resize_factor: 1.0                                          # Dynamic
                 frame_rate: 30
                 gpu_id: -1
+                base_frame: 'base_link'                                         # must be equal to the frame_id used in the URDF file
+                camera_frame: 'zed_camera_center'                               # must be equal to the frame_id used in the URDF file
+                left_camera_frame: 'zed_left_camera_frame'                      # must be equal to the frame_id used in the URDF file
+                left_camera_optical_frame: 'zed_left_camera_optical_frame'      # must be equal to the frame_id used in the URDF file
+                right_camera_frame: 'zed_right_camera_frame'                    # must be equal to the frame_id used in the URDF file
+                right_camera_optical_frame: 'zed_right_camera_optical_frame'    # must be equal to the frame_id used in the URDF file
             video:
                 auto_exposure: true                                             # Dynamic
                 exposure: 80                                                    # Dynamic
@@ -44,13 +50,8 @@ zed:
                 publish_tf: true
                 publish_map_tf: true
                 pose_frame: 'map'
-                odometry_frame: 'odom'
-                base_frame: 'zed_camera_center'                                 # must be equal to the frame_id used in the URDF file
-                left_camera_frame: 'zed_left_camera_frame'                      # must be equal to the frame_id used in the URDF file
-                left_camera_optical_frame: 'zed_left_camera_optical_frame'      # must be equal to the frame_id used in the URDF file
-                right_camera_frame: 'zed_right_camera_frame'                    # must be equal to the frame_id used in the URDF file
-                right_camera_optical_frame: 'zed_right_camera_optical_frame'    # must be equal to the frame_id used in the URDF file
-                odometry_db: '""'                
+                odometry_frame: 'odom'                
+                # odometry_db: 'odometry_db_path'
                 pose_smoothing: 0                                               # `0`: disabled, `1`: enabled
                 spatial_memory: false
                 floor_alignment: true

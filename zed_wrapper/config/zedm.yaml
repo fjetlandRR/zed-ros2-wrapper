@@ -9,7 +9,7 @@ zed:
                 camera_model: 1                 # `0`: ZED, `1`: ZEDM
             depth:
                 max_depth: 10                   # Dynamic
-            tracking:
+            imu:
                 imu_frame: 'zed_imu_link'
                 imu_topic: 'imu/data'
                 imu_raw_topic: 'imu/data_raw'
