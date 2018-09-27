@@ -11,37 +11,35 @@ def generate_launch_description():
     camera_model = 'zedm' 
 
     # URDF file to be loaded by Robot State Publisher
-    urdf = os.path.join(get_package_share_directory('stereolabs_zed'),
-                        'urdf', camera_model + '.urdf')
+    urdf = os.path.join(get_package_share_directory('stereolabs_zed'), 'urdf', camera_model + '.urdf')
     
     # ZED Configurations to be loaded by ZED Node
-    config_common = os.path.join(get_package_share_directory('stereolabs_zed'),
-                        'config', 'common.yaml')
+    config_common = os.path.join(get_package_share_directory('stereolabs_zed'), 'config', 'common.yaml')
 
-    config_camera = os.path.join(get_package_share_directory('stereolabs_zed'),
-                        'config', camera_model + '.yaml')
+    config_camera = os.path.join(get_package_share_directory('stereolabs_zed'), 'config', camera_model + '.yaml')
 
     # Set LOG format
     os.environ['RCUTILS_CONSOLE_OUTPUT_FORMAT'] = '{time}: [{name}] [{severity}]\t{message}'
 
-    return LaunchDescription([
+    return LaunchDescription( [
         # Robot State Publisher
-        Node( package='robot_state_publisher',
-              node_executable='robot_state_publisher',
-              output='screen',
-              arguments=[urdf]
-            ),
+        Node(
+            package='robot_state_publisher',
+            node_executable='robot_state_publisher',
+            output='screen',
+            arguments=[urdf],
+        ),
 
         # ZED
-        LifecycleNode( node_namespace='zed',        # must match the namespace in config -> YAML
-                       node_name='zed_node',        # must match the node name in config -> YAML
-                       package='stereolabs_zed',
-                       node_executable='zed_wrapper_node',
-                       output='screen',
-                       parameters=[ config_common,  # Common parameters
-                                    config_camera ] # Camera related parameters
-                       #arguments=[ '__params:='+config_common, # Common parameters
-                       #            '__params:='+config_camera,  # Camera related parameters
-                       #          ]
-                      ),
+        LifecycleNode(
+            node_namespace='zed',        # must match the namespace in config -> YAML
+            node_name='zed_node',        # must match the node name in config -> YAML
+            package='stereolabs_zed',
+            node_executable='zed_wrapper_node',
+            output='screen',
+            parameters=[
+                config_common,  # Common parameters
+                config_camera,  # Camera related parameters
+            ],
+        ),
     ])

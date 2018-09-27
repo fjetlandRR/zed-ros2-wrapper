@@ -870,7 +870,7 @@ namespace stereolabs {
 
         // >>>>> Start Pointcloud thread
         mPcDataReady = false;
-        RCLCPP_DEBUG(get_logger(), "on_activate -> mPcDataReady FALSE")
+        //RCLCPP_DEBUG(get_logger(), "on_activate -> mPcDataReady FALSE")
         mPcThread = std::thread(&ZedCameraComponent::pointcloudThreadFunc, this);
         // <<<<< Start Pointcloud thread
 
@@ -1282,7 +1282,7 @@ namespace stereolabs {
 
                 // Signal Pointcloud thread that a new pointcloud is ready
                 mPcDataReady = true;
-                RCLCPP_DEBUG(get_logger(), "publishDepthData -> mPcDataReady TRUE")
+                //RCLCPP_DEBUG(get_logger(), "publishDepthData -> mPcDataReady TRUE")
 
                 mPcDataReadyCondVar.notify_one();
             }
@@ -1493,7 +1493,7 @@ namespace stereolabs {
 
             publishPointCloud();
             mPcDataReady = false;
-            RCLCPP_DEBUG(get_logger(), "pointcloudThreadFunc -> mPcDataReady FALSE")
+            //RCLCPP_DEBUG(get_logger(), "pointcloudThreadFunc -> mPcDataReady FALSE")
 
         }
 
@@ -1538,19 +1538,7 @@ namespace stereolabs {
             imu_msg.linear_acceleration.x = imu_data.linear_acceleration[0];
             imu_msg.linear_acceleration.y = imu_data.linear_acceleration[1];
             imu_msg.linear_acceleration.z = imu_data.linear_acceleration[2];
-
-            //            for (int i = 0; i < 3; i += 3) {
-            //                imu_msg.orientation_covariance[i * 3 + 0] = imu_data.orientation_covariance.r[i * 3 + 0];
-            //                imu_msg.orientation_covariance[i * 3 + 1] = imu_data.orientation_covariance.r[i * 3 + 1];
-            //                imu_msg.orientation_covariance[i * 3 + 2] = imu_data.orientation_covariance.r[i * 3 + 2];
-            //                imu_msg.linear_acceleration_covariance[i * 3 + 0] = imu_data.linear_acceleration_convariance.r[i * 3 + 0];
-            //                imu_msg.linear_acceleration_covariance[i * 3 + 1] = imu_data.linear_acceleration_convariance.r[i * 3 + 1];
-            //                imu_msg.linear_acceleration_covariance[i * 3 + 2] = imu_data.linear_acceleration_convariance.r[i * 3 + 2];
-            //                imu_msg.angular_velocity_covariance[i * 3 + 0] = imu_data.angular_velocity_convariance.r[i * 3 + 0];
-            //                imu_msg.angular_velocity_covariance[i * 3 + 1] = imu_data.angular_velocity_convariance.r[i * 3 + 1];
-            //                imu_msg.angular_velocity_covariance[i * 3 + 2] = imu_data.angular_velocity_convariance.r[i * 3 + 2];
-            //            }
-
+            
             for (int i = 0; i < 9; i++) {
                 imu_msg.orientation_covariance[i] = imu_data.orientation_covariance.r[i];
                 imu_msg.linear_acceleration_covariance[i] = imu_data.linear_acceleration_convariance.r[i];
@@ -1570,16 +1558,7 @@ namespace stereolabs {
             imu_raw_msg.linear_acceleration.x = imu_data.linear_acceleration[0];
             imu_raw_msg.linear_acceleration.y = imu_data.linear_acceleration[1];
             imu_raw_msg.linear_acceleration.z = imu_data.linear_acceleration[2];
-
-            //            for (int i = 0; i < 3; i += 3) {
-            //                imu_raw_msg.linear_acceleration_covariance[i * 3 + 0] = imu_data.linear_acceleration_convariance.r[i * 3 + 0];
-            //                imu_raw_msg.linear_acceleration_covariance[i * 3 + 1] = imu_data.linear_acceleration_convariance.r[i * 3 + 1];
-            //                imu_raw_msg.linear_acceleration_covariance[i * 3 + 2] = imu_data.linear_acceleration_convariance.r[i * 3 + 2];
-            //                imu_raw_msg.angular_velocity_covariance[i * 3 + 0] = imu_data.angular_velocity_convariance.r[i * 3 + 0];
-            //                imu_raw_msg.angular_velocity_covariance[i * 3 + 1] = imu_data.angular_velocity_convariance.r[i * 3 + 1];
-            //                imu_raw_msg.angular_velocity_covariance[i * 3 + 2] = imu_data.angular_velocity_convariance.r[i * 3 + 2];
-            //            }
-
+            
             for (int i = 0; i < 9; i++) {
                 imu_raw_msg.linear_acceleration_covariance[i] = imu_data.linear_acceleration_convariance.r[i];
                 imu_raw_msg.angular_velocity_covariance[i] = imu_data.angular_velocity_convariance.r[i];
