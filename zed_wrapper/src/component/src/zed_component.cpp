@@ -17,6 +17,10 @@ using namespace std::chrono_literals;
 
 namespace stereolabs {
 
+#ifndef DEG2RAD
+#define DEG2RAD 0.017453293
+#endif
+
     ZedCameraComponent::ZedCameraComponent(const std::string& node_name, const std::string& ros_namespace,
                                            bool intra_process_comms)
         : rclcpp_lifecycle::LifecycleNode(node_name, ros_namespace, intra_process_comms) {
@@ -41,6 +45,8 @@ namespace stereolabs {
         RCLCPP_DEBUG(get_logger(), "[ROS2] Using RMW_IMPLEMENTATION = %s", rmw_get_implementation_identifier());
 
         RCLCPP_INFO(get_logger(), "Waiting for `CONFIGURE` request...");
+
+
     }
 
     rcl_lifecycle_transition_key_t ZedCameraComponent::on_shutdown(const rclcpp_lifecycle::State& previous_state) {
@@ -1532,9 +1538,9 @@ namespace stereolabs {
             imu_msg.orientation.y = imu_data.getOrientation()[1];
             imu_msg.orientation.z = imu_data.getOrientation()[2];
             imu_msg.orientation.w = imu_data.getOrientation()[3];
-            imu_msg.angular_velocity.x = imu_data.angular_velocity[0];
-            imu_msg.angular_velocity.y = imu_data.angular_velocity[1];
-            imu_msg.angular_velocity.z = imu_data.angular_velocity[2];
+            imu_msg.angular_velocity.x = imu_data.angular_velocity[0] * DEG2RAD;
+            imu_msg.angular_velocity.y = imu_data.angular_velocity[1] * DEG2RAD;
+            imu_msg.angular_velocity.z = imu_data.angular_velocity[2] * DEG2RAD;
             imu_msg.linear_acceleration.x = imu_data.linear_acceleration[0];
             imu_msg.linear_acceleration.y = imu_data.linear_acceleration[1];
             imu_msg.linear_acceleration.z = imu_data.linear_acceleration[2];
@@ -1552,9 +1558,9 @@ namespace stereolabs {
             sensor_msgs::msg::Imu imu_raw_msg;
             imu_raw_msg.header.stamp = t;
             imu_raw_msg.header.frame_id = mImuFrameId;
-            imu_raw_msg.angular_velocity.x = imu_data.angular_velocity[0];
-            imu_raw_msg.angular_velocity.y = imu_data.angular_velocity[1];
-            imu_raw_msg.angular_velocity.z = imu_data.angular_velocity[2];
+            imu_raw_msg.angular_velocity.x = imu_data.angular_velocity[0] * DEG2RAD;
+            imu_raw_msg.angular_velocity.y = imu_data.angular_velocity[1] * DEG2RAD;
+            imu_raw_msg.angular_velocity.z = imu_data.angular_velocity[2] * DEG2RAD;
             imu_raw_msg.linear_acceleration.x = imu_data.linear_acceleration[0];
             imu_raw_msg.linear_acceleration.y = imu_data.linear_acceleration[1];
             imu_raw_msg.linear_acceleration.z = imu_data.linear_acceleration[2];

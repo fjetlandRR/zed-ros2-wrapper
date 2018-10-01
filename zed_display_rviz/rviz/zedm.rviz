@@ -8,7 +8,8 @@ Panels:
         - /RobotModel1
         - /TF1/Frames1
         - /Video1
-        - /Video1/Camera1/Visibility1
+        - /Video1/Camera1
+        - /Video1/Camera1/Status1
         - /Depth1
       Splitter Ratio: 0.5
     Tree Height: 421
@@ -43,7 +44,7 @@ Visualization Manager:
       Collision Enabled: false
       Description File: /home/walter/devel/ros2_ws/src/zed-ros2-wrapper/zed_wrapper/urdf/zedm.urdf
       Description Source: Topic
-      Description Topic: /robot_description
+      Description Topic: zed_description
       Enabled: true
       Links:
         All Links Enabled: true
@@ -109,7 +110,7 @@ Visualization Manager:
               Value: false
             Grid: true
             RobotModel: false
-            TF: false
+            TF: true
             Value: true
             Video:
               Left Rect: true
@@ -227,7 +228,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 0.940021932
+      Distance: 1.58105087
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
@@ -242,10 +243,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.285398185
+      Pitch: 0.28039822
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 2.20040536
+      Yaw: 2.41540527
     Saved: ~
 Window Geometry:
   Camera:
