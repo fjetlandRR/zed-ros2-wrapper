@@ -45,8 +45,6 @@ namespace stereolabs {
         RCLCPP_DEBUG(get_logger(), "[ROS2] Using RMW_IMPLEMENTATION = %s", rmw_get_implementation_identifier());
 
         RCLCPP_INFO(get_logger(), "Waiting for `CONFIGURE` request...");
-
-
     }
 
     rcl_lifecycle_transition_key_t ZedCameraComponent::on_shutdown(const rclcpp_lifecycle::State& previous_state) {
@@ -74,7 +72,7 @@ namespace stereolabs {
 
         // >>>>> Verify that ZED is not opened
         if (mZed.isOpened()) {
-            std::lock_guard<std::mutex> lock(mCloseZedMutex);
+            std::lock_guard<std::mutex> lock(mImuMutex);
             mZed.close();
             RCLCPP_INFO(get_logger(), "ZED Closed");
         }
@@ -920,11 +918,11 @@ namespace stereolabs {
         try {
             if (!mThreadStop) {
                 mThreadStop = true;
-                if (mGrabThread.joinable()) {
-                    mGrabThread.join();
-                }
                 if (mPcThread.joinable()) {
                     mPcThread.join();
+                }
+                if (mGrabThread.joinable()) {
+                    mGrabThread.join();
                 }
             }
         } catch (std::system_error& e) {
@@ -980,7 +978,7 @@ namespace stereolabs {
 
         // >>>>> Close ZED if opened
         if (mZed.isOpened()) {
-            std::lock_guard<std::mutex> lock(mCloseZedMutex);
+            std::lock_guard<std::mutex> lock(mImuMutex);
             mZed.close();
             RCLCPP_INFO(get_logger(), "ZED closed");
         }
@@ -1467,13 +1465,7 @@ namespace stereolabs {
         // Data copy
         float* ptCloudPtr = (float*)(&mPointcloudMsg->data[0]);
 
-        #pragma omp parallel for
-        for (size_t i = 0; i < ptsCount; ++i) {
-            ptCloudPtr[i * 4 + 0] = cpu_cloud[i][0];
-            ptCloudPtr[i * 4 + 1] = cpu_cloud[i][1];
-            ptCloudPtr[i * 4 + 2] = cpu_cloud[i][2];
-            ptCloudPtr[i * 4 + 3] = cpu_cloud[i][3];
-        }
+        memcpy(ptCloudPtr, (float*)cpu_cloud, ptsCount * 4 * sizeof(float));
 
         // Pointcloud publishing
         mPubPointcloud->publish(mPointcloudMsg);
@@ -1489,7 +1481,7 @@ namespace stereolabs {
                 if (mPcDataReadyCondVar.wait_for(lock, std::chrono::milliseconds(500)) == std::cv_status::timeout) {
                     // Check thread stopping
                     if (mThreadStop) {
-                        break;
+                        return;
                     } else {
                         //RCLCPP_DEBUG(get_logger(), "pointcloudThreadFunc -> WAIT FOR CLOUD DATA");
                         continue;
@@ -1500,7 +1492,6 @@ namespace stereolabs {
             publishPointCloud();
             mPcDataReady = false;
             //RCLCPP_DEBUG(get_logger(), "pointcloudThreadFunc -> mPcDataReady FALSE")
-
         }
 
         //RCLCPP_DEBUG(get_logger(), "Pointcloud thread finished");
@@ -1508,7 +1499,7 @@ namespace stereolabs {
 
     void ZedCameraComponent::imuPubCallback() {
 
-        std::lock_guard<std::mutex> lock(mCloseZedMutex);
+        std::lock_guard<std::mutex> lock(mImuMutex);
         if (!mZed.isOpened()) {
             return;
         }
@@ -1570,8 +1561,10 @@ namespace stereolabs {
                 imu_raw_msg.angular_velocity_covariance[i] = imu_data.angular_velocity_convariance.r[i];
             }
 
-            imu_raw_msg.orientation_covariance[0] = -1; // Orientation data is not available in "data_raw" -> See ROS REP145
+            // Orientation data is not available in "data_raw" -> See ROS REP145
             // http://www.ros.org/reps/rep-0145.html#topics
+            imu_raw_msg.orientation_covariance[0] = -1;
+
             mPubImuRaw->publish(imu_raw_msg);
         }
 

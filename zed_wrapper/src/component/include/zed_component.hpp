@@ -1,4 +1,4 @@
-﻿#ifndef ZED_COMPONENT_HPP
+#ifndef ZED_COMPONENT_HPP
 #define ZED_COMPONENT_HPP
 
 #include "visibility_control.h"
@@ -346,7 +346,7 @@ namespace stereolabs {
         int mMatHeight; // Data height (mCamHeight*mZedMatResizeFactor)
 
         // Thread Sync
-        std::mutex mCloseZedMutex;
+        std::mutex mImuMutex;
         std::mutex mCamDataMutex;
         std::mutex mPcMutex;
         std::condition_variable mPcDataReadyCondVar;

@@ -76,10 +76,11 @@ def generate_launch_description():
          )
     )
 
-    # When the ZED node reaches the 'inactive' state, make it take the 'activate' transition and start the Robot State Publisher
-    zed_inactive_state_handler = RegisterEventHandler(
+    # When the ZED node reaches the 'inactive' state from 'unconfigured', make it take the 'activate' transition and start the Robot State Publisher
+    zed_inactive_from_unconfigured_state_handler = RegisterEventHandler(
         OnStateTransition(
             target_lifecycle_node = zed_node,
+            start_state = 'configuring',
             goal_state = 'inactive',
             entities = [
                 # Log
@@ -88,6 +89,19 @@ def generate_launch_description():
                 rsp_node,
                 # Change State event ( inactive -> active )
                 zed_activate_trans_event,
+            ],
+        )
+    )
+
+    # When the ZED node reaches the 'inactive' state from 'active', it has been deactivated and it will wait for a manual activation
+    zed_inactive_from_active_state_handler = RegisterEventHandler(
+        OnStateTransition(
+            target_lifecycle_node = zed_node,
+            start_state = 'deactivating',
+            goal_state = 'inactive',
+            entities = [
+                # Log
+                LogInfo( msg = "'ZED' reached the 'INACTIVE' state from 'ACTIVE' state. Waiting for manual activation..." )
             ],
         )
     )
@@ -106,7 +120,8 @@ def generate_launch_description():
 
     # Add the actions to the launch description.
     # The order they are added reflects the order in which they will be executed.
-    ld.add_action( zed_inactive_state_handler )
+    ld.add_action( zed_inactive_from_unconfigured_state_handler )
+    ld.add_action( zed_inactive_from_active_state_handler )
     ld.add_action( zed_active_state_handler )
     ld.add_action( zed_node )
     ld.add_action( zed_configure_trans_event)
