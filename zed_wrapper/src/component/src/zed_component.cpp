@@ -800,8 +800,8 @@ namespace stereolabs {
         // >>>>> Check SDK version
         RCLCPP_INFO(get_logger(), "SDK Version: %d.%d.%d - Build %d", ZED_SDK_MAJOR_VERSION, ZED_SDK_MINOR_VERSION,
                     ZED_SDK_PATCH_VERSION, ZED_SDK_BUILD_ID);
-#if (ZED_SDK_MAJOR_VERSION<2 || (ZED_SDK_MAJOR_VERSION==2 && ZED_SDK_MINOR_VERSION<5))
-        RCLCPP_ERROR(get_logger(), "ROS2 ZED node requires ZED SDK > v2.5.0");
+#if (ZED_SDK_MAJOR_VERSION<2 || (ZED_SDK_MAJOR_VERSION==2 && ZED_SDK_MINOR_VERSION<6))
+        RCLCPP_ERROR(get_logger(), "ROS2 ZED node requires at least ZED SDK v2.6.0");
 
         return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_ERROR;
 #endif
@@ -818,10 +818,10 @@ namespace stereolabs {
 
         // >>>>> Create camera info
         mRgbCamInfoMsg = std::make_shared<sensor_msgs::msg::CameraInfo>();
-        mLeftCamInfoMsg = std::make_shared<sensor_msgs::msg::CameraInfo>();
-        mRightCamInfoMsg = std::make_shared<sensor_msgs::msg::CameraInfo>();
         mRgbCamInfoRawMsg = std::make_shared<sensor_msgs::msg::CameraInfo>();
+        mLeftCamInfoMsg = std::make_shared<sensor_msgs::msg::CameraInfo>();
         mLeftCamInfoRawMsg = std::make_shared<sensor_msgs::msg::CameraInfo>();
+        mRightCamInfoMsg = std::make_shared<sensor_msgs::msg::CameraInfo>();
         mRightCamInfoRawMsg = std::make_shared<sensor_msgs::msg::CameraInfo>();
         mDepthCamInfoMsg = std::make_shared<sensor_msgs::msg::CameraInfo>();
         // <<<<< Create camera info
@@ -881,7 +881,6 @@ namespace stereolabs {
             while (waiting_for_camera) {
                 // Ctrl+C check
                 if (!rclcpp::ok()) {
-
                     return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
                 }
 
@@ -898,7 +897,7 @@ namespace stereolabs {
                     mZedParams.camera_linux_id = prop.id;
                 }
 
-                TIMER_ELAPSED
+                TIMER_ELAPSED; // Initialize a variable named "elapsed" with the msec elapsed from the latest "START_TIMER" call
 
                 if (elapsed > mZedTimeoutMsec) {
                     RCUTILS_LOG_WARN_NAMED(get_name(), "Camera detection timeout");
