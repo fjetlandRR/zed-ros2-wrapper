@@ -1,9 +1,8 @@
-﻿
+
 #include "zed_component.hpp"
 #include "sl_tools.h"
 #include <string>
 
-#include <rclcpp/parameter_client.hpp>
 #include <sensor_msgs/distortion_models.hpp>
 #include <sensor_msgs/image_encodings.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
@@ -209,7 +208,19 @@ namespace stereolabs {
 
         paramName = "general.mat_resize_factor";
         if (get_parameter(paramName, paramVal)) {
-            mZedMatResizeFactor = paramVal.as_double();
+            if (paramVal.get_type() == rclcpp::PARAMETER_DOUBLE) {
+                mZedMatResizeFactor = paramVal.as_double();
+
+                if (mZedMatResizeFactor < 0.1) {
+                    mZedMatResizeFactor = 0.1;
+                    RCLCPP_WARN(get_logger(), "The minimum value allowed for '%s' is 0.1", paramName.c_str());
+                } else if (mZedMatResizeFactor > 1.0) {
+                    mZedMatResizeFactor = 1.0;
+                    RCLCPP_WARN(get_logger(), "The maximum value allowed for '%s' is 1.0", paramName.c_str());
+                }
+            } else {
+                RCLCPP_WARN(get_logger(), "The parameter '%s' must be a DOUBLE, using the default value", paramName.c_str());
+            }
         } else {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
         }
@@ -286,6 +297,9 @@ namespace stereolabs {
         paramName = "video.auto_exposure";
         if (get_parameter(paramName, paramVal)) {
             mZedAutoExposure = paramVal.as_bool();
+            if (mZedAutoExposure) {
+                mTriggerAutoExposure = true;
+            }
         } else {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
         }
@@ -358,6 +372,18 @@ namespace stereolabs {
 
         // >>>>>> DEPTH parameters
         RCLCPP_INFO(get_logger(), "*** DEPTH parameters ***");
+
+        paramName = "depth.max_depth";
+        if (get_parameter(paramName, paramVal)) {
+            if (paramVal.get_type() == rclcpp::PARAMETER_DOUBLE) {
+                mZedMaxDepth = paramVal.as_double();
+            } else {
+                RCLCPP_WARN(get_logger(), "The parameter '%s' must be a DOUBLE, using the default value", paramName.c_str());
+            }
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * Max depth: %g m", mZedMaxDepth);
 
         paramName = "depth.quality";
         if (get_parameter(paramName, paramVal)) {
@@ -477,7 +503,11 @@ namespace stereolabs {
 
             paramName = "imu.imu_pub_rate";
             if (get_parameter(paramName, paramVal)) {
-                mImuPubRate = paramVal.as_double();
+                if (paramVal.get_type() == rclcpp::PARAMETER_DOUBLE) {
+                    mImuPubRate = paramVal.as_double();
+                } else {
+                    RCLCPP_WARN(get_logger(), "The parameter '%s' must be a DOUBLE, using the default value", paramName.c_str());
+                }
             } else {
                 RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
             }
@@ -485,6 +515,153 @@ namespace stereolabs {
         }
         // <<<<<< IMU parameters
 
+        using namespace std::placeholders;
+
+        register_param_change_callback(std::bind(&ZedCameraComponent::paramChangeCallback, this, _1));
+    }
+
+    rcl_interfaces::msg::SetParametersResult ZedCameraComponent::paramChangeCallback(std::vector<rclcpp::Parameter>
+            parameters) {
+
+        auto result = rcl_interfaces::msg::SetParametersResult();
+        result.successful = false;
+
+        for (size_t i = 0; i < parameters.size(); i++) {
+            rclcpp::Parameter param = parameters[i];
+
+            if (param.get_name() == "general.mat_resize_factor") {
+                if (param.get_type() == rclcpp::PARAMETER_DOUBLE) {
+
+                    double new_val = param.as_double();
+
+                    if (new_val > 0.01 && new_val <= 1.0) {
+                        mZedMatResizeFactor = new_val;
+                        RCLCPP_INFO(get_logger(), "The param '%s' has changed to %g", param.get_name().c_str(), mZedMatResizeFactor);
+                        result.successful = true;
+
+                        // >>>>> Modify data sizes
+                        mCamDataMutex.lock();
+                        mMatWidth = static_cast<size_t>(mCamWidth * mZedMatResizeFactor);
+                        mMatHeight = static_cast<size_t>(mCamHeight * mZedMatResizeFactor);
+                        RCLCPP_INFO(get_logger(), "Data Mat size : %d x %d", mMatWidth, mMatHeight);
+
+                        // Update Camera Info
+                        fillCamInfo(mZed, mLeftCamInfoMsg, mRightCamInfoMsg, mLeftCamOptFrameId, mRightCamOptFrameId);
+                        fillCamInfo(mZed, mLeftCamInfoRawMsg, mRightCamInfoRawMsg, mLeftCamOptFrameId, mRightCamOptFrameId, true);
+                        mRgbCamInfoMsg = mDepthCamInfoMsg = mLeftCamInfoMsg;
+                        mRgbCamInfoRawMsg = mLeftCamInfoRawMsg;
+                        mCamDataMutex.unlock();
+                        // <<<<< Modify data sizes
+                    } else {
+                        RCLCPP_WARN(get_logger(), "The param '%s' requires a FLOATING POINT value in the range ]0.0,1.0]",
+                                    param.get_name().c_str());
+                        result.successful = false;
+                        return result;
+                    }
+                } else {
+                    RCLCPP_WARN(get_logger(), "The param '%s' requires a FLOATING POINT positive value!", param.get_name().c_str());
+                    result.successful = false;
+                    return result;
+                }
+            } else if (param.get_name() == "video.auto_exposure") {
+                if (param.get_type() == rclcpp::PARAMETER_BOOL) {
+
+                    mZedAutoExposure = param.as_bool();
+                    if (mZedAutoExposure) {
+                        mTriggerAutoExposure = true;
+                    }
+
+                    RCLCPP_INFO(get_logger(), "The param '%s' has changed to %s", param.get_name().c_str(),
+                                mZedAutoExposure ? "ENABLED" : "DISABLED");
+                    result.successful = true;
+                } else {
+                    RCLCPP_WARN(get_logger(), "The param '%s' requires a BOOL value!", param.get_name().c_str());
+                    result.successful = false;
+                    return result;
+                }
+            } else if (param.get_name() == "video.exposure") {
+                if (param.get_type() == rclcpp::PARAMETER_INTEGER) {
+
+                    int new_val = param.as_int();
+
+                    if (new_val > 0 && new_val <= 100) {
+                        mZedExposure = new_val;
+                        RCLCPP_INFO(get_logger(), "The param '%s' has changed to %d", param.get_name().c_str(), mZedExposure);
+                        result.successful = true;
+                    } else {
+                        RCLCPP_WARN(get_logger(), "The param '%s' requires an INTEGER value in the range ]0,100]", param.get_name().c_str());
+                        result.successful = false;
+                        return result;
+                    }
+                } else {
+                    RCLCPP_WARN(get_logger(), "The param '%s' requires an INTEGER value!", param.get_name().c_str());
+                    result.successful = false;
+                    return result;
+                }
+            } else if (param.get_name() == "video.gain") {
+                if (param.get_type() == rclcpp::PARAMETER_INTEGER) {
+
+                    int new_val = param.as_int();
+
+                    if (new_val > 0 && new_val <= 100) {
+                        mZedGain = new_val;
+                        RCLCPP_INFO(get_logger(), "The param '%s' has changed to %d", param.get_name().c_str(), mZedGain);
+                        result.successful = true;
+                    } else {
+                        RCLCPP_WARN(get_logger(), "The param '%s' requires an INTEGER value in the range ]0,100]", param.get_name().c_str());
+                        result.successful = false;
+                        return result;
+                    }
+                } else {
+                    RCLCPP_WARN(get_logger(), "The param '%s' requires an INTEGER value!", param.get_name().c_str());
+                    result.successful = false;
+                    return result;
+                }
+            } else if (param.get_name() == "depth.confidence") {
+                if (param.get_type() == rclcpp::PARAMETER_INTEGER) {
+                    int new_val = param.as_int();
+
+                    if (new_val > 0 && new_val <= 100) {
+                        mZedConfidence = new_val;
+                        RCLCPP_INFO(get_logger(), "The param '%s' has changed to %d", param.get_name().c_str(), mZedConfidence);
+                        result.successful = true;
+                    } else {
+                        RCLCPP_WARN(get_logger(), "The param '%s' requires an INTEGER value in the range ]0,100]", param.get_name().c_str());
+                        result.successful = false;
+                        return result;
+                    }
+                } else {
+                    RCLCPP_WARN(get_logger(), "The param '%s' requires an INTEGER value!", param.get_name().c_str());
+                    result.successful = false;
+                    return result;
+                }
+            } else if (param.get_name() == "depth.max_depth") {
+                if (param.get_type() == rclcpp::PARAMETER_DOUBLE) {
+
+                    double new_val = param.as_double();
+
+                    if (new_val > 0) {
+                        mZedMaxDepth = new_val;
+                        RCLCPP_INFO(get_logger(), "The param '%s' has changed to %g", param.get_name().c_str(), mZedMaxDepth);
+                        result.successful = true;
+                    } else {
+                        RCLCPP_WARN(get_logger(), "The param '%s' requires a FLOATING POINT positive value", param.get_name().c_str());
+                        result.successful = false;
+                        return result;
+                    }
+                } else {
+                    RCLCPP_WARN(get_logger(), "The param '%s' requires a FLOATING POINT positive value!", param.get_name().c_str());
+                    result.successful = false;
+                    return result;
+                }
+            } else {
+                RCLCPP_WARN(get_logger(), "The param '%s' cannot be dinamically changed!", param.get_name().c_str());
+                result.successful = false;
+                return result;
+            }
+        }
+
+        return result;
     }
 
     void ZedCameraComponent::initPublishers() {
@@ -1112,6 +1289,28 @@ namespace stereolabs {
                 // Last frame timestamp
                 mLastGrabTimestamp = grabTimestamp;
 
+                // >>>>> Apply video dynamic parameters
+                if (mZedAutoExposure) {
+                    if (mTriggerAutoExposure) {
+                        mZed.setCameraSettings(sl::CAMERA_SETTINGS_EXPOSURE, 0, true);
+                        mTriggerAutoExposure = false;
+                    }
+                } else {
+                    int actual_exposure =
+                        mZed.getCameraSettings(sl::CAMERA_SETTINGS_EXPOSURE);
+
+                    if (actual_exposure != mZedExposure) {
+                        mZed.setCameraSettings(sl::CAMERA_SETTINGS_EXPOSURE, mZedExposure);
+                    }
+
+                    int actual_gain = mZed.getCameraSettings(sl::CAMERA_SETTINGS_GAIN);
+
+                    if (actual_gain != mZedGain) {
+                        mZed.setCameraSettings(sl::CAMERA_SETTINGS_GAIN, mZedGain);
+                    }
+                }
+                // <<<<< Apply video dynamic parameters
+
                 mCamDataMutex.lock();
 
                 if (pubImages) {
@@ -1535,7 +1734,7 @@ namespace stereolabs {
             imu_msg.linear_acceleration.x = imu_data.linear_acceleration[0];
             imu_msg.linear_acceleration.y = imu_data.linear_acceleration[1];
             imu_msg.linear_acceleration.z = imu_data.linear_acceleration[2];
-            
+
             for (int i = 0; i < 9; i++) {
                 imu_msg.orientation_covariance[i] = imu_data.orientation_covariance.r[i];
                 imu_msg.linear_acceleration_covariance[i] = imu_data.linear_acceleration_convariance.r[i];
@@ -1555,7 +1754,7 @@ namespace stereolabs {
             imu_raw_msg.linear_acceleration.x = imu_data.linear_acceleration[0];
             imu_raw_msg.linear_acceleration.y = imu_data.linear_acceleration[1];
             imu_raw_msg.linear_acceleration.z = imu_data.linear_acceleration[2];
-            
+
             for (int i = 0; i < 9; i++) {
                 imu_raw_msg.linear_acceleration_covariance[i] = imu_data.linear_acceleration_convariance.r[i];
                 imu_raw_msg.angular_velocity_covariance[i] = imu_data.angular_velocity_convariance.r[i];

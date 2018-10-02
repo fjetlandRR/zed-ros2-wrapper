@@ -5,12 +5,8 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /RobotModel1
         - /TF1/Frames1
-        - /Video1
         - /Video1/Camera1
-        - /Video1/Camera1/Status1
-        - /Depth1
       Splitter Ratio: 0.5
     Tree Height: 421
   - Class: rviz_common/Views

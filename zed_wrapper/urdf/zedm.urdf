@@ -1,4 +1,4 @@
-<?xml version="1.0"?>
+<?xml version="1.0" ?>
 <!--
 Copyright (c) 2018, STEREOLABS.
 
@@ -18,10 +18,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 <robot name="zedm_camera">
 
-<!-- base_link -->
+    <!-- base_link -->
     <link name="base_link" />
 
-<!-- Camera Center -->
+    <!-- Camera Center -->
     <joint name="zed_camera_center_joint" type="fixed">
         <parent link="base_link"/>
         <child link="zed_camera_center"/>
@@ -40,8 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
         </visual>
     </link>
 
-<!-- Left Camera -->
-
+    <!-- Left Camera -->
     <joint name="zed_left_camera_joint" type="fixed">
         <parent link="zed_camera_center"/>
         <child link="zed_left_camera_frame"/>
@@ -58,8 +57,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
     <link name="zed_left_camera_optical_frame"/>
 
-<!-- Right Camera -->
-
+    <!-- Right Camera -->
     <joint name="zed_right_camera_joint" type="fixed">
         <parent link="zed_camera_center"/>
         <child link="zed_right_camera_frame"/>
