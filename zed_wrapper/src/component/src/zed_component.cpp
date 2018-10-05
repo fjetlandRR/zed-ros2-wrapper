@@ -677,6 +677,7 @@ namespace stereolabs {
         // >>>>> Image publishers QOS
         // https://github.com/ros2/ros2/wiki/About-Quality-of-Service-Settings
         rmw_qos_profile_t camera_qos_profile = rmw_qos_profile_sensor_data; // Default QOS profile
+        camera_qos_profile.depth = 2;
 
         //        camera_qos_profile.reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE; // to be sure to publish images
         //        camera_qos_profile.history = RMW_QOS_POLICY_HISTORY_KEEP_LAST;// KEEP_LAST enforces a limit on the number of messages that are saved, specified by the "depth" parameter
