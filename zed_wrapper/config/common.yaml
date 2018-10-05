@@ -10,7 +10,7 @@ zed:
             general:
                 # To load a SVO file add the parameter `svo_file` and set a valid path
                 # Note: you cannot set `svo_file` with an empty string
-                # svo_file: '/home/walter/Documents/ZED/Walter_skeleton_issue-ZED_mini-HD720_SN10026869_15-32-27.svo'
+                svo_file: '/home/walter/Documents/ZED/sofa.svo'
                 camera_flip: false
                 zed_id: 0
                 serial_number: 0

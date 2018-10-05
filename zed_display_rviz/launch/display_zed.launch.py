@@ -2,7 +2,9 @@
 
 import os
 
+
 import launch
+from launch import LaunchIntrospector
 
 from ament_index_python.packages import get_package_share_directory
 
@@ -19,25 +21,19 @@ import lifecycle_msgs.msg
 
 def generate_launch_description():
 
-    # use: 'zed' for "ZED" camera - 'zedm' for "ZED mini" camera
     camera_model = 'zedm' 
 
     # URDF file to be loaded by Robot State Publisher
-    urdf = os.path.join(
-        get_package_share_directory('stereolabs_zed'),
-            'urdf', camera_model + '.urdf'
-    )
-
+    urdf = os.path.join(get_package_share_directory('stereolabs_zed'), 'urdf', camera_model + '.urdf')
+    
     # ZED Configurations to be loaded by ZED Node
-    config_common = os.path.join(
-        get_package_share_directory( 'stereolabs_zed' ),
-        'config', 'common.yaml'
-    )
+    config_common = os.path.join(get_package_share_directory('stereolabs_zed'), 'config', 'common.yaml')
 
-    config_camera = os.path.join(
-        get_package_share_directory('stereolabs_zed'),
-        'config', camera_model + '.yaml'
-    )
+    config_camera = os.path.join(get_package_share_directory('stereolabs_zed'), 'config', camera_model + '.yaml')
+
+    # RVIZ2 configuration
+    rviz_config = os.path.join(get_package_share_directory('stereolabs_zed_display_rviz'), 'rviz', camera_model + '.rviz')
+    sl_logo = os.path.join(get_package_share_directory('stereolabs_zed_display_rviz'), 'rviz', 'Logo_STEREOLABS.png')
 
     # Set LOG format
     os.environ['RCUTILS_CONSOLE_OUTPUT_FORMAT'] = '{time}: [{name}] [{severity}]\t{message}'
@@ -65,6 +61,16 @@ def generate_launch_description():
         node_executable = 'robot_state_publisher',
         output = 'screen',
         arguments = [urdf, 'robot_description:=zed_description']
+    )
+
+    # Prepare the RVIZ2 node
+    rviz2_node = Node(
+        node_name = 'rviz2',
+        package = 'rviz2',
+        node_executable = 'rviz2',
+        output = 'screen',
+        arguments = ['-d', rviz_config,
+                     '-s', sl_logo]
     )
 
     # Make the ZED node take the 'configure' transition
@@ -113,14 +119,18 @@ def generate_launch_description():
         )
     )
 
-    # When the ZED node reaches the 'active' state, log a message.
+    # When the ZED node reaches the 'active' state, log a message and start RVIZ2
     zed_active_state_handler = RegisterEventHandler(
         OnStateTransition(
             target_lifecycle_node = zed_node,
             goal_state = 'active',
             entities = [
                 # Log
-                LogInfo( msg = "'ZED' reached the 'ACTIVE' state" ),
+                LogInfo( msg = "'ZED' reached the 'ACTIVE' state." ),
+                # Log
+                LogInfo( msg = "Starting RVIZ2 with the configuration " + rviz_config ),
+                # RVIZ2
+                rviz2_node,
             ],
         )
     )
