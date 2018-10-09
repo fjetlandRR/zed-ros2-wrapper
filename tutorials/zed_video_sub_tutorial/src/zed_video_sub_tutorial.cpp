@@ -19,72 +19,60 @@
 ///////////////////////////////////////////////////////////////////////////
 
 /**
- * This tutorial demonstrates how to receive the Left and Right rectified images
- * from the ZED node
+ * This tutorial demonstrates simple receipt of ZED video messages over the ROS system.
  */
 
-#include <ros/ros.h>
-#include <sensor_msgs/Image.h>
+#include "rclcpp/rclcpp.hpp"
+#include "sensor_msgs//msg/image.hpp"
+
+rclcpp::Node::SharedPtr g_node = nullptr;
 
 /**
  * Subscriber callbacks. The argument of the callback is a constant pointer to the received message
  */
 
-void imageRightRectifiedCallback(const sensor_msgs::Image::ConstPtr& msg) {
-    ROS_INFO("Right Rectified image received from ZED - Size: %dx%d", msg->width, msg->height);
+void imageRightRectifiedCallback(const sensor_msgs::msg::Image::SharedPtr msg) {
+    RCLCPP_INFO(g_node->get_logger(), "Right Rectified image received from ZED - Size: %dx%d", msg->width, msg->height);
 }
 
-void imageLeftRectifiedCallback(const sensor_msgs::Image::ConstPtr& msg) {
-    ROS_INFO("Left Rectified image received from ZED - Size: %dx%d", msg->width, msg->height);
+void imageLeftRectifiedCallback(const sensor_msgs::msg::Image::SharedPtr msg) {
+    RCLCPP_INFO(g_node->get_logger(), "Left Rectified image received from ZED - Size: %dx%d", msg->width, msg->height);
 }
 
-/**
- * Node main function
- */
-int main(int argc, char** argv) {
-    /**
-     * The ros::init() function needs to see argc and argv so that it can perform
-     * any ROS arguments and name remapping that were provided at the command line.
-     * For programmatic remappings you can use a different version of init() which takes
-     * remappings directly, but for most command-line programs, passing argc and argv is
-     * the easiest way to do it.  The third argument to init() is the name of the node.
-     *
-     * You must call one of the versions of ros::init() before using any other
-     * part of the ROS system.
-     */
-    ros::init(argc, argv, "zed_video_subscriber");
+int main(int argc, char* argv[]) {
+    rclcpp::init(argc, argv);
 
-    /**
-     * NodeHandle is the main access point to communications with the ROS system.
-     * The first NodeHandle constructed will fully initialize this node, and the last
-     * NodeHandle destructed will close down the node.
-     */
-    ros::NodeHandle n;
+    g_node = rclcpp::Node::make_shared("zed_video_sub");
 
-    /**
-     * The subscribe() call is how you tell ROS that you want to receive messages
-     * on a given topic.  This invokes a call to the ROS
-     * master node, which keeps a registry of who is publishing and who
-     * is subscribing.  Messages are passed to a callback function, here
-     * called imageCallback.  subscribe() returns a Subscriber object that you
-     * must hold on to until you want to unsubscribe.  When all copies of the Subscriber
-     * object go out of scope, this callback will automatically be unsubscribed from
-     * this topic.
-     *
-     * The second parameter to the subscribe() function is the size of the message
-     * queue.  If messages are arriving faster than they are being processed, this
-     * is the number of messages that will be buffered up before beginning to throw
-     * away the oldest ones.
-     */
-    ros::Subscriber subRightRectified = n.subscribe("/zed/right/image_rect_color", 10, imageRightRectifiedCallback);
-    ros::Subscriber subLeftRectified  = n.subscribe("/zed/left/image_rect_color", 10, imageLeftRectifiedCallback);
+    // https://github.com/ros2/ros2/wiki/About-Quality-of-Service-Settings
+    rmw_qos_profile_t camera_qos_profile = rmw_qos_profile_sensor_data;
 
-    /**
-     * ros::spin() will enter a loop, pumping callbacks.  With this version, all
-     * callbacks will be called from within this thread (the main one).  ros::spin()
-     * will exit when Ctrl-C is pressed, or the node is shutdown by the master.
+    /* Note: it is very important to use a QOS profile for the subscriber that is compatible
+     * with the QOS profile of the publisher.
+     * The ZED node uses a "rmw_qos_profile_sensor_data" profile for depth data,
+     * so reliability is "BEST_EFFORT" and durability is "VOLATILE".
+     * To be able to receive the subscribed topic the subscriber must use the
+     * same parameters, so setting the QOS to "rmw_qos_profile_sensor_data" as the publisher
+     * is the better solution.
      */
-    ros::spin();
+
+    auto sub_right = g_node->create_subscription<sensor_msgs::msg::Image>
+                     ("/zed/zed_node/right/image_rect_color", imageRightRectifiedCallback,
+                      rmw_qos_profile_sensor_data);
+
+    auto sub_left = g_node->create_subscription<sensor_msgs::msg::Image>
+                    ("/zed/zed_node/left/image_rect_color", imageLeftRectifiedCallback,
+                     rmw_qos_profile_sensor_data);
+
+    rclcpp::spin(g_node);
+    rclcpp::shutdown();
+
+    // It would be better to remove both of these nullptr
+    // assignments and let the destructors handle it, but we can't because of
+    // https://github.com/eProsima/Fast-RTPS/issues/235 .  Once that is fixed
+    // we should probably look at removing these two assignments.
+    //subscription = nullptr;
+    //g_node = nullptr;
 
     return 0;
 }

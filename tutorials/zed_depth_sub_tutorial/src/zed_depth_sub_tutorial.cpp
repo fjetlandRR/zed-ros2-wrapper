@@ -44,7 +44,6 @@ class MinimalDepthSubscriber : public rclcpp::Node {
          * is the better solution.
          */
 
-
         mSub = create_subscription<sensor_msgs::msg::Image>(
                    "/zed/zed_node/depth/depth_registered",
                    std::bind(&MinimalDepthSubscriber::depthCallback, this, _1),
@@ -75,7 +74,10 @@ class MinimalDepthSubscriber : public rclcpp::Node {
 // The main function
 int main(int argc, char* argv[]) {
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<MinimalDepthSubscriber>());
+
+    auto depth_node = std::make_shared<MinimalDepthSubscriber>();
+
+    rclcpp::spin(depth_node);
     rclcpp::shutdown();
     return 0;
 }
