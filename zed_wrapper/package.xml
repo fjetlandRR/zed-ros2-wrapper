@@ -8,9 +8,9 @@
     stereolabs_zed is a ROS2 wrapper for the <a href="https://www.stereolabs.com/developers/">ZED library</a>
     for interfacing with the ZED camera.
   </description>
-  <maintainer email="developers@stereolabs.com">STEREOLABS</maintainer>
+  <maintainer email="support@stereolabs.com">STEREOLABS</maintainer>
 
-  <license>BSD</license>
+  <license>MIT</license>
 
   <url type="website">https://www.stereolabs.com/</url>
   <url type="repository">https://github.com/stereolabs/zed-ros2-wrapper</url>
@@ -30,7 +30,6 @@
   <depend>stereo_msgs</depend>
 
   <build_depend>urdf</build_depend>
-  <build_depend>message_generation</build_depend>
 
   <exec_depend>robot_state_publisher</exec_depend>
   <exec_depend>message_runtime</exec_depend>

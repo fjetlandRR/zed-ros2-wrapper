@@ -1,4 +1,4 @@
-<?xml version="1.0"?>
+<?xml version="1.0" ?>
 <!--
 Copyright (c) 2018, STEREOLABS.
 
@@ -18,46 +18,36 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 <robot name="zedm_camera">
 
-<material name="ZED/black">
-    <color rgba="0.0 0.0 0.0 1.0"/>
-</material>
-
-<!-- base_link -->
+    <!-- base_link -->
     <link name="base_link" />
 
-<!-- Camera Center -->
+    <!-- Camera Center -->
     <joint name="zed_camera_center_joint" type="fixed">
         <parent link="base_link"/>
         <child link="zed_camera_center"/>
-        <origin xyz="0 0 0" rpy="0 0 0" />        
+        <origin xyz="0 0 0" rpy="0 0 0" />
     </joint>
 
     <link name="zed_camera_center">
         <visual>
-              <origin rpy="0 0 0" xyz="0 0 0.0"/>
-              <geometry>
-                <box size="0.015 0.125 0.025"/>
-              </geometry>
-              <material name="ZED/black"/>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <mesh filename="package://stereolabs_zed/urdf/models/ZEDM.stl" />
+            </geometry>
+            <material name="black">
+                <color rgba="0 0 0 0.9"/>
+            </material>
         </visual>
     </link>
 
-<!-- Left Camera -->
+    <!-- Left Camera -->
     <joint name="zed_left_camera_joint" type="fixed">
         <parent link="zed_camera_center"/>
         <child link="zed_left_camera_frame"/>
-        <origin xyz="0 0.03 0" rpy="0 0 0" />        
+        <origin xyz="0 0.03 0" rpy="0 0 0" />
     </joint>
 
-    <link name="zed_left_camera_frame">
-        <visual>
-              <origin rpy="0 -1.57079632679 0" xyz="0.015 0 0.0"/>
-              <geometry>
-                <cylinder length="0.030" radius="0.01"/>
-              </geometry>
-              <material name="ZED/black"/>
-        </visual>
-    </link>
+    <link name="zed_left_camera_frame" />
 
     <joint name="zed_left_camera_optical_joint" type="fixed">
         <origin xyz="0 0 0" rpy="-1.57079632679 0.0 -1.57079632679"/>
@@ -67,22 +57,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
     <link name="zed_left_camera_optical_frame"/>
 
-<!-- Right Camera -->
+    <!-- Right Camera -->
     <joint name="zed_right_camera_joint" type="fixed">
         <parent link="zed_camera_center"/>
         <child link="zed_right_camera_frame"/>
-        <origin xyz="0 -0.03 0" rpy="0 0 0" />        
+        <origin xyz="0 -0.03 0" rpy="0 0 0" />
     </joint>
 
-    <link name="zed_right_camera_frame" >
-        <visual>
-              <origin rpy="0 -1.57079632679 0" xyz="0.015 0 0.0"/>
-              <geometry>
-                <cylinder length="0.030" radius="0.01"/>
-              </geometry>
-              <material name="ZED/black"/>
-        </visual>
-    </link>
+    <link name="zed_right_camera_frame" />
 
     <joint name="zed_right_camera_optical_joint" type="fixed">
         <origin xyz="0 0 0" rpy="-1.57079632679 0.0 -1.57079632679"/>
@@ -91,5 +73,5 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     </joint>
 
     <link name="zed_right_camera_optical_frame"/>
- 
+
 </robot>

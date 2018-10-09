@@ -1,0 +1,16 @@
+# config/zedm_yaml
+# Parameters for Stereolabs ZED mini camera
+---
+
+zed:
+    zed_node:
+        ros__parameters:
+            general:
+                camera_model: 1                 # `0`: ZED, `1`: ZEDM
+            depth:
+                max_depth: 10.                  # Dynamic
+            imu:
+                imu_frame: 'zed_imu_link'
+                imu_topic: 'imu/data'
+                imu_raw_topic: 'imu/data_raw'
+                imu_pub_rate: 500.0

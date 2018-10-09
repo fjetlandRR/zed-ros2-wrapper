@@ -1,4 +1,4 @@
-﻿#ifndef ZED_COMPONENT_HPP
+#ifndef ZED_COMPONENT_HPP
 #define ZED_COMPONENT_HPP
 
 #include "visibility_control.h"
@@ -22,15 +22,9 @@
 #include "sensor_msgs/msg/image.hpp"
 #include "sensor_msgs/msg/camera_info.hpp"
 #include "sensor_msgs/msg/point_cloud2.hpp"
+#include "sensor_msgs/msg/imu.hpp"
 #include "stereo_msgs/msg/disparity_image.hpp"
 
-#include "tf2_ros/transform_broadcaster.h"
-#include "tf2_ros/transform_listener.h"
-
-#include "geometry_msgs/msg/transform_stamped.hpp"
-#include "geometry_msgs/msg/pose_stamped.hpp"
-
-#include "nav_msgs/msg/odometry.hpp"
 
 #include "sl/Camera.hpp"
 
@@ -43,13 +37,11 @@ namespace stereolabs {
 
     typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::PointCloud2>> pointcloudPub;
 
-    typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<geometry_msgs::msg::TransformStamped>> transformPub;
-
-    typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<geometry_msgs::msg::PoseStamped>> posePub;
-    typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<nav_msgs::msg::Odometry>> odomPub;
+    typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::Imu>> imuPub;
 
     typedef std::shared_ptr<sensor_msgs::msg::CameraInfo> camInfoMsgPtr;
     typedef std::shared_ptr<sensor_msgs::msg::PointCloud2> pointcloudMsgPtr;
+    typedef std::shared_ptr<sensor_msgs::msg::Imu> imuMsgPtr;
     // <<<<< Typedefs to simplify declarations
 
     /// ZedCameraComponent inheriting from rclcpp_lifecycle::LifecycleNode
@@ -155,10 +147,10 @@ namespace stereolabs {
         void pointcloudThreadFunc();
 
         void initPublishers();
+        void initParameters();
 
         void publishImages(rclcpp::Time timeStamp);
         void publishDepthData(rclcpp::Time timeStamp);
-        void publishPoses(rclcpp::Time timeStamp);
 
         /** \brief Get the information of the ZED cameras and store them in an
          * information message
@@ -208,47 +200,15 @@ namespace stereolabs {
          */
         void publishPointCloud();
 
-        /* \brief Publish the pose of the camera in "Map" frame as a transformation
-         * \param baseTransform : Transformation representing the camera pose from
-         * odom frame to map frame
-         * \param timeStamp : the ros::Time to stamp the image
+        /* \brief Callback to publish IMU raw data with a ROS publisher.
+         * \param e : the ros::TimerEvent binded to the callback
          */
-        void publishPoseFrame(tf2::Transform baseTransform, rclcpp::Time timeStamp);
+        void imuPubCallback();
 
-        /* \brief Publish the odometry of the camera in "Odom" frame as a
-         * transformation
-         * \param odomTransf : Transformation representing the camera pose from
-         * base frame to odom frame
-         * \param timeStamp : the ros::Time to stamp the image
+        /* \brief Callback to handle parameters changing
+         * \param e : the ros::TimerEvent binded to the callback
          */
-        void publishOdomFrame(tf2::Transform odomTransf, rclcpp::Time timeStamp);
-
-        /* \brief Publish the pose of the imu in "Odom" frame as a transformation
-         * \param imuTransform : Transformation representing the imu pose from base
-         * frame to odom framevoid
-         * \param timeStamp : the ros::Time to stamp the image
-         */
-        void publishImuFrame(tf2::Transform imuTransform, rclcpp::Time timeStamp);
-
-        /* \brief Publish the pose of the camera in "Map" frame with a ros Publisher
-         * \param timeStamp : the ros::Time to stamp the image
-         */
-        void publishPose(rclcpp::Time timeStamp);
-
-        /* \brief Publish the pose of the camera in "Odom" frame with a ros Publisher
-         * \param base2odomTransf : Transformation representing the camera pose
-         * from base frame to odom frame
-         * \param timeStamp : the ros::Time to stamp the image
-         */
-        void publishOdom(tf2::Transform base2odomTransf, rclcpp::Time timeStamp);
-
-        /* \brief Utility to initialize the pose variables
-         */
-        void set_pose(float xt, float yt, float zt, float rr, float pr, float yr);
-
-        /* \bried Start tracking loading the parameters from param server
-         */
-        void start_tracking();
+        rcl_interfaces::msg::SetParametersResult paramChangeCallback(std::vector<rclcpp::Parameter> parameters);
 
       private:
         // Status variables
@@ -261,15 +221,14 @@ namespace stereolabs {
         // Grab thread
         std::thread mGrabThread;
         bool mThreadStop = false;
-        int mCamTimeoutMsec = 5000; // Error generated if camera is not available after timeout
+        bool mRunGrabLoop = false;
+        int mZedTimeoutMsec = 5000; // Error generated if camera is not available after timeout
 
         // Pointcloud thread
         std::thread mPcThread; // Point Cloud thread
 
-        // Flags
-        bool mPoseSmoothing = false;
-        bool mSpatialMemory = false;
-        bool mInitOdomWithPose = true;
+        // IMU Timer
+        rclcpp::TimerBase::SharedPtr mImuTimer = nullptr;
 
         // ZED SDK
         sl::Camera mZed;
@@ -277,12 +236,11 @@ namespace stereolabs {
         // Params
         sl::InitParameters mZedParams;
         int mZedId = 0;
-        unsigned int mZedSerialNumber = 0;
+        int mZedSerialNumber = 0;
         int mZedUserCamModel = 1;   // Camera model set by ROS Param
         sl::MODEL mZedRealCamModel; // Camera model requested to SDK
-        int mCamFrameRate = 30;
+        int mZedFrameRate = 30;
         std::string mSvoFilepath = "";
-        std::string mOdometryDb = "";
         bool mSvoMode = false;
         bool mVerbose = true;
         int mGpuId = -1;
@@ -290,16 +248,19 @@ namespace stereolabs {
         int mZedQuality = 1; // Default quality: DEPTH_MODE_PERFORMANCE
         int mDepthStabilization = 1;
         bool mCameraFlip = false;
-        int mCamSensingMode = 0; // Default Sensing mode: SENSING_MODE_STANDARD
-        bool mOpenniDepthMode =
-            false; // 16 bit UC data in mm else 32F in m, for more info -> http://www.ros.org/reps/rep-0118.html
-        bool mPublishTf = true;
-        bool mPublishMapTf = true;
+        int mZedSensingMode = 0; // Default Sensing mode: SENSING_MODE_STANDARD
+        bool mOpenniDepthMode = false; // 16 bit UC data in mm else 32F in m,
+        // for more info -> http://www.ros.org/reps/rep-0118.html
 
-        // ZED dynamic params (TODO when available in ROS2)
-        double mZedMatResizeFactor = 1.0; // Dynamic...
-        int mCamConfidence = 80; // Dynamic...
-        double mCamMaxDepth = 10.0; // Dynamic...
+        double mImuPubRate = 500.0;
+
+        // ZED dynamic params
+        double mZedMatResizeFactor = 1.0;   // Dynamic...
+        int mZedConfidence = 80;            // Dynamic...
+        double mZedMaxDepth = 10.0;         // Dynamic...
+        bool mZedAutoExposure;              // Dynamic...
+        int mZedGain = 80;                  // Dynamic...
+        int mZedExposure = 80;              // Dynamic...
 
         // Publishers
         imagePub mPubRgb;
@@ -325,12 +286,8 @@ namespace stereolabs {
 
         pointcloudPub mPubPointcloud;
 
-        transformPub mPubPoseTransf;
-        transformPub mPubOdomTransf;
-        transformPub mPubImuTransf;
-
-        posePub mPubPose;
-        odomPub mPubOdom;
+        imuPub mPubImu;
+        imuPub mPubImuRaw;
 
         // Topics
         std::string mLeftTopic;
@@ -352,11 +309,8 @@ namespace stereolabs {
         std::string mConfidenceCamInfoTopic;
         std::string mDispTopic;
         std::string mPointcloudTopic;
-        std::string mPoseTfTopic;
-        std::string mOdomTfTopic;
-        std::string mImuTfTopic;
-        std::string mPoseTopic;
-        std::string mOdomTopic;
+        std::string mImuTopic;
+        std::string mImuRawTopic;
 
         // Messages
         // Camera info
@@ -370,63 +324,39 @@ namespace stereolabs {
         camInfoMsgPtr mConfidenceCamInfoMsg;
         // Pointcloud
         pointcloudMsgPtr mPointcloudMsg;
+        // IMU
+        imuMsgPtr mImuMsg;
+        imuMsgPtr mImuMsgRaw;
 
         // Frame IDs
-        std::string mRightCamFrameId;
-        std::string mRightCamOptFrameId;
-        std::string mLeftCamFrameId;
-        std::string mLeftCamOptFrameId;
+        std::string mRightCamFrameId = "zed_right_camera_frame";
+        std::string mRightCamOptFrameId = "zed_right_camera_optical_frame";
+        std::string mLeftCamFrameId = "zed_left_camera_frame";
+        std::string mLeftCamOptFrameId = "zed_left_camera_optical_frame";
         std::string mDepthFrameId;
         std::string mDepthOptFrameId;
 
-        std::string mMapFrameId;
-        std::string mOdometryFrameId;
-        std::string mBaseFrameId;
-        std::string mCameraFrameId;
-        std::string mImuFrameId;
+        std::string mBaseFrameId = "base_link";
+        std::string mCameraFrameId = "zed_camera_center";
+
+        std::string mImuFrameId = "zed_imu_link";
 
         // SL Pointcloud
         sl::Mat mCloud;
 
         // Mats
-        int mCamWidth;
-        int mCamHeight;
-        int mMatWidth;
-        int mMatHeight;
+        int mCamWidth;  // Camera frame width
+        int mCamHeight; // Camera frame height
+        int mMatWidth;  // Data width (mCamWidth*mZedMatResizeFactor)
+        int mMatHeight; // Data height (mCamHeight*mZedMatResizeFactor)
 
         // Thread Sync
+        std::mutex mImuMutex;
         std::mutex mCamDataMutex;
         std::mutex mPcMutex;
         std::condition_variable mPcDataReadyCondVar;
         bool mPcDataReady = false;
-
-        // ROS TF2
-        //std::shared_ptr<tf2_ros::TransformBroadcaster> mTransformPoseBroadcaster; // TODO enable when TransformBroadcaster can be used with LifecycleNode
-        //std::shared_ptr<tf2_ros::TransformBroadcaster> mTransformOdomBroadcaster; // TODO enable when TransformBroadcaster can be used with LifecycleNode
-        //std::shared_ptr<tf2_ros::TransformBroadcaster> mTransformImuBroadcaster; // TODO enable when TransformBroadcaster can be used with LifecycleNode
-
-        // TF2 Transforms
-        tf2::Transform mOdom2MapTransf;
-        tf2::Transform mBase2OdomTransf;
-
-        // TF2 Listener
-        std::shared_ptr<tf2_ros::Buffer> mTfBuffer;
-        std::shared_ptr<tf2_ros::TransformListener> mTfListener;
-
-        geometry_msgs::msg::TransformStamped::SharedPtr
-        mPoseTransfStampedMsg; // To be used for intra process communication using zero_copy
-        geometry_msgs::msg::TransformStamped::SharedPtr
-        mOdomTransfStampedMsg; // To be used for intra process communication using zero_copy
-        geometry_msgs::msg::TransformStamped::SharedPtr
-        mImuTransfStampedMsg;  // To be used for intra process communication using zero_copy
-
-        // Tracking
-        bool mTrackingActive = false;
-        bool mTrackingReady = false;
-        bool mResetOdom = false;
-        sl::Pose mLastZedPose; // Sensor to Map transform
-        sl::Transform mInitialPoseSl;
-        std::vector<float> mInitialTrackPose;
+        bool mTriggerAutoExposure = false;
     };
 }
 
