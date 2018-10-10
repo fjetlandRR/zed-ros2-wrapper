@@ -21,7 +21,7 @@ import lifecycle_msgs.msg
 
 def generate_launch_description():
 
-    camera_model = 'zedm' 
+    camera_model = 'zed' 
 
     # URDF file to be loaded by Robot State Publisher
     urdf = os.path.join(get_package_share_directory('stereolabs_zed'), 'urdf', camera_model + '.urdf')

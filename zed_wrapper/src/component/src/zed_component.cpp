@@ -843,7 +843,7 @@ namespace stereolabs {
             RCLCPP_INFO(get_logger(), "*** SVO OPENING ***");
 
             mZedParams.svo_input_filename = mSvoFilepath.c_str();
-            mZedParams.svo_real_time_mode = true;
+            //mZedParams.svo_real_time_mode = true;
             mSvoMode = true;
         } else {
             RCLCPP_INFO(get_logger(), "*** CAMERA OPENING ***");
@@ -1256,7 +1256,7 @@ namespace stereolabs {
                 // >>>>> Timestamp
                 rclcpp::Time grabTimestamp;
                 if (mSvoMode) {
-                    grabTimestamp = now();
+                    grabTimestamp = sl_tools::slTime2Ros(mZed.getTimestamp(sl::TIME_REFERENCE_CURRENT));
                 } else {
                     grabTimestamp = sl_tools::slTime2Ros(mZed.getTimestamp(sl::TIME_REFERENCE_IMAGE));
                 }
@@ -1277,10 +1277,14 @@ namespace stereolabs {
                     rcl_time_point_value_t elapsed = (now - mLastGrabTimestamp).nanoseconds();
                     rcl_time_point_value_t timeout = rclcpp::Duration(5, 0).nanoseconds();
 
-                    if (elapsed > timeout && !mSvoMode) {
-                        // TODO Better handle the error: throw exception?
-                        //throw std::runtime_error("ZED Camera timeout");
-                        RCLCPP_WARN(get_logger(), "Camera Timeout");
+                    if (elapsed > timeout) {
+                        if (!mSvoMode) {
+                            // TODO Better handle the error: throw exception?
+                            //throw std::runtime_error("ZED Camera timeout");
+                            RCLCPP_WARN(get_logger(), "Camera Timeout");
+                        } else {
+                            RCLCPP_WARN(get_logger(), "The SVO reached the end");
+                        }
                     }
 
                     continue;
