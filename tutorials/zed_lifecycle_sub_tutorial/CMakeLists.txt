@@ -23,7 +23,7 @@ include_directories(
 )
 
 ## Build 
-add_executable(zed_lifecycle_sub src/zed_depth_sub_tutorial.cpp)
+add_executable(zed_lifecycle_sub src/zed_lifecycle_sub_tutorial.cpp)
 ament_target_dependencies(zed_lifecycle_sub
   rclcpp
   lifecycle_msgs
