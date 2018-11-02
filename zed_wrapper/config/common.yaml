@@ -10,7 +10,7 @@ zed:
             general:
                 # To load a SVO file add the parameter `svo_file` and set a valid path
                 # Note: you cannot set `svo_file` with an empty string
-                #svo_file: '/home/walter/Documents/ZED/sofa.svo'
+                # svo_file: '/home/walter/Documents/ZED/well.svo'
                 camera_flip: false
                 zed_id: 0
                 serial_number: 0
@@ -54,7 +54,7 @@ zed:
                 # odometry_db: 'odometry_db_path'
                 pose_smoothing: 0                                               # `0`: disabled, `1`: enabled
                 spatial_memory: false
-                floor_alignment: true
+                floor_alignment: false
                 initial_tracking_pose: [0.0,0.0,0.0, 0.0,0.0,0.0]               # [X, Y, Z, R, P, Y]
                 pose_topic: 'pose'
                 odometry_topic: 'odom'
