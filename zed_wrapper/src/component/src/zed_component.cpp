@@ -46,7 +46,8 @@ namespace stereolabs {
         RCLCPP_INFO(get_logger(), "Waiting for `CONFIGURE` request...");
     }
 
-    rcl_lifecycle_transition_key_t ZedCameraComponent::on_shutdown(const rclcpp_lifecycle::State& previous_state) {
+    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCameraComponent::on_shutdown(
+        const rclcpp_lifecycle::State& previous_state) {
         RCLCPP_INFO(get_logger(), "*** State transition: %s ***", this->get_current_state().label().c_str());
 
         RCLCPP_DEBUG(get_logger(), "on_shutdown() is called.");
@@ -79,7 +80,9 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), "shutdown complete");
 
-        return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
+        //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
+        rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
+        return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
     }
 
     ZedCameraComponent::~ZedCameraComponent() {
@@ -98,7 +101,8 @@ namespace stereolabs {
         }
     }
 
-    rcl_lifecycle_transition_key_t ZedCameraComponent::on_error(const rclcpp_lifecycle::State& previous_state) {
+    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCameraComponent::on_error(
+        const rclcpp_lifecycle::State& previous_state) {
         RCLCPP_INFO(get_logger(), "*** State transition: %s ***", this->get_current_state().label().c_str());
 
         RCLCPP_DEBUG(get_logger(), "on_error() is called.");
@@ -109,14 +113,16 @@ namespace stereolabs {
             switch (mPrevTransition) {
             case lifecycle_msgs::msg::Transition::TRANSITION_CONFIGURE: { // Error during configuration
                 RCLCPP_INFO(get_logger(), "Node entering 'FINALIZED' state. Kill and restart the node.");
-                return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
+                //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
+                return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
             }
             break;
 
             case lifecycle_msgs::msg::Transition::TRANSITION_ACTIVATE: { // Error during activation
                 if (mSvoMode) {
                     RCLCPP_INFO(get_logger(), "Please verify the SVO path and reboot the node: %s", mSvoFilepath.c_str());
-                    return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
+                    //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
+                    return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
                 } else {
 
                     if (mZedUserCamModel == 0) {
@@ -127,7 +133,8 @@ namespace stereolabs {
 
                     RCLCPP_INFO(get_logger(), "Node entering 'UNCONFIGURED' state");
 
-                    return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
+                    //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
+                    return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
                 }
             }
             break;
@@ -140,7 +147,8 @@ namespace stereolabs {
             }
         }
 
-        return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
+        //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
+        return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
     }
 
     void ZedCameraComponent::initParameters() {
@@ -791,7 +799,8 @@ namespace stereolabs {
         // <<<<< Create IMU Publishers
     }
 
-    rcl_lifecycle_transition_key_t ZedCameraComponent::on_configure(const rclcpp_lifecycle::State&) {
+    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCameraComponent::on_configure(
+        const rclcpp_lifecycle::State&) {
         RCLCPP_INFO(get_logger(), "*** State transition: %s ***", this->get_current_state().label().c_str());
 
         mPrevTransition = lifecycle_msgs::msg::Transition::TRANSITION_CONFIGURE;
@@ -882,7 +891,8 @@ namespace stereolabs {
             while (waiting_for_camera) {
                 // Ctrl+C check
                 if (!rclcpp::ok()) {
-                    return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
+                    //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
+                    return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
                 }
 
                 sl::DeviceProperties prop = sl_tools::getZEDFromSN(mZedSerialNumber);
@@ -903,7 +913,8 @@ namespace stereolabs {
                 if (elapsed > mZedTimeoutMsec) {
                     RCUTILS_LOG_WARN_NAMED(get_name(), "Camera detection timeout");
 
-                    return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_ERROR;
+                    //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_ERROR;
+                    return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
                 }
             }
         }
@@ -922,13 +933,15 @@ namespace stereolabs {
             RCUTILS_LOG_WARN_NAMED(get_name(), toString(err));
 
             if (mSvoMode) {
-                return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_ERROR;
+                //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_ERROR;
+                return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
             }
 
             if (!rclcpp::ok() || mThreadStop) {
                 RCLCPP_INFO(get_logger(), "ZED activation interrupted");
 
-                return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
+                //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
+                return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
             }
 
             TIMER_ELAPSED
@@ -936,7 +949,8 @@ namespace stereolabs {
             if (elapsed > mZedTimeoutMsec) {
                 RCUTILS_LOG_WARN_NAMED(get_name(), "Camera detection timeout");
 
-                return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_ERROR;
+                //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_ERROR;
+                return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
             }
         }
         // <<<<< Try to open ZED camera or to load SVO
@@ -1004,10 +1018,12 @@ namespace stereolabs {
         // would stay in the "unconfigured" state.
         // In case of TRANSITION_CALLBACK_ERROR or any thrown exception within
         // this callback, the state machine transitions to state "errorprocessing".
-        return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
+        //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
+        return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
     }
 
-    rcl_lifecycle_transition_key_t ZedCameraComponent::on_activate(const rclcpp_lifecycle::State&) {
+    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCameraComponent::on_activate(
+        const rclcpp_lifecycle::State&) {
         RCLCPP_INFO(get_logger(), "*** State transition: %s ***", this->get_current_state().label().c_str());
 
         mPrevTransition = lifecycle_msgs::msg::Transition::TRANSITION_ACTIVATE;
@@ -1016,7 +1032,8 @@ namespace stereolabs {
 
         if (!mZed.isOpened()) {
             RCLCPP_WARN(get_logger(), "ZED Camera not opened");
-            return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
+            //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
+            return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
         }
 
         // >>>>> Publishers activation
@@ -1075,10 +1092,12 @@ namespace stereolabs {
         // would stay in the "inactive" state.
         // In case of TRANSITION_CALLBACK_ERROR or any thrown exception within
         // this callback, the state machine transitions to state "errorprocessing".
-        return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
+        //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
+        return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
     }
 
-    rcl_lifecycle_transition_key_t ZedCameraComponent::on_deactivate(const rclcpp_lifecycle::State&) {
+    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCameraComponent::on_deactivate(
+        const rclcpp_lifecycle::State&) {
         RCLCPP_INFO(get_logger(), "*** State transition: %s ***", this->get_current_state().label().c_str());
 
         mPrevTransition = lifecycle_msgs::msg::Transition::TRANSITION_DEACTIVATE;
@@ -1143,10 +1162,12 @@ namespace stereolabs {
         // would stay in the "active" state.
         // In case of TRANSITION_CALLBACK_ERROR or any thrown exception within
         // this callback, the state machine transitions to state "errorprocessing".
-        return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
+        //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
+        rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
     }
 
-    rcl_lifecycle_transition_key_t ZedCameraComponent::on_cleanup(const rclcpp_lifecycle::State&) {
+    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCameraComponent::on_cleanup(
+        const rclcpp_lifecycle::State&) {
         RCLCPP_INFO(get_logger(), "*** State transition: %s ***", this->get_current_state().label().c_str());
 
         mPrevTransition = lifecycle_msgs::msg::Transition::TRANSITION_CLEANUP;
@@ -1169,7 +1190,8 @@ namespace stereolabs {
         // would stay in the "inactive" state.
         // In case of TRANSITION_CALLBACK_ERROR or any thrown exception within
         // this callback, the state machine transitions to state "errorprocessing".
-        return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
+        //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
+        return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
     }
 
     void ZedCameraComponent::zedGrabThreadFunc() {
@@ -1281,6 +1303,9 @@ namespace stereolabs {
                         if (!mSvoMode) {
                             // TODO Better handle the error: throw exception?
                             //throw std::runtime_error("ZED Camera timeout");
+
+                            this->shutdown();
+
                             RCLCPP_WARN(get_logger(), "Camera Timeout");
                         } else {
                             RCLCPP_WARN(get_logger(), "The SVO reached the end");

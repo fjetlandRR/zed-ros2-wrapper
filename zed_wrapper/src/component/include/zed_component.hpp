@@ -81,14 +81,16 @@ namespace stereolabs {
         * on_error callback is being called when the lifecycle node
         * enters the "error" state.
         */
-        rcl_lifecycle_transition_key_t on_error(const rclcpp_lifecycle::State& previous_state);
+        rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_error(const rclcpp_lifecycle::State&
+                previous_state);
 
         /// Transition callback for state shutting down
         /**
         * on_shutdown callback is being called when the lifecycle node
         * enters the "shutting down" state.
         */
-        rcl_lifecycle_transition_key_t on_shutdown(const rclcpp_lifecycle::State& previous_state);
+        rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_shutdown(
+            const rclcpp_lifecycle::State& previous_state);
 
         /// Transition callback for state configuring
         /**
@@ -101,7 +103,7 @@ namespace stereolabs {
         * TRANSITION_CALLBACK_FAILURE transitions to "unconfigured"
         * TRANSITION_CALLBACK_ERROR or any uncaught exceptions to "errorprocessing"
         */
-        rcl_lifecycle_transition_key_t on_configure(const rclcpp_lifecycle::State&);
+        rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_configure(const rclcpp_lifecycle::State&);
 
         /// Transition callback for state activating
         /**
@@ -114,7 +116,7 @@ namespace stereolabs {
         * TRANSITION_CALLBACK_FAILURE transitions to "inactive"
         * TRANSITION_CALLBACK_ERROR or any uncaught exceptions to "errorprocessing"
         */
-        rcl_lifecycle_transition_key_t on_activate(const rclcpp_lifecycle::State&);
+        rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_activate(const rclcpp_lifecycle::State&);
 
         /// Transition callback for state deactivating
         /**
@@ -127,7 +129,7 @@ namespace stereolabs {
         * TRANSITION_CALLBACK_FAILURE transitions to "active"
         * TRANSITION_CALLBACK_ERROR or any uncaught exceptions to "errorprocessing"
         */
-        rcl_lifecycle_transition_key_t on_deactivate(const rclcpp_lifecycle::State&);
+        rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_deactivate(const rclcpp_lifecycle::State&);
 
         /// Transition callback for state cleaningup
         /**
@@ -140,7 +142,7 @@ namespace stereolabs {
         * TRANSITION_CALLBACK_FAILURE transitions to "inactive"
         * TRANSITION_CALLBACK_ERROR or any uncaught exceptions to "errorprocessing"
         */
-        rcl_lifecycle_transition_key_t on_cleanup(const rclcpp_lifecycle::State&);
+        rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_cleanup(const rclcpp_lifecycle::State&);
 
       protected:
         void zedGrabThreadFunc();
@@ -212,7 +214,7 @@ namespace stereolabs {
 
       private:
         // Status variables
-        rcl_lifecycle_transition_key_t mPrevTransition = lifecycle_msgs::msg::Transition::TRANSITION_CREATE;
+        uint8_t mPrevTransition = lifecycle_msgs::msg::Transition::TRANSITION_CREATE;
 
         // Timestamps
         rclcpp::Time mLastGrabTimestamp;
