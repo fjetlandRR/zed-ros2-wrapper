@@ -255,6 +255,7 @@ namespace stereolabs {
         // for more info -> http://www.ros.org/reps/rep-0118.html
 
         double mImuPubRate = 500.0;
+        bool mImuTimestampSync = true;
 
         // ZED dynamic params
         double mZedMatResizeFactor = 1.0;   // Dynamic...
@@ -292,6 +293,11 @@ namespace stereolabs {
         imuPub mPubImuRaw;
 
         // Topics
+        std::string mLeftTopicRoot = "left";
+        std::string mRightTopicRoot = "right";
+        std::string mRgbTopicRoot = "rgb";
+        std::string mDepthTopicRoot = "depth";
+
         std::string mLeftTopic;
         std::string mLeftRawTopic;
         std::string mLeftCamInfoTopic;

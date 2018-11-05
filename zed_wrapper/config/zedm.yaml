@@ -13,4 +13,5 @@ zed:
                 imu_frame: 'zed_imu_link'
                 imu_topic: 'imu/data'
                 imu_raw_topic: 'imu/data_raw'
-                imu_pub_rate: 500.0
+                imu_pub_rate: 100.0
+                imu_sync_frame: false

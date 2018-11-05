@@ -29,19 +29,16 @@ zed:
                 auto_exposure: true                                             # Dynamic
                 exposure: 80                                                    # Dynamic
                 gain: 80                                                        # Dynamic                                
-                rgb_topic: "rgb/image_rect_color"
-                rgb_raw_topic: "rgb/image_raw_color"
-                left_topic: "left/image_rect_color"
-                left_raw_topic: "left/image_raw_color"
-                right_topic: "right/image_rect_color"
-                right_raw_topic: "right/image_raw_color"      
+                rgb_topic_root: "rgb"
+                left_topic_root: "left"
+                right_topic_root: "right"
             depth:
                 quality: 1                                                      # '0': NONE, '1': PERFORMANCE, '2': MEDIUM, '3': QUALITY, '4': ULTRA
                 sensing_mode: 0                                                 # '0': STANDARD, '1': FILL
                 confidence: 80                                                  # Dynamic
                 depth_stabilization: 1                                          # `0`: disabled, `1`: enabled
                 openni_depth_mode: 0                                            # '0': 32bit float meters, '1': 16bit uchar millimeters
-                depth_topic: "depth/depth_registered"
+                depth_topic_root: "depth"
                 point_cloud_topic: "point_cloud/cloud_registered"
                 disparity_topic: "disparity/disparity_image"
                 confidence_img_topic: "confidence/confidence_image"
@@ -49,8 +46,9 @@ zed:
             tracking:
                 publish_tf: true
                 publish_map_tf: true
+                world_frame: 'map'
                 pose_frame: 'map'
-                odometry_frame: 'odom'                
+                odometry_frame: 'odom'
                 # odometry_db: 'odometry_db_path'
                 pose_smoothing: 0                                               # `0`: disabled, `1`: enabled
                 spatial_memory: false

@@ -329,53 +329,39 @@ namespace stereolabs {
         }
         RCLCPP_INFO(get_logger(), " * Gain: %d [DYNAMIC]", mZedGain);
 
-        paramName = "video.rgb_topic";
+        paramName = "video.rgb_topic_root";
         if (get_parameter(paramName, paramVal)) {
-            mRgbTopic = paramVal.as_string();
+            mRgbTopicRoot = paramVal.as_string();
         } else {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
         }
-        RCLCPP_INFO(get_logger(), " * RGB topic: '%s'", mRgbTopic.c_str());
+        if (!mRgbTopicRoot.back() != '/') {
+            mRgbTopicRoot.push_back('/');
+        }
+        RCLCPP_INFO(get_logger(), " * RGB topic root: '%s'", mRgbTopicRoot.c_str());
 
-        paramName = "video.rgb_raw_topic";
-        if (get_parameter(paramName, paramVal)) {
-            mRgbRawTopic = paramVal.as_string();
-        } else {
-            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
-        }
-        RCLCPP_INFO(get_logger(), " * RAW RGB topic: '%s'", mRgbRawTopic.c_str());
 
-        paramName = "video.left_topic";
+        paramName = "video.left_topic_root";
         if (get_parameter(paramName, paramVal)) {
-            mLeftTopic = paramVal.as_string();
+            mLeftTopicRoot = paramVal.as_string();
         } else {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
         }
-        RCLCPP_INFO(get_logger(), " * Left topic: '%s'", mLeftTopic.c_str());
+        if (!mLeftTopicRoot.back() != '/') {
+            mLeftTopicRoot.push_back('/');
+        }
+        RCLCPP_INFO(get_logger(), " * Left topic root: '%s'", mLeftTopicRoot.c_str());
 
-        paramName = "video.left_raw_topic";
+        paramName = "video.right_topic_root";
         if (get_parameter(paramName, paramVal)) {
-            mLeftRawTopic = paramVal.as_string();
+            mRightTopicRoot = paramVal.as_string();
         } else {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
         }
-        RCLCPP_INFO(get_logger(), " * RAW Left topic: '%s'", mLeftRawTopic.c_str());
-
-        paramName = "video.right_topic";
-        if (get_parameter(paramName, paramVal)) {
-            mRightTopic = paramVal.as_string();
-        } else {
-            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        if (!mRightTopicRoot.back() != '/') {
+            mRightTopicRoot.push_back('/');
         }
-        RCLCPP_INFO(get_logger(), " * Right topic: '%s'", mRightTopic.c_str());
-
-        paramName = "video.right_raw_topic";
-        if (get_parameter(paramName, paramVal)) {
-            mRightRawTopic = paramVal.as_string();
-        } else {
-            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
-        }
-        RCLCPP_INFO(get_logger(), " * RAW Right topic: '%s'", mRightRawTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * Right topic root: '%s'", mRightTopicRoot.c_str());
         // <<<<< VIDEO parameters
 
         // >>>>>> DEPTH parameters
@@ -435,13 +421,16 @@ namespace stereolabs {
         }
         RCLCPP_INFO(get_logger(), " * OpenNI mode: %s", mOpenniDepthMode == 0 ? "DISABLED" : "ENABLED");
 
-        paramName = "depth.depth_topic";
+        paramName = "depth.depth_topic_root";
         if (get_parameter(paramName, paramVal)) {
-            mDepthTopic = paramVal.as_string();
+            mDepthTopicRoot = paramVal.as_string();
         } else {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
         }
-        RCLCPP_INFO(get_logger(), " * Depth topic: '%s'", mDepthTopic.c_str());
+        if (!mDepthTopicRoot.back() != '/') {
+            mDepthTopicRoot.push_back('/');
+        }
+        RCLCPP_INFO(get_logger(), " * Depth topic root: '%s'", mDepthTopicRoot.c_str());
 
         paramName = "depth.point_cloud_topic";
         if (get_parameter(paramName, paramVal)) {
@@ -520,6 +509,14 @@ namespace stereolabs {
                 RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
             }
             RCLCPP_INFO(get_logger(), " * IMU rate: %g Hz", mImuPubRate);
+
+            paramName = "imu.imu_sync_frame";
+            if (get_parameter(paramName, paramVal)) {
+                mImuTimestampSync = paramVal.as_bool();
+            } else {
+                RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+            }
+            RCLCPP_INFO(get_logger(), " * IMU timestamp sync with last frame: %s", mImuTimestampSync ? "ENABLED" : "DISABLED");
         }
         // <<<<<< IMU parameters
 
@@ -697,24 +694,24 @@ namespace stereolabs {
         std::string img_raw_topic = "image_raw_color";
         std::string cam_info_topic = "/camera_info";
         // Set the default topic names
-        mLeftTopic = topicPrefix + "left/" + img_topic;
+        mLeftTopic = topicPrefix + mLeftTopicRoot + img_topic;
         mLeftCamInfoTopic = mLeftTopic + cam_info_topic;
-        mLeftRawTopic = topicPrefix + "left/" + img_raw_topic;
+        mLeftRawTopic = topicPrefix + mLeftTopicRoot + img_raw_topic;
         mLeftCamInfoRawTopic = mLeftRawTopic + cam_info_topic;
 
-        mRightTopic = topicPrefix + "right/" + img_topic;
+        mRightTopic = topicPrefix + mRightTopicRoot + img_topic;
         mRightCamInfoTopic = mRightTopic + cam_info_topic;
-        mRightRawTopic = topicPrefix + "right/" + img_raw_topic;
+        mRightRawTopic = topicPrefix + mRightTopicRoot + img_raw_topic;
         mRightCamInfoRawTopic = mRightRawTopic + cam_info_topic;
 
-        mRgbTopic = topicPrefix + "rgb/" + img_topic;
+        mRgbTopic = topicPrefix + mRgbTopicRoot + img_topic;
         mRgbCamInfoTopic = mRgbTopic + cam_info_topic;
-        mRgbRawTopic = topicPrefix + "rgb/" + img_raw_topic;
+        mRgbRawTopic = topicPrefix + mRgbTopicRoot + img_raw_topic;
         mRgbCamInfoRawTopic = mRgbRawTopic + cam_info_topic;
         // <<<<< Video topics
 
         // >>>>> Depth Topics
-        mDepthTopic = topicPrefix + "depth/";
+        mDepthTopic = topicPrefix + mDepthTopicRoot;
         if (mOpenniDepthMode) {
             RCLCPP_INFO(get_logger(), "Openni depth mode activated");
             mDepthTopic += "depth_raw_registered";
@@ -723,13 +720,13 @@ namespace stereolabs {
         }
         std::string mDepthCamInfoTopic = mDepthTopic + cam_info_topic;
 
-        mConfImgTopic = topicPrefix + "confidence/image";
-        mConfidenceCamInfoTopic = mConfImgTopic + cam_info_topic;
-        mConfMapTopic = topicPrefix + "confidence/map";
+        mConfImgTopic = topicPrefix + mConfImgTopic;
+        mConfidenceCamInfoTopic = mConfImgTopic + mConfidenceCamInfoTopic;
+        mConfMapTopic = topicPrefix + mConfMapTopic;
 
-        mDispTopic = topicPrefix + "disparity/disparity_image";
+        mDispTopic = topicPrefix + mDispTopic;
 
-        mPointcloudTopic = topicPrefix + "point_cloud/cloud_registered";
+        mPointcloudTopic = topicPrefix + mPointcloudTopic;
         // <<<<< Depth Topics
 
         // >>>>> Create Video publishers
@@ -789,6 +786,9 @@ namespace stereolabs {
             // https://github.com/ros2/ros2/wiki/About-Quality-of-Service-Settings
             rmw_qos_profile_t imu_qos_profile = rmw_qos_profile_sensor_data; // Default QOS profile
             imu_qos_profile.depth = 2;
+
+            mImuTopic = topicPrefix + mImuTopic;
+            mImuRawTopic = topicPrefix + mImuRawTopic;
 
             mPubImu = create_publisher<sensor_msgs::msg::Imu>(mImuTopic, imu_qos_profile);
             RCLCPP_INFO(get_logger(), " * '%s'", mImuTopic.c_str());
@@ -1009,8 +1009,20 @@ namespace stereolabs {
         mConfidenceCamInfoMsg = mLeftCamInfoMsg;
         // <<<<< Images info
 
-        RCLCPP_INFO(get_logger(), "ZED configured");
+        // >>>>> IMU sensor
+        sl::Transform imuTransf = camInfo.camera_imu_transform;
+
+        sl::Translation imuPos = imuTransf.getTranslation();
+        sl::Orientation imuOrient = imuTransf.getOrientation();
+
+        RCLCPP_INFO(get_logger(), "IMU POSE RELATED TO LEFT CAMERA:");
+        RCLCPP_INFO(get_logger(), " * POSITION [x,y,z]: %g,%g,%g", imuPos.x, imuPos.y, imuPos.z);
+        RCLCPP_INFO(get_logger(), " * ORIENTATION [qx, qy, qz, qw]: %g,%g,%g,%g", imuOrient.ox, imuOrient.oy, imuOrient.oz,
+                    imuOrient.ow);
+
+        RCLCPP_INFO(get_logger(), "*** %s configured ***", sl::toString(mZedRealCamModel).c_str());
         RCLCPP_INFO(get_logger(), "Waiting for `ACTIVATE` request...");
+        // >>>>> IMU sensor
 
         // We return a success and hence invoke the transition to the next
         // step: "inactive".
@@ -1740,7 +1752,7 @@ namespace stereolabs {
         }
 
         rclcpp::Time t;
-        if (mSvoMode || !mRunGrabLoop) {
+        if (mSvoMode || !mRunGrabLoop || !mImuTimestampSync) {
             t = now();
         } else {
             t = mLastGrabTimestamp;
@@ -1752,7 +1764,7 @@ namespace stereolabs {
         if (imu_SubNumber > 0) {
             sensor_msgs::msg::Imu imu_msg;
             imu_msg.header.stamp = t;
-            imu_msg.header.frame_id = mCameraFrameId; // TODO Replace with 'mImuFrameId' when the tracking is available
+            imu_msg.header.frame_id = mImuFrameId;
             imu_msg.orientation.x = imu_data.getOrientation()[0];
             imu_msg.orientation.y = imu_data.getOrientation()[1];
             imu_msg.orientation.z = imu_data.getOrientation()[2];
