@@ -448,6 +448,17 @@ namespace stereolabs {
         }
         RCLCPP_INFO(get_logger(), " * Disparity topic: '%s'", mDispTopic.c_str());
 
+        paramName = "depth.confidence_root";
+        if (get_parameter(paramName, paramVal)) {
+            mConfTopicRoot = paramVal.as_string();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        if (!mConfTopicRoot.back() != '/') {
+            mConfTopicRoot.push_back('/');
+        }
+        RCLCPP_INFO(get_logger(), " * Confidence topics root: '%s'", mConfTopicRoot.c_str());
+
         paramName = "depth.confidence_map_topic";
         if (get_parameter(paramName, paramVal)) {
             mConfMapTopic = paramVal.as_string();
@@ -720,9 +731,9 @@ namespace stereolabs {
         }
         std::string mDepthCamInfoTopic = mDepthTopic + cam_info_topic;
 
-        mConfImgTopic = topicPrefix + mConfImgTopic;
-        mConfidenceCamInfoTopic = mConfImgTopic + mConfidenceCamInfoTopic;
-        mConfMapTopic = topicPrefix + mConfMapTopic;
+        mConfImgTopic = topicPrefix + mConfTopicRoot + mConfImgTopic;
+        mConfCamInfoTopic = mConfImgTopic + cam_info_topic;
+        mConfMapTopic = topicPrefix + mConfTopicRoot + mConfMapTopic;
 
         mDispTopic = topicPrefix + mDispTopic;
 
@@ -765,8 +776,8 @@ namespace stereolabs {
         RCLCPP_INFO(get_logger(), " * '%s'", mRightCamInfoRawTopic.c_str());
         mPubDepthCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mDepthCamInfoTopic, camera_qos_profile);
         RCLCPP_INFO(get_logger(), " * '%s'", mDepthCamInfoTopic.c_str());
-        mPubConfidenceCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mConfidenceCamInfoTopic, camera_qos_profile);
-        RCLCPP_INFO(get_logger(), " * '%s'", mConfidenceCamInfoTopic.c_str());
+        mPubConfidenceCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mConfCamInfoTopic, camera_qos_profile);
+        RCLCPP_INFO(get_logger(), " * '%s'", mConfCamInfoTopic.c_str());
         // <<<<< Create Camera Info publishers
 
         // >>>>> Create Depth Publishers

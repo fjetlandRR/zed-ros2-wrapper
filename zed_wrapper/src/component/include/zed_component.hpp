@@ -293,10 +293,11 @@ namespace stereolabs {
         imuPub mPubImuRaw;
 
         // Topics
-        std::string mLeftTopicRoot = "left";
+        std::string mLeftTopicRoot  = "left";
         std::string mRightTopicRoot = "right";
-        std::string mRgbTopicRoot = "rgb";
+        std::string mRgbTopicRoot   = "rgb";
         std::string mDepthTopicRoot = "depth";
+        std::string mConfTopicRoot = "confidence";
 
         std::string mLeftTopic;
         std::string mLeftRawTopic;
@@ -310,11 +311,12 @@ namespace stereolabs {
         std::string mRgbRawTopic;
         std::string mRgbCamInfoTopic;
         std::string mRgbCamInfoRawTopic;
+
         std::string mDepthTopic;
         std::string mDepthCamInfoTopic;
         std::string mConfImgTopic;
+        std::string mConfCamInfoTopic;
         std::string mConfMapTopic;
-        std::string mConfidenceCamInfoTopic;
         std::string mDispTopic;
         std::string mPointcloudTopic;
         std::string mImuTopic;

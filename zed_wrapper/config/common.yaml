@@ -41,8 +41,9 @@ zed:
                 depth_topic_root: "depth"
                 point_cloud_topic: "point_cloud/cloud_registered"
                 disparity_topic: "disparity/disparity_image"
-                confidence_img_topic: "confidence/confidence_image"
-                confidence_map_topic: "confidence/confidence_map"
+                confidence_root: "confidence"
+                confidence_img_topic: "confidence_image"
+                confidence_map_topic: "confidence_map"
             tracking:
                 publish_tf: true
                 publish_map_tf: true
