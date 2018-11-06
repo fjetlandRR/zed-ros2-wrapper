@@ -367,6 +367,28 @@ namespace stereolabs {
         // >>>>>> DEPTH parameters
         RCLCPP_INFO(get_logger(), "*** DEPTH parameters ***");
 
+        paramName = "depth.min_depth";
+        if (get_parameter(paramName, paramVal)) {
+            if (paramVal.get_type() == rclcpp::PARAMETER_DOUBLE) {
+                mZedMinDepth = paramVal.as_double();
+
+                if (mZedMinDepth < 0.1) {
+                    RCLCPP_WARN(get_logger(), "The parameter '%s' must be a greater or equal to 0.1", paramName.c_str());
+                    mZedMinDepth = 0.1;
+                }
+
+                if (mZedMinDepth > 3.0) {
+                    RCLCPP_WARN(get_logger(), "The parameter '%s' must be a smaller or equal to 3.0", paramName.c_str());
+                    mZedMinDepth = 3.0;
+                }
+            } else {
+                RCLCPP_WARN(get_logger(), "The parameter '%s' must be a DOUBLE, using the default value", paramName.c_str());
+            }
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * Min depth: %g m", mZedMinDepth);
+
         paramName = "depth.max_depth";
         if (get_parameter(paramName, paramVal)) {
             if (paramVal.get_type() == rclcpp::PARAMETER_DOUBLE) {
@@ -492,6 +514,17 @@ namespace stereolabs {
                 RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
             }
             RCLCPP_INFO(get_logger(), " * IMU frame: '%s'", mImuFrameId.c_str());
+
+            paramName = "imu.imu_topic_root";
+            if (get_parameter(paramName, paramVal)) {
+                mImuTopicRoot = paramVal.as_string();
+            } else {
+                RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+            }
+            if (!mImuTopicRoot.back() != '/') {
+                mImuTopicRoot.push_back('/');
+            }
+            RCLCPP_INFO(get_logger(), " * IMU topic root: '%s'", mImuTopicRoot.c_str());
 
             paramName = "imu.imu_topic";
             if (get_parameter(paramName, paramVal)) {
@@ -798,8 +831,8 @@ namespace stereolabs {
             rmw_qos_profile_t imu_qos_profile = rmw_qos_profile_sensor_data; // Default QOS profile
             imu_qos_profile.depth = 2;
 
-            mImuTopic = topicPrefix + mImuTopic;
-            mImuRawTopic = topicPrefix + mImuRawTopic;
+            mImuTopic = topicPrefix + mImuTopicRoot + mImuTopic;
+            mImuRawTopic = topicPrefix + mImuTopicRoot + mImuRawTopic;
 
             mPubImu = create_publisher<sensor_msgs::msg::Imu>(mImuTopic, imu_qos_profile);
             RCLCPP_INFO(get_logger(), " * '%s'", mImuTopic.c_str());
@@ -882,6 +915,7 @@ namespace stereolabs {
         mZedParams.sdk_gpu_id = mGpuId;
         mZedParams.depth_stabilization = mDepthStabilization;
         mZedParams.camera_image_flip = mCameraFlip;
+        mZedParams.depth_minimum_distance = mZedMinDepth;
         // <<<<< ZED configuration
 
         // >>>>> Try to open ZED camera or to load SVO
@@ -1237,10 +1271,9 @@ namespace stereolabs {
         sl::RuntimeParameters runParams;
         runParams.sensing_mode = static_cast<sl::SENSING_MODE>(mZedSensingMode);
         runParams.enable_depth = false;
-        runParams.enable_point_cloud = false;
         // <<<<< Grab parameters
 
-        rclcpp::Rate loop_rate(mZedFrameRate);
+        rclcpp::WallRate loop_rate(mZedFrameRate);
 
         INIT_TIMER;
 

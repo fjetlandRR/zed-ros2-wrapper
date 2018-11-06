@@ -254,6 +254,8 @@ namespace stereolabs {
         bool mOpenniDepthMode = false; // 16 bit UC data in mm else 32F in m,
         // for more info -> http://www.ros.org/reps/rep-0118.html
 
+        double mZedMinDepth = 0.2;
+
         double mImuPubRate = 500.0;
         bool mImuTimestampSync = true;
 
@@ -298,6 +300,7 @@ namespace stereolabs {
         std::string mRgbTopicRoot   = "rgb";
         std::string mDepthTopicRoot = "depth";
         std::string mConfTopicRoot = "confidence";
+        std::string mImuTopicRoot = "imu";
 
         std::string mLeftTopic;
         std::string mLeftRawTopic;
