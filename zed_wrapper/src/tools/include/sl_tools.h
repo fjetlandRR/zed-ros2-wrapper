@@ -52,9 +52,9 @@ namespace sl_tools {
      */
     std::string getSDKVersion(int& major, int& minor, int& sub_minor);
 
-    //    /* \brief Convert StereoLabs timestamp to ROS timestamp
-    //     *  \param t : Stereolabs timestamp to be converted
-    //     */
+    /* \brief Convert StereoLabs timestamp to ROS timestamp
+     *  \param t : Stereolabs timestamp to be converted
+     */
     rclcpp::Time slTime2Ros(sl::timeStamp t);
 
     /* \brief sl::Mat to ros message conversion

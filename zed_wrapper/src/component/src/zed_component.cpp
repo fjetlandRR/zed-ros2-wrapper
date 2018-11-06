@@ -192,6 +192,22 @@ namespace stereolabs {
         RCLCPP_INFO(get_logger(), " * Camera model: %d (%s)",
                     mZedUserCamModel, sl::toString(static_cast<sl::MODEL>(mZedUserCamModel)).c_str());
 
+        paramName = "general.camera_timeout_sec";
+        if (get_parameter(paramName, paramVal)) {
+            mCamTimeoutSec = paramVal.as_int();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * Camera timeout: %d sec", mCamTimeoutSec);
+
+        paramName = "general.camera_max_reconnect";
+        if (get_parameter(paramName, paramVal)) {
+            mMaxReconnectTemp = paramVal.as_int();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * Camera reconnection temptatives: %d", mMaxReconnectTemp);
+
         paramName = "general.camera_flip";
         if (get_parameter(paramName, paramVal)) {
             mCameraFlip = paramVal.as_bool();
@@ -199,6 +215,7 @@ namespace stereolabs {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
         }
         RCLCPP_INFO(get_logger(), " * Camera flip: %s", mCameraFlip ? "TRUE" : "FALSE");
+
 
         paramName = "general.zed_id";
         if (get_parameter(paramName, paramVal)) {
@@ -1365,28 +1382,46 @@ namespace stereolabs {
                     // re-initialize the ZED
                     if (grab_status != sl::ERROR_CODE_NOT_A_NEW_FRAME) {
                         RCLCPP_WARN(get_logger(), sl::toString(grab_status));
+                    } else {
+                        continue;
                     }
-
-                    std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
                     rclcpp::Time now = sl_tools::slTime2Ros(mZed.getTimestamp(sl::TIME_REFERENCE_CURRENT));
 
                     rcl_time_point_value_t elapsed = (now - mLastGrabTimestamp).nanoseconds();
-                    rcl_time_point_value_t timeout = rclcpp::Duration(5, 0).nanoseconds();
+                    rcl_time_point_value_t timeout = rclcpp::Duration(mCamTimeoutSec, 0).nanoseconds();
 
+                    static int timeout_count = 0;
                     if (elapsed > timeout) {
+                        timeout_count++;
+
                         if (!mSvoMode) {
-                            // TODO Better handle the error: throw exception?
-                            //throw std::runtime_error("ZED Camera timeout");
-
-                            this->shutdown();
-
                             RCLCPP_WARN(get_logger(), "Camera Timeout");
+
+                            int id = sl_tools::checkCameraReady(mZedSerialNumber);
+
+                            if (id >= 0) {
+                                mZedParams.camera_linux_id = id;
+                                sl::ERROR_CODE err = mZed.open(mZedParams); // Try to initialize the ZED
+                                RCLCPP_INFO(get_logger(), toString(err));
+                                timeout_count = 0;
+                            } else {
+                                RCLCPP_WARN(get_logger(), "#%d Waiting for the %s (S/N %d to be re-connected", timeout_count,
+                                            sl::toString(mZedRealCamModel), mZedSerialNumber);
+                                timeout_count++;
+
+                                if (timeout_count >= mMaxReconnectTemp) {
+                                    RCLCPP_FATAL(get_logger(), "Failed to reconnect to %s (S/N %d). Shutting down...", sl::toString(mZedRealCamModel),
+                                                 mZedSerialNumber);
+                                    this->shutdown();
+                                }
+                            }
                         } else {
                             RCLCPP_WARN(get_logger(), "The SVO reached the end");
                         }
                     }
 
+                    std::this_thread::sleep_for(std::chrono::milliseconds(mCamTimeoutSec * 1000));
                     continue;
                 }
 

@@ -65,7 +65,6 @@ namespace stereolabs {
     // <<<<< Typedefs to simplify declarations
 
     /// ZedCameraComponent inheriting from rclcpp_lifecycle::LifecycleNode
-    * /
     class ZedCameraComponent : public rclcpp_lifecycle::LifecycleNode {
       public:
         ZED_PUBLIC
@@ -253,6 +252,8 @@ namespace stereolabs {
         int mZedResol = 2; // Default resolution: RESOLUTION_HD720
         int mZedQuality = 1; // Default quality: DEPTH_MODE_PERFORMANCE
         int mDepthStabilization = 1;
+        int mCamTimeoutSec = 5;
+        int mMaxReconnectTemp = 5;
         bool mCameraFlip = false;
         int mZedSensingMode = 0; // Default Sensing mode: SENSING_MODE_STANDARD
         bool mOpenniDepthMode = false; // 16 bit UC data in mm else 32F in m,
