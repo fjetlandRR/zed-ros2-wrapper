@@ -1,6 +1,26 @@
 #ifndef ZED_COMPONENT_HPP
 #define ZED_COMPONENT_HPP
 
+// /////////////////////////////////////////////////////////////////////////
+//
+// Copyright (c) 2018, STEREOLABS.
+//
+// All rights reserved.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//
+// /////////////////////////////////////////////////////////////////////////
+
 #include "visibility_control.h"
 
 #include <chrono>
@@ -45,23 +65,7 @@ namespace stereolabs {
     // <<<<< Typedefs to simplify declarations
 
     /// ZedCameraComponent inheriting from rclcpp_lifecycle::LifecycleNode
-    /**
-    * The ZedCameraComponent does not like the regular "talker" node
-    * inherit from node, but rather from lifecyclenode. This brings
-    * in a set of callbacks which are getting invoked depending on
-    * the current state of the node.
-    * Every lifecycle node has a set of services attached to it
-    * which make it controllable from the outside and invoke state
-    * changes.
-    * Available Services as for Beta1:
-    * - <node_name>__get_state
-    * - <node_name>__change_state
-    * - <node_name>__get_available_states
-    * - <node_name>__get_available_transitions
-    * Additionally, a publisher for state change notifications is
-    * created:
-    * - <node_name>__transition_event
-    */
+    * /
     class ZedCameraComponent : public rclcpp_lifecycle::LifecycleNode {
       public:
         ZED_PUBLIC
