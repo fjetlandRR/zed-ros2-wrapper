@@ -208,6 +208,14 @@ namespace stereolabs {
         }
         RCLCPP_INFO(get_logger(), " * Camera timeout: %d sec", mCamTimeoutSec);
 
+        paramName = "general.camera_reactivate";
+        if (get_parameter(paramName, paramVal)) {
+            mZedReactivate = paramVal.as_int();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+        RCLCPP_INFO(get_logger(), " * Camera reconnection if disconnected: %s", mZedReactivate ? "ENABLED" : "DISABLED");
+
         paramName = "general.camera_max_reconnect";
         if (get_parameter(paramName, paramVal)) {
             mMaxReconnectTemp = paramVal.as_int();
@@ -1821,9 +1829,14 @@ namespace stereolabs {
             if (cbRet == LifecycleNodeInterface::CallbackReturn::SUCCESS) {
                 retState = configure(cbRet);
                 if (cbRet == LifecycleNodeInterface::CallbackReturn::SUCCESS) {
-                    //                    retState = activate(cbRet);
-                    //                    if (cbRet == LifecycleNodeInterface::CallbackReturn::SUCCESS) {
-                    //                    }
+                    if (mZedReactivate) {
+                        retState = activate(cbRet);
+                        if (cbRet == LifecycleNodeInterface::CallbackReturn::SUCCESS) {
+                            RCLCPP_INFO(get_logger(), "%s correctly restarted", sl::toString(mZedRealCamModel));
+                        } else {
+                            shutdown();
+                        }
+                    }
                 } else {
                     shutdown();
                 }

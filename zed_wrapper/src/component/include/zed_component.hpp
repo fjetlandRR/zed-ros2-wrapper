@@ -258,6 +258,8 @@ namespace stereolabs {
         int mDepthStabilization = 1;
         int mCamTimeoutSec = 5;
         int mMaxReconnectTemp = 5;
+        bool mZedReactivate =
+            false; // Reactivate the camera after a "clean up"+"configure" due to a disconnection. Set to false if there is an external lifecycle node manager
         bool mCameraFlip = false;
         int mZedSensingMode = 0; // Default Sensing mode: SENSING_MODE_STANDARD
         bool mOpenniDepthMode = false; // 16 bit UC data in mm else 32F in m,
