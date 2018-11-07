@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(stereolabs_zed_video_tutorial)
+project(stereolabs_zed_tutorial_video)
 
 # if CMAKE_BUILD_TYPE is not specified, take 'Release' as default
 IF(NOT CMAKE_BUILD_TYPE)
@@ -30,15 +30,15 @@ include_directories(
 )
 
 ## Build
-add_executable(zed_video_sub src/zed_video_sub_tutorial.cpp)
-ament_target_dependencies(zed_video_sub
+add_executable(zed_video_tutorial src/zed_video_sub_tutorial.cpp)
+ament_target_dependencies(zed_video_tutorial
   rclcpp
   sensor_msgs
 )
 
 # Install executable
 install(
-    TARGETS zed_video_sub
+    TARGETS zed_video_tutorial
     DESTINATION lib/${PROJECT_NAME}
 )
 

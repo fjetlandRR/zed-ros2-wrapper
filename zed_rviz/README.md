@@ -8,13 +8,13 @@ This package lets you visualize in the RViz2 application all the possible inform
 
 If you own a ZED camera launch:
 
-    $ ros2 launch zed_display display.launch
+    $ ros2 launch stereolabs_zed_rviz display_zed.launch.py
 
 ![ZED rendering on Rviz](images/ZED-Rviz.png)
 
 If you own a ZED Mini camera launch:
 
-    $ roslaunch zed_display display_zedm.launch
+    $ ros2 launch stereolabs_zed_rviz display_zedm.launch.py
 
 ![ZED rendering on Rviz](images/ZEDM-Rviz.png)
 
