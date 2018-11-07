@@ -150,6 +150,7 @@ namespace stereolabs {
       protected:
         void zedGrabThreadFunc();
         void pointcloudThreadFunc();
+        void zedReconnectThreadFunc();
 
         void initPublishers();
         void initParameters();
@@ -230,6 +231,10 @@ namespace stereolabs {
 
         // Pointcloud thread
         std::thread mPcThread; // Point Cloud thread
+
+        // Reconnect thread
+        std::thread mReconnectThread;
+        std::mutex mReconnectMutex;
 
         // IMU Timer
         rclcpp::TimerBase::SharedPtr mImuTimer = nullptr;

@@ -1406,13 +1406,16 @@ namespace stereolabs {
                     rcl_time_point_value_t elapsed = (now - mLastGrabTimestamp).nanoseconds();
                     rcl_time_point_value_t timeout = rclcpp::Duration(mCamTimeoutSec, 0).nanoseconds();
 
-                    static int timeout_count = 0;
                     if (elapsed > timeout) {
                         if (!mSvoMode) {
-                            mThreadStop = true;
-                            RCLCPP_ERROR(get_logger(), "Camera timeout. Please verify the connection and restart the node.");
-                            this->shutdown();
-                            break;
+                            //                            mThreadStop = true;
+                            //                            RCLCPP_ERROR(get_logger(), "Camera timeout. Please verify the connection and restart the node.");
+                            //                            this->shutdown();
+                            //                            break;
+                            std::lock_guard<std::mutex> lock(mReconnectMutex);
+                            mReconnectThread = std::thread(&ZedCameraComponent::zedReconnectThreadFunc, this);
+                            mReconnectThread.detach();
+                            return;
                         } else {
                             RCLCPP_WARN(get_logger(), "The SVO reached the end");
                         }
@@ -1804,6 +1807,30 @@ namespace stereolabs {
 
         // Pointcloud publishing
         mPubPointcloud->publish(mPointcloudMsg);
+    }
+
+    void ZedCameraComponent::zedReconnectThreadFunc() {
+        std::lock_guard<std::mutex> lock(mReconnectMutex);
+
+        rclcpp_lifecycle::State retState;
+        LifecycleNodeInterface::CallbackReturn cbRet;
+
+        retState = deactivate(cbRet);
+        if (cbRet == LifecycleNodeInterface::CallbackReturn::SUCCESS) {
+            retState = cleanup(cbRet);
+            if (cbRet == LifecycleNodeInterface::CallbackReturn::SUCCESS) {
+                retState = configure(cbRet);
+                if (cbRet == LifecycleNodeInterface::CallbackReturn::SUCCESS) {
+                    //                    retState = activate(cbRet);
+                    //                    if (cbRet == LifecycleNodeInterface::CallbackReturn::SUCCESS) {
+                    //                    }
+                } else {
+                    shutdown();
+                }
+            } else {
+                shutdown();
+            }
+        }
     }
 
     void ZedCameraComponent::pointcloudThreadFunc() {
