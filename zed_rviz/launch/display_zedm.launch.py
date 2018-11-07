@@ -135,11 +135,24 @@ def generate_launch_description():
         )
     )
 
+    # When the ZED node reaches the 'finalized' state, log a message and exit.
+    zed_finalized_state_handler = RegisterEventHandler(
+        OnStateTransition(
+            target_lifecycle_node = zed_node,
+            goal_state = 'finalized',
+            entities = [
+                # Log
+                LogInfo( msg = "'ZED' reached the 'FINALIZED' state. Press Ctrl+C and re-launch" ),
+            ],
+        )
+    )
+
     # Add the actions to the launch description.
     # The order they are added reflects the order in which they will be executed.
     ld.add_action( zed_inactive_from_unconfigured_state_handler )
     ld.add_action( zed_inactive_from_active_state_handler )
     ld.add_action( zed_active_state_handler )
+    ld.add_action( zed_finalized_state_handler )
     ld.add_action( zed_node )
     ld.add_action( zed_configure_trans_event)
 

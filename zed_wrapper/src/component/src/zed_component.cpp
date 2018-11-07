@@ -74,18 +74,23 @@ namespace stereolabs {
         RCLCPP_DEBUG(get_logger(), "Previous state: %s (%d)", previous_state.label().c_str(), previous_state.id());
 
         // >>>>> Verify that all the threads are not active
-        try {
-            if (!mThreadStop) {
-                mThreadStop = true;
+        if (!mThreadStop) {
+            mThreadStop = true;
+            try {
                 if (mGrabThread.joinable()) {
                     mGrabThread.join();
                 }
+            } catch (std::system_error& e) {
+                RCLCPP_WARN(get_logger(), "Grab thread joining exception: %s", e.what());
+            }
+
+            try {
                 if (mPcThread.joinable()) {
                     mPcThread.join();
                 }
+            } catch (std::system_error& e) {
+                RCLCPP_WARN(get_logger(), "Pointcloud thread joining exception: %s", e.what());
             }
-        } catch (std::system_error& e) {
-            RCLCPP_WARN(get_logger(), "Thread joining exception: %s", e.what());
         }
         // <<<<< Verify that the grab thread is not active
 
@@ -97,27 +102,32 @@ namespace stereolabs {
         }
         // <<<<< Verify that ZED is not opened
 
-        RCLCPP_INFO(get_logger(), "shutdown complete");
+        RCLCPP_INFO(get_logger(), "Shutdown complete");
 
-        //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
-        rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
         return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
     }
 
     ZedCameraComponent::~ZedCameraComponent() {
-        try {
-            if (!mThreadStop) {
-                mThreadStop = true;
+        // >>>>> Verify that all the threads are not active
+        if (!mThreadStop) {
+            mThreadStop = true;
+            try {
                 if (mGrabThread.joinable()) {
                     mGrabThread.join();
                 }
+            } catch (std::system_error& e) {
+                RCLCPP_WARN(get_logger(), "Grab thread joining exception: %s", e.what());
+            }
+
+            try {
                 if (mPcThread.joinable()) {
                     mPcThread.join();
                 }
+            } catch (std::system_error& e) {
+                RCLCPP_WARN(get_logger(), "Pointcloud thread joining exception: %s", e.what());
             }
-        } catch (std::system_error& e) {
-            RCLCPP_WARN(get_logger(), "Thread joining exception: %s", e.what());
         }
+        // <<<<< Verify that the grab thread is not active
     }
 
     rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCameraComponent::on_error(
@@ -132,7 +142,7 @@ namespace stereolabs {
             switch (mPrevTransition) {
             case lifecycle_msgs::msg::Transition::TRANSITION_CONFIGURE: { // Error during configuration
                 RCLCPP_INFO(get_logger(), "Node entering 'FINALIZED' state. Kill and restart the node.");
-                //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
+
                 return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
             }
             break;
@@ -140,7 +150,7 @@ namespace stereolabs {
             case lifecycle_msgs::msg::Transition::TRANSITION_ACTIVATE: { // Error during activation
                 if (mSvoMode) {
                     RCLCPP_INFO(get_logger(), "Please verify the SVO path and reboot the node: %s", mSvoFilepath.c_str());
-                    //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
+
                     return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
                 } else {
 
@@ -152,7 +162,6 @@ namespace stereolabs {
 
                     RCLCPP_INFO(get_logger(), "Node entering 'UNCONFIGURED' state");
 
-                    //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
                     return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
                 }
             }
@@ -166,7 +175,6 @@ namespace stereolabs {
             }
         }
 
-        //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
         return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
     }
 
@@ -972,7 +980,6 @@ namespace stereolabs {
             while (waiting_for_camera) {
                 // Ctrl+C check
                 if (!rclcpp::ok()) {
-                    //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
                     return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
                 }
 
@@ -980,10 +987,9 @@ namespace stereolabs {
 
                 if (prop.id < -1 ||
                     prop.camera_state == sl::CAMERA_STATE::CAMERA_STATE_NOT_AVAILABLE) {
-                    std::string msg = "ZED SN " + std::to_string(mZedSerialNumber) +
-                                      " not detected ! Please connect this ZED";
+                    std::string msg = "Camera with SN " + std::to_string(mZedSerialNumber) +
+                                      " not detected! Please verify the connection.";
                     RCLCPP_INFO(get_logger(), msg.c_str());
-                    std::this_thread::sleep_for(std::chrono::milliseconds(500));
                 } else {
                     waiting_for_camera = false;
                     mZedParams.camera_linux_id = prop.id;
@@ -991,12 +997,13 @@ namespace stereolabs {
 
                 TIMER_ELAPSED; // Initialize a variable named "elapsed" with the msec elapsed from the latest "START_TIMER" call
 
-                if (elapsed > mZedTimeoutMsec) {
-                    RCUTILS_LOG_WARN_NAMED(get_name(), "Camera detection timeout");
+                if (elapsed >= mMaxReconnectTemp * mCamTimeoutSec * 1000) {
+                    RCLCPP_ERROR(get_logger(), "Camera detection timeout");
 
-                    //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_ERROR;
                     return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
                 }
+
+                std::this_thread::sleep_for(std::chrono::seconds(mCamTimeoutSec));
             }
         }
 
@@ -1011,28 +1018,35 @@ namespace stereolabs {
                 break;
             }
 
-            RCUTILS_LOG_WARN_NAMED(get_name(), toString(err));
-
             if (mSvoMode) {
-                //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_ERROR;
+                RCLCPP_WARN(get_logger(), "Error opening SVO: %s", sl::toString(err).c_str());
+
                 return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
+            }
+
+            RCLCPP_WARN(get_logger(), "Error opening camera: %s", sl::toString(err).c_str());
+
+            if (err == sl::ERROR_CODE_CAMERA_DETECTION_ISSUE && mZedUserCamModel == 1) {
+                RCLCPP_INFO(get_logger(), "Try to flip the USB3 Type-C connector");
+            } else {
+                RCLCPP_INFO(get_logger(), "Please verify the USB3 connection");
             }
 
             if (!rclcpp::ok() || mThreadStop) {
                 RCLCPP_INFO(get_logger(), "ZED activation interrupted");
 
-                //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
                 return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
             }
 
             TIMER_ELAPSED
 
-            if (elapsed > mZedTimeoutMsec) {
-                RCUTILS_LOG_WARN_NAMED(get_name(), "Camera detection timeout");
+            if (elapsed > mMaxReconnectTemp * mCamTimeoutSec * 1000) {
+                RCLCPP_ERROR(get_logger(), "Camera detection timeout");
 
-                //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_ERROR;
                 return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
             }
+
+            std::this_thread::sleep_for(std::chrono::seconds(mCamTimeoutSec));
         }
         // <<<<< Try to open ZED camera or to load SVO
 
@@ -1042,14 +1056,14 @@ namespace stereolabs {
         if (mZedRealCamModel == sl::MODEL_ZED) {
 
             if (mZedUserCamModel != 0) {
-                RCUTILS_LOG_WARN_NAMED(get_name(), "Camera model does not match user parameter. Please modify "
-                                       "the value of the parameter 'camera_model' to 0");
+                RCLCPP_WARN(get_logger(), "Camera model does not match user parameter. Please modify "
+                            "the value of the parameter 'camera_model' to '0'");
             }
         } else if (mZedRealCamModel == sl::MODEL_ZED_M) {
 
             if (mZedUserCamModel != 1) {
-                RCUTILS_LOG_WARN_NAMED(get_name(), "Camera model does not match user parameter. Please modify "
-                                       "the value of the parameter 'camera_model' to 1");
+                RCLCPP_WARN(get_logger(), "Camera model does not match user parameter. Please modify "
+                            "the value of the parameter 'camera_model' to '1'");
             }
         }
 
@@ -1111,7 +1125,6 @@ namespace stereolabs {
         // would stay in the "unconfigured" state.
         // In case of TRANSITION_CALLBACK_ERROR or any thrown exception within
         // this callback, the state machine transitions to state "errorprocessing".
-        //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
         return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
     }
 
@@ -1125,7 +1138,7 @@ namespace stereolabs {
 
         if (!mZed.isOpened()) {
             RCLCPP_WARN(get_logger(), "ZED Camera not opened");
-            //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE;
+
             return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
         }
 
@@ -1185,7 +1198,6 @@ namespace stereolabs {
         // would stay in the "inactive" state.
         // In case of TRANSITION_CALLBACK_ERROR or any thrown exception within
         // this callback, the state machine transitions to state "errorprocessing".
-        //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
         return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
     }
 
@@ -1204,18 +1216,23 @@ namespace stereolabs {
         // <<<<< Stop IMU timer
 
         // >>>>> Verify that all the threads are not active
-        try {
-            if (!mThreadStop) {
-                mThreadStop = true;
-                if (mPcThread.joinable()) {
-                    mPcThread.join();
-                }
+        if (!mThreadStop) {
+            mThreadStop = true;
+            try {
                 if (mGrabThread.joinable()) {
                     mGrabThread.join();
                 }
+            } catch (std::system_error& e) {
+                RCLCPP_WARN(get_logger(), "Grab thread joining exception: %s", e.what());
             }
-        } catch (std::system_error& e) {
-            RCLCPP_WARN(get_logger(), "Thread joining exception: %s", e.what());
+
+            try {
+                if (mPcThread.joinable()) {
+                    mPcThread.join();
+                }
+            } catch (std::system_error& e) {
+                RCLCPP_WARN(get_logger(), "Pointcloud thread joining exception: %s", e.what());
+            }
         }
         // <<<<< Verify that the grab thread is not active
 
@@ -1255,8 +1272,7 @@ namespace stereolabs {
         // would stay in the "active" state.
         // In case of TRANSITION_CALLBACK_ERROR or any thrown exception within
         // this callback, the state machine transitions to state "errorprocessing".
-        //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
-        rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
+        return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
     }
 
     rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCameraComponent::on_cleanup(
@@ -1283,7 +1299,6 @@ namespace stereolabs {
         // would stay in the "inactive" state.
         // In case of TRANSITION_CALLBACK_ERROR or any thrown exception within
         // this callback, the state machine transitions to state "errorprocessing".
-        //return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS;
         return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
     }
 
@@ -1381,7 +1396,7 @@ namespace stereolabs {
                     // the zed have been disconnected) and
                     // re-initialize the ZED
                     if (grab_status != sl::ERROR_CODE_NOT_A_NEW_FRAME) {
-                        RCLCPP_WARN(get_logger(), sl::toString(grab_status));
+                        RCLCPP_WARN(get_logger(), "%s", sl::toString(grab_status).c_str());
                     } else {
                         continue;
                     }
@@ -1393,35 +1408,17 @@ namespace stereolabs {
 
                     static int timeout_count = 0;
                     if (elapsed > timeout) {
-                        timeout_count++;
-
                         if (!mSvoMode) {
-                            RCLCPP_WARN(get_logger(), "Camera Timeout");
-
-                            int id = sl_tools::checkCameraReady(mZedSerialNumber);
-
-                            if (id >= 0) {
-                                mZedParams.camera_linux_id = id;
-                                sl::ERROR_CODE err = mZed.open(mZedParams); // Try to initialize the ZED
-                                RCLCPP_INFO(get_logger(), toString(err));
-                                timeout_count = 0;
-                            } else {
-                                RCLCPP_WARN(get_logger(), "#%d Waiting for the %s (S/N %d to be re-connected", timeout_count,
-                                            sl::toString(mZedRealCamModel), mZedSerialNumber);
-                                timeout_count++;
-
-                                if (timeout_count >= mMaxReconnectTemp) {
-                                    RCLCPP_FATAL(get_logger(), "Failed to reconnect to %s (S/N %d). Shutting down...", sl::toString(mZedRealCamModel),
-                                                 mZedSerialNumber);
-                                    this->shutdown();
-                                }
-                            }
+                            mThreadStop = true;
+                            RCLCPP_ERROR(get_logger(), "Camera timeout. Please verify the connection and restart the node.");
+                            this->shutdown();
+                            break;
                         } else {
                             RCLCPP_WARN(get_logger(), "The SVO reached the end");
                         }
                     }
 
-                    std::this_thread::sleep_for(std::chrono::milliseconds(mCamTimeoutSec * 1000));
+                    std::this_thread::sleep_for(std::chrono::seconds(mCamTimeoutSec));
                     continue;
                 }
 

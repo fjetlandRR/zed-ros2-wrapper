@@ -227,7 +227,6 @@ namespace stereolabs {
         std::thread mGrabThread;
         bool mThreadStop = false;
         bool mRunGrabLoop = false;
-        int mZedTimeoutMsec = 5000; // Error generated if camera is not available after timeout
 
         // Pointcloud thread
         std::thread mPcThread; // Point Cloud thread
