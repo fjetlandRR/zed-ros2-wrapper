@@ -42,7 +42,7 @@ void imageLeftRectifiedCallback(const sensor_msgs::msg::Image::SharedPtr msg) {
 int main(int argc, char* argv[]) {
     rclcpp::init(argc, argv);
 
-    g_node = rclcpp::Node::make_shared("zed_video_sub");
+    g_node = rclcpp::Node::make_shared("zed_video_tutorial");
 
     // https://github.com/ros2/ros2/wiki/About-Quality-of-Service-Settings
     rmw_qos_profile_t camera_qos_profile = rmw_qos_profile_sensor_data;

@@ -30,7 +30,7 @@ using namespace std::placeholders;
 class MinimalDepthSubscriber : public rclcpp::Node {
   public:
     MinimalDepthSubscriber()
-        : Node("zed_depth_sub") {
+        : Node("zed_depth_tutorial") {
 
         // https://github.com/ros2/ros2/wiki/About-Quality-of-Service-Settings
         rmw_qos_profile_t camera_qos_profile = rmw_qos_profile_sensor_data;

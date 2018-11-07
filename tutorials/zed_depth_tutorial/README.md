@@ -4,6 +4,6 @@ In this tutorial you will learn how to write a simple node that subscribes to me
 
 ![](../images/tutorial_depth.png)
 
-The complete documentation is available on the [Stereolabs website](https://docs.stereolabs.com/integrations/ros/depth_sensing/)
+The complete documentation is available on the [Stereolabs website](https://docs.stereolabs.com/integrations/ros2/depth_sensing/)
 
 
