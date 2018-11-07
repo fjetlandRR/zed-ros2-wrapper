@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-project(stereolabs_zed_ros2 NONE)
+project(stereolabs_zed_rviz)
 
 find_package(ament_cmake REQUIRED)
 
@@ -10,5 +10,16 @@ find_package(ament_cmake REQUIRED)
 FILE(GLOB_RECURSE extra_files ${CMAKE_SOURCE_DIR}/*)
 add_custom_target(dummy_${PROJECT_NAME} SOURCES ${extra_files})
 ###############################################################################
+
+install(DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME})
+
+install(DIRECTORY rviz
+  DESTINATION share/${PROJECT_NAME})
+
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  ament_lint_auto_find_test_dependencies()
+endif()
 
 ament_package()

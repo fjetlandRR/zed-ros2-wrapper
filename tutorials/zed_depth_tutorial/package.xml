@@ -2,7 +2,7 @@
 
 <!-- Package format 3 according to http://www.ros.org/reps/rep-0149.html -->
 <package format="3">
-  <name>zed_depth_sub_tutorial_ros2</name>
+  <name>stereolabs_zed_depth_tutorial</name>
   <version>0.1.0</version>
   <description>
     This package is a tutorial showing how to subscribe to ZED depth streams

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(zed_lifecycle_sub_tutorial_ros2)
+project(stereolabs_zed_lifecycle_tutorial)
 
 # if CMAKE_BUILD_TYPE is not specified, take 'Release' as default
 IF(NOT CMAKE_BUILD_TYPE)
@@ -15,6 +15,13 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(lifecycle_msgs REQUIRED)
+
+###############################################################################
+# Add all files in subdirectories of the project in
+# a dummy_target so qtcreator have access to all files
+FILE(GLOB_RECURSE extra_files ${CMAKE_SOURCE_DIR}/*)
+add_custom_target(dummy_${PROJECT_NAME} SOURCES ${extra_files})
+###############################################################################
 
 # includes
 include_directories(

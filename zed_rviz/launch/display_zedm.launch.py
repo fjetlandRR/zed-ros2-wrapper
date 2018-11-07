@@ -21,7 +21,7 @@ import lifecycle_msgs.msg
 
 def generate_launch_description():
 
-    camera_model = 'zed' 
+    camera_model = 'zedm' 
 
     # URDF file to be loaded by Robot State Publisher
     urdf = os.path.join(get_package_share_directory('stereolabs_zed'), 'urdf', camera_model + '.urdf')
@@ -32,8 +32,8 @@ def generate_launch_description():
     config_camera = os.path.join(get_package_share_directory('stereolabs_zed'), 'config', camera_model + '.yaml')
 
     # RVIZ2 configuration
-    rviz_config = os.path.join(get_package_share_directory('stereolabs_zed_display_rviz'), 'rviz', camera_model + '.rviz')
-    sl_logo = os.path.join(get_package_share_directory('stereolabs_zed_display_rviz'), 'rviz', 'Logo_STEREOLABS.png')
+    rviz_config = os.path.join(get_package_share_directory('stereolabs_zed_rviz'), 'rviz', camera_model + '.rviz')
+    sl_logo = os.path.join(get_package_share_directory('stereolabs_zed_rviz'), 'rviz', 'Logo_STEREOLABS.png')
 
     # Set LOG format
     os.environ['RCUTILS_CONSOLE_OUTPUT_FORMAT'] = '{time}: [{name}] [{severity}]\t{message}'
