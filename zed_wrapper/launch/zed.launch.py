@@ -11,6 +11,7 @@ from launch import LaunchDescription
 from launch.actions import EmitEvent
 from launch.actions import LogInfo
 from launch.actions import RegisterEventHandler
+from launch.actions import OpaqueFunction
 from launch_ros.actions import Node
 from launch_ros.actions import LifecycleNode
 from launch_ros.events.lifecycle import ChangeState
@@ -134,6 +135,7 @@ def generate_launch_description():
             entities = [
                 # Log
                 LogInfo( msg = "'ZED' reached the 'FINALIZED' state. Press Ctrl+C and re-launch" ),
+                OpaqueFunction(function=sys.exit), # TODO better handle this stage!
             ],
         )
     )
