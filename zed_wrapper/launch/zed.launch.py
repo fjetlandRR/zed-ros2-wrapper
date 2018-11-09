@@ -85,6 +85,9 @@ def generate_launch_description():
          )
     )
 
+    # Shutdown event
+    shutdown_event = EmitEvent( event = launch.events.Shutdown() )
+
     # When the ZED node reaches the 'inactive' state from 'unconfigured', make it take the 'activate' transition and start the Robot State Publisher
     zed_inactive_from_unconfigured_state_handler = RegisterEventHandler(
         OnStateTransition(
@@ -134,8 +137,8 @@ def generate_launch_description():
             goal_state = 'finalized',
             entities = [
                 # Log
-                LogInfo( msg = "'ZED' reached the 'FINALIZED' state. Press Ctrl+C and re-launch" ),
-                OpaqueFunction(function=sys.exit), # TODO better handle this stage!
+                LogInfo( msg = "'ZED' reached the 'FINALIZED' state. Killing the node..." ),
+                shutdown_event,
             ],
         )
     )
