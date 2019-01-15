@@ -30,7 +30,7 @@
 class MinimalLifecycleSubscriber : public rclcpp::Node {
   public:
     MinimalLifecycleSubscriber()
-        : Node("zed_lifecycle_sub") {
+        : Node("zed_lifecycle_tutorial") {
 
         std::string topic = "/zed/zed_node/transition_event";
 

@@ -1,6 +1,7 @@
 """Launch a lifecycle ZED node and the Robot State Publisher"""
 
 import os
+import sys
 
 import launch
 
@@ -10,6 +11,7 @@ from launch import LaunchDescription
 from launch.actions import EmitEvent
 from launch.actions import LogInfo
 from launch.actions import RegisterEventHandler
+from launch.actions import OpaqueFunction
 from launch_ros.actions import Node
 from launch_ros.actions import LifecycleNode
 from launch_ros.events.lifecycle import ChangeState
@@ -83,6 +85,9 @@ def generate_launch_description():
          )
     )
 
+    # Shutdown event
+    shutdown_event = EmitEvent( event = launch.events.Shutdown() )
+
     # When the ZED node reaches the 'inactive' state from 'unconfigured', make it take the 'activate' transition and start the Robot State Publisher
     zed_inactive_from_unconfigured_state_handler = RegisterEventHandler(
         OnStateTransition(
@@ -125,11 +130,25 @@ def generate_launch_description():
         )
     )
 
+    # When the ZED node reaches the 'finalized' state, log a message and exit.
+    zed_finalized_state_handler = RegisterEventHandler(
+        OnStateTransition(
+            target_lifecycle_node = zed_node,
+            goal_state = 'finalized',
+            entities = [
+                # Log
+                LogInfo( msg = "'ZED' reached the 'FINALIZED' state. Killing the node..." ),
+                shutdown_event,
+            ],
+        )
+    )
+
     # Add the actions to the launch description.
     # The order they are added reflects the order in which they will be executed.
     ld.add_action( zed_inactive_from_unconfigured_state_handler )
     ld.add_action( zed_inactive_from_active_state_handler )
     ld.add_action( zed_active_state_handler )
+    ld.add_action( zed_finalized_state_handler )
     ld.add_action( zed_node )
     ld.add_action( zed_configure_trans_event)
 

@@ -1,6 +1,26 @@
 #ifndef ZED_COMPONENT_HPP
 #define ZED_COMPONENT_HPP
 
+// /////////////////////////////////////////////////////////////////////////
+//
+// Copyright (c) 2018, STEREOLABS.
+//
+// All rights reserved.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//
+// /////////////////////////////////////////////////////////////////////////
+
 #include "visibility_control.h"
 
 #include <chrono>
@@ -45,23 +65,6 @@ namespace stereolabs {
     // <<<<< Typedefs to simplify declarations
 
     /// ZedCameraComponent inheriting from rclcpp_lifecycle::LifecycleNode
-    /**
-    * The ZedCameraComponent does not like the regular "talker" node
-    * inherit from node, but rather from lifecyclenode. This brings
-    * in a set of callbacks which are getting invoked depending on
-    * the current state of the node.
-    * Every lifecycle node has a set of services attached to it
-    * which make it controllable from the outside and invoke state
-    * changes.
-    * Available Services as for Beta1:
-    * - <node_name>__get_state
-    * - <node_name>__change_state
-    * - <node_name>__get_available_states
-    * - <node_name>__get_available_transitions
-    * Additionally, a publisher for state change notifications is
-    * created:
-    * - <node_name>__transition_event
-    */
     class ZedCameraComponent : public rclcpp_lifecycle::LifecycleNode {
       public:
         ZED_PUBLIC
@@ -147,6 +150,7 @@ namespace stereolabs {
       protected:
         void zedGrabThreadFunc();
         void pointcloudThreadFunc();
+        void zedReconnectThreadFunc();
 
         void initPublishers();
         void initParameters();
@@ -224,10 +228,13 @@ namespace stereolabs {
         std::thread mGrabThread;
         bool mThreadStop = false;
         bool mRunGrabLoop = false;
-        int mZedTimeoutMsec = 5000; // Error generated if camera is not available after timeout
 
         // Pointcloud thread
         std::thread mPcThread; // Point Cloud thread
+
+        // Reconnect thread
+        std::thread mReconnectThread;
+        std::mutex mReconnectMutex;
 
         // IMU Timer
         rclcpp::TimerBase::SharedPtr mImuTimer = nullptr;
@@ -249,12 +256,19 @@ namespace stereolabs {
         int mZedResol = 2; // Default resolution: RESOLUTION_HD720
         int mZedQuality = 1; // Default quality: DEPTH_MODE_PERFORMANCE
         int mDepthStabilization = 1;
+        int mCamTimeoutSec = 5;
+        int mMaxReconnectTemp = 5;
+        bool mZedReactivate =
+            false; // Reactivate the camera after a "clean up"+"configure" due to a disconnection. Set to false if there is an external lifecycle node manager
         bool mCameraFlip = false;
         int mZedSensingMode = 0; // Default Sensing mode: SENSING_MODE_STANDARD
         bool mOpenniDepthMode = false; // 16 bit UC data in mm else 32F in m,
         // for more info -> http://www.ros.org/reps/rep-0118.html
 
+        double mZedMinDepth = 0.2;
+
         double mImuPubRate = 500.0;
+        bool mImuTimestampSync = true;
 
         // ZED dynamic params
         double mZedMatResizeFactor = 1.0;   // Dynamic...
@@ -292,6 +306,13 @@ namespace stereolabs {
         imuPub mPubImuRaw;
 
         // Topics
+        std::string mLeftTopicRoot  = "left";
+        std::string mRightTopicRoot = "right";
+        std::string mRgbTopicRoot   = "rgb";
+        std::string mDepthTopicRoot = "depth";
+        std::string mConfTopicRoot = "confidence";
+        std::string mImuTopicRoot = "imu";
+
         std::string mLeftTopic;
         std::string mLeftRawTopic;
         std::string mLeftCamInfoTopic;
@@ -304,11 +325,12 @@ namespace stereolabs {
         std::string mRgbRawTopic;
         std::string mRgbCamInfoTopic;
         std::string mRgbCamInfoRawTopic;
+
         std::string mDepthTopic;
         std::string mDepthCamInfoTopic;
         std::string mConfImgTopic;
+        std::string mConfCamInfoTopic;
         std::string mConfMapTopic;
-        std::string mConfidenceCamInfoTopic;
         std::string mDispTopic;
         std::string mPointcloudTopic;
         std::string mImuTopic;

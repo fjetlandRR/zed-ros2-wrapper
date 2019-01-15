@@ -32,8 +32,8 @@ def generate_launch_description():
     config_camera = os.path.join(get_package_share_directory('stereolabs_zed'), 'config', camera_model + '.yaml')
 
     # RVIZ2 configuration
-    rviz_config = os.path.join(get_package_share_directory('stereolabs_zed_display_rviz'), 'rviz', camera_model + '.rviz')
-    sl_logo = os.path.join(get_package_share_directory('stereolabs_zed_display_rviz'), 'rviz', 'Logo_STEREOLABS.png')
+    rviz_config = os.path.join(get_package_share_directory('stereolabs_zed_rviz'), 'rviz', camera_model + '.rviz')
+    sl_logo = os.path.join(get_package_share_directory('stereolabs_zed_rviz'), 'rviz', 'Logo_STEREOLABS.png')
 
     # Set LOG format
     os.environ['RCUTILS_CONSOLE_OUTPUT_FORMAT'] = '{time}: [{name}] [{severity}]\t{message}'
@@ -89,6 +89,9 @@ def generate_launch_description():
          )
     )
 
+    # Shutdown event
+    shutdown_event = EmitEvent( event = launch.events.Shutdown() )
+
     # When the ZED node reaches the 'inactive' state from 'unconfigured', make it take the 'activate' transition and start the Robot State Publisher
     zed_inactive_from_unconfigured_state_handler = RegisterEventHandler(
         OnStateTransition(
@@ -135,11 +138,25 @@ def generate_launch_description():
         )
     )
 
+    # When the ZED node reaches the 'finalized' state, log a message and exit.
+    zed_finalized_state_handler = RegisterEventHandler(
+        OnStateTransition(
+            target_lifecycle_node = zed_node,
+            goal_state = 'finalized',
+            entities = [
+                # Log
+                LogInfo( msg = "'ZED' reached the 'FINALIZED' state. Killing the node..." ),
+                shutdown_event,
+            ],
+        )
+    )
+
     # Add the actions to the launch description.
     # The order they are added reflects the order in which they will be executed.
     ld.add_action( zed_inactive_from_unconfigured_state_handler )
     ld.add_action( zed_inactive_from_active_state_handler )
     ld.add_action( zed_active_state_handler )
+    ld.add_action( zed_finalized_state_handler )
     ld.add_action( zed_node )
     ld.add_action( zed_configure_trans_event)
 
