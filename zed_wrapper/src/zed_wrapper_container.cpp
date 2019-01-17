@@ -22,6 +22,7 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include "zed_component.hpp"
+#include "zed_it_broadcaster.hpp"
 
 int main(int argc, char* argv[]) {
 
@@ -35,8 +36,11 @@ int main(int argc, char* argv[]) {
     rclcpp::executors::MultiThreadedExecutor exe;
 
     // namespace: zed - node_name: zed_node - intra-process communication: false
-    auto lc_node = std::make_shared<stereolabs::ZedCameraComponent>("zed_node", "zed", false);
+    auto lc_node = std::make_shared<stereolabs::ZedCameraComponent>("zed_node", "zed", true);
     exe.add_node(lc_node->get_node_base_interface());
+
+    auto it_node = std::make_shared<stereolabs::ZedItBroadcaster>("zed_it_broadcaster", "zed", true);
+    exe.add_node(it_node->get_node_base_interface());
 
     exe.spin();
 
