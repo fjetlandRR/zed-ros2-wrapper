@@ -53,10 +53,15 @@ namespace stereolabs {
         void leftRawCallback(const sensor_msgs::msg::Image::SharedPtr msg);
         void leftInfoRawCallback(const sensor_msgs::msg::CameraInfo::SharedPtr msg);
 
+        void depthCallback(const sensor_msgs::msg::Image::SharedPtr msg);
+        void depthInfoCallback(const sensor_msgs::msg::CameraInfo::SharedPtr msg);
+
         void initPub();
 
       private:
         rmw_qos_profile_t mCamQosProfile;
+
+        bool mOpenNIMode = false;
 
         // Subscribers
         imgSub mRgbSub;
@@ -71,6 +76,8 @@ namespace stereolabs {
         camInfoSub mRawRightInfoSub;
         imgSub mRawLeftSub;
         camInfoSub mRawLeftInfoSub;
+        imgSub mDepthSub;
+        camInfoSub mDepthInfoSub;
 
         // Publisher topics
         std::string mRgbTopic;
@@ -79,6 +86,7 @@ namespace stereolabs {
         std::string mRawRgbTopic;
         std::string mRawRightTopic;
         std::string mRawLeftTopic;
+        std::string mDepthTopic;
 
         // Camera Info Messages
         sensor_msgs::msg::CameraInfo mRgbInfoMsg;
@@ -87,6 +95,7 @@ namespace stereolabs {
         sensor_msgs::msg::CameraInfo mRawRgbInfoMsg;
         sensor_msgs::msg::CameraInfo mRawRightInfoMsg;
         sensor_msgs::msg::CameraInfo mRawLeftInfoMsg;
+        sensor_msgs::msg::CameraInfo mDepthInfoMsg;
 
         // Camera Publishers
         bool mPubInitialized = false;
@@ -96,9 +105,7 @@ namespace stereolabs {
         image_transport::CameraPublisher mRawRgbPub;
         image_transport::CameraPublisher mRawRightPub;
         image_transport::CameraPublisher mRawLeftPub;
-
-
-
+        image_transport::CameraPublisher mDepthPub;
     };
 
 }  // namespace stereolabs

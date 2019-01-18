@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
     auto lc_node = std::make_shared<stereolabs::ZedCameraComponent>("zed_node", "zed", true);
     exe.add_node(lc_node->get_node_base_interface());
 
-    auto it_node = std::make_shared<stereolabs::ZedItBroadcaster>("zed_it_broadcaster", "zed", true);
+    auto it_node = std::make_shared<stereolabs::ZedItBroadcaster>("zed_node", "zed", true);
     exe.add_node(it_node->get_node_base_interface());
 
     exe.spin();
