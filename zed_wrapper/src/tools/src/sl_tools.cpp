@@ -194,30 +194,37 @@ namespace sl_tools {
             imgMessage->encoding = sensor_msgs::image_encodings::TYPE_32FC1;
             memcpy((char*)(&imgMessage->data[0]), img.getPtr<sl::float1>(), size);
             break;
+
         case sl::MAT_TYPE_32F_C2: /**< float 2 channels.*/
             imgMessage->encoding = sensor_msgs::image_encodings::TYPE_32FC2;
             memcpy((char*)(&imgMessage->data[0]), img.getPtr<sl::float2>(), size);
             break;
+
         case sl::MAT_TYPE_32F_C3: /**< float 3 channels.*/
             imgMessage->encoding = sensor_msgs::image_encodings::TYPE_32FC3;
             memcpy((char*)(&imgMessage->data[0]), img.getPtr<sl::float3>(), size);
             break;
+
         case sl::MAT_TYPE_32F_C4: /**< float 4 channels.*/
             imgMessage->encoding = sensor_msgs::image_encodings::TYPE_32FC4;
             memcpy((char*)(&imgMessage->data[0]), img.getPtr<sl::float4>(), size);
             break;
+
         case sl::MAT_TYPE_8U_C1: /**< unsigned char 1 channel.*/
             imgMessage->encoding = sensor_msgs::image_encodings::MONO8;
             memcpy((char*)(&imgMessage->data[0]), img.getPtr<sl::uchar1>(), size);
             break;
+
         case sl::MAT_TYPE_8U_C2: /**< unsigned char 2 channels.*/
             imgMessage->encoding = sensor_msgs::image_encodings::TYPE_8UC2;
             memcpy((char*)(&imgMessage->data[0]), img.getPtr<sl::uchar2>(), size);
             break;
+
         case sl::MAT_TYPE_8U_C3: /**< unsigned char 3 channels.*/
             imgMessage->encoding = sensor_msgs::image_encodings::BGR8;
             memcpy((char*)(&imgMessage->data[0]), img.getPtr<sl::uchar3>(), size);
             break;
+
         case sl::MAT_TYPE_8U_C4: /**< unsigned char 4 channels.*/
             imgMessage->encoding = sensor_msgs::image_encodings::BGRA8;
             memcpy((char*)(&imgMessage->data[0]), img.getPtr<sl::uchar4>(), size);
@@ -225,6 +232,42 @@ namespace sl_tools {
         }
 
         return imgMessage;
+    }
+
+    std::string qos2str(rmw_qos_history_policy_t qos) {
+        if (qos == RMW_QOS_POLICY_HISTORY_KEEP_LAST) {
+            return "KEEP_LAST";
+        }
+
+        if (qos == RMW_QOS_POLICY_HISTORY_KEEP_ALL) {
+            return "KEEP_ALL";
+        }
+
+        return "Unknown QoS value";
+    }
+
+    std::string qos2str(rmw_qos_reliability_policy_t qos) {
+        if (qos == RMW_QOS_POLICY_RELIABILITY_RELIABLE) {
+            return "RELIABLE";
+        }
+
+        if (qos == RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT) {
+            return "BEST_EFFORT";
+        }
+
+        return "Unknown QoS value";
+    }
+
+    std::string qos2str(rmw_qos_durability_policy_t qos) {
+        if (qos == RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL) {
+            return "TRANSIENT_LOCAL";
+        }
+
+        if (qos == RMW_QOS_POLICY_DURABILITY_VOLATILE) {
+            return "VOLATILE";
+        }
+
+        return "Unknown QoS value";
     }
 
 } // namespace
