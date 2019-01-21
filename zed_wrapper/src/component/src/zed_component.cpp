@@ -184,11 +184,10 @@ namespace stereolabs {
         return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
     }
 
-    void ZedCameraComponent::initParameters() {
+    void ZedCameraComponent::getGeneralParams() {
         rclcpp::Parameter paramVal;
         std::string paramName;
 
-        // >>>>> GENERAL parameters
         RCLCPP_INFO(get_logger(), "*** GENERAL parameters ***");
 
         paramName = "general.svo_file";
@@ -392,9 +391,12 @@ namespace stereolabs {
         }
 
         RCLCPP_INFO(get_logger(), " * RIGHT CAMERA OPTICAL frame: '%s'", mRightCamOptFrameId.c_str());
-        // <<<<< GENERAL parameters
+    }
 
-        // >>>>> VIDEO parameters
+    void ZedCameraComponent::getVideoParams() {
+        rclcpp::Parameter paramVal;
+        std::string paramName;
+
         RCLCPP_INFO(get_logger(), "*** VIDEO parameters ***");
 
         paramName = "video.auto_exposure";
@@ -461,9 +463,54 @@ namespace stereolabs {
         }
 
         RCLCPP_INFO(get_logger(), " * Right topic root: '%s'", mRightTopicRoot.c_str());
-        // <<<<< VIDEO parameters
 
-        // >>>>>> DEPTH parameters
+        paramName = "video.qos_history";
+
+        if (get_parameter(paramName, paramVal)) {
+            mVideoQos.history = paramVal.as_int() == 0 ? RMW_QOS_POLICY_HISTORY_KEEP_LAST : RMW_QOS_POLICY_HISTORY_KEEP_ALL;
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * Video QoS History: '%s'", sl_tools::qos2str(mVideoQos.history).c_str());
+
+        paramName = "video.qos_depth";
+
+        if (get_parameter(paramName, paramVal)) {
+            mVideoQos.depth = paramVal.as_int();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * Video QoS History depth: '%d'", mVideoQos.depth);
+
+        paramName = "video.qos_reliability";
+
+        if (get_parameter(paramName, paramVal)) {
+            mVideoQos.reliability = paramVal.as_int() == 0 ? RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT :
+                                    RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * Video QoS Reliability: '%s'", sl_tools::qos2str(mVideoQos.reliability).c_str());
+
+        paramName = "video.qos_durability";
+
+        if (get_parameter(paramName, paramVal)) {
+            mVideoQos.durability = paramVal.as_int() == 0 ? RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL :
+                                   RMW_QOS_POLICY_DURABILITY_VOLATILE;
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * Video QoS Durability: '%s'", sl_tools::qos2str(mVideoQos.durability).c_str());
+    }
+
+    void ZedCameraComponent::getDepthParams() {
+        rclcpp::Parameter paramVal;
+        std::string paramName;
+
         RCLCPP_INFO(get_logger(), "*** DEPTH parameters ***");
 
         paramName = "depth.min_depth";
@@ -623,14 +670,54 @@ namespace stereolabs {
         }
 
         RCLCPP_INFO(get_logger(), " * Confidence image topic: '%s'", mConfImgTopic.c_str());
-        // <<<<<< DEPTH parameters
 
-        // >>>>>> TRACKING parameters
-        //RCLCPP_INFO(get_logger(), "*** TRACKING parameters ***" );
-        // TODO parse tracking parameters when TRACKING is available
-        // <<<<<< TRACKING parameters
+        paramName = "depth.qos_history";
 
-        // >>>>>> IMU parameters
+        if (get_parameter(paramName, paramVal)) {
+            mDepthQos.history = paramVal.as_int() == 0 ? RMW_QOS_POLICY_HISTORY_KEEP_LAST : RMW_QOS_POLICY_HISTORY_KEEP_ALL;
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * Depth QoS History: '%s'", sl_tools::qos2str(mDepthQos.history).c_str());
+
+        paramName = "depth.qos_depth";
+
+        if (get_parameter(paramName, paramVal)) {
+            mDepthQos.depth = paramVal.as_int();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * Depth QoS History depth: '%d'", mDepthQos.depth);
+
+        paramName = "depth.qos_reliability";
+
+        if (get_parameter(paramName, paramVal)) {
+            mDepthQos.reliability = paramVal.as_int() == 0 ? RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT :
+                                    RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * Depth QoS Reliability: '%s'", sl_tools::qos2str(mDepthQos.reliability).c_str());
+
+        paramName = "depth.qos_durability";
+
+        if (get_parameter(paramName, paramVal)) {
+            mDepthQos.durability = paramVal.as_int() == 0 ? RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL :
+                                   RMW_QOS_POLICY_DURABILITY_VOLATILE;
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * Depth QoS Durability: '%s'", sl_tools::qos2str(mDepthQos.durability).c_str());
+    }
+
+    void ZedCameraComponent::getImuParams() {
+        rclcpp::Parameter paramVal;
+        std::string paramName;
+
         if (mZedUserCamModel == 1) {
             RCLCPP_INFO(get_logger(), "*** IMU parameters ***");
 
@@ -703,10 +790,71 @@ namespace stereolabs {
             RCLCPP_INFO(get_logger(), " * IMU timestamp sync with last frame: %s", mImuTimestampSync ? "ENABLED" : "DISABLED");
         }
 
-        // <<<<<< IMU parameters
+        paramName = "imu.qos_history";
 
+        if (get_parameter(paramName, paramVal)) {
+            mImuQos.history = paramVal.as_int() == 0 ? RMW_QOS_POLICY_HISTORY_KEEP_LAST : RMW_QOS_POLICY_HISTORY_KEEP_ALL;
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * IMU QoS History: '%s'", sl_tools::qos2str(mImuQos.history).c_str());
+
+        paramName = "imu.qos_depth";
+
+        if (get_parameter(paramName, paramVal)) {
+            mImuQos.depth = paramVal.as_int();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * IMU QoS History depth: '%d'", mImuQos.depth);
+
+        paramName = "imu.qos_reliability";
+
+        if (get_parameter(paramName, paramVal)) {
+            mImuQos.reliability = paramVal.as_int() == 0 ? RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT :
+                                  RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * IMU QoS Reliability: '%s'", sl_tools::qos2str(mImuQos.reliability).c_str());
+
+        paramName = "imu.qos_durability";
+
+        if (get_parameter(paramName, paramVal)) {
+            mImuQos.durability = paramVal.as_int() == 0 ? RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL :
+                                 RMW_QOS_POLICY_DURABILITY_VOLATILE;
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * IMU QoS Durability: '%s'", sl_tools::qos2str(mImuQos.durability).c_str());
+    }
+
+    void ZedCameraComponent::initParameters() {
+
+
+        // GENERAL parameters
+        getGeneralParams();
+
+        // VIDEO parameters
+        getVideoParams();
+
+        // DEPTH parameters
+        getDepthParams();
+
+        // >>>>>> TRACKING parameters
+        //RCLCPP_INFO(get_logger(), "*** TRACKING parameters ***" );
+        // TODO parse tracking parameters when TRACKING is available
+        // <<<<<< TRACKING parameters
+
+        // IMU parameters
+        getImuParams();
+
+        // Dynamic parameters callback
         using namespace std::placeholders;
-
         register_param_change_callback(std::bind(&ZedCameraComponent::paramChangeCallback, this, _1));
     }
 
@@ -867,16 +1015,6 @@ namespace stereolabs {
         topicPrefix += get_name();
         topicPrefix += "/";
 
-        // >>>>> Image publishers QOS
-        // https://github.com/ros2/ros2/wiki/About-Quality-of-Service-Settings
-        rmw_qos_profile_t camera_qos_profile = rmw_qos_profile_sensor_data; // Default QOS profile
-        camera_qos_profile.depth = 2;
-
-        //        camera_qos_profile.reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE; // to be sure to publish images
-        //        camera_qos_profile.history = RMW_QOS_POLICY_HISTORY_KEEP_LAST;// KEEP_LAST enforces a limit on the number of messages that are saved, specified by the "depth" parameter
-        //        camera_qos_profile.depth = 1; // Depth represents how many messages to store in history when the history policy is KEEP_LAST.
-        //        camera_qos_profile.durability = RMW_QOS_POLICY_DURABILITY_SYSTEM_DEFAULT;
-
         // >>>>> Video topics
         std::string img_topic = "/image_rect_color";
         std::string img_raw_topic = "/image_raw_color";
@@ -922,70 +1060,62 @@ namespace stereolabs {
         // <<<<< Depth Topics
 
         // >>>>> Create Video publishers
-        mPubRgb = create_publisher<sensor_msgs::msg::Image>(mRgbTopic, camera_qos_profile);
+        mPubRgb = create_publisher<sensor_msgs::msg::Image>(mRgbTopic, mVideoQos);
         RCLCPP_INFO(get_logger(), " * '%s'", mRgbTopic.c_str());
-        mPubRawRgb = create_publisher<sensor_msgs::msg::Image>(mRgbRawTopic, camera_qos_profile);
+        mPubRawRgb = create_publisher<sensor_msgs::msg::Image>(mRgbRawTopic, mVideoQos);
         RCLCPP_INFO(get_logger(), " * '%s'", mRgbRawTopic.c_str());
-        mPubLeft = create_publisher<sensor_msgs::msg::Image>(mLeftTopic, camera_qos_profile);
+        mPubLeft = create_publisher<sensor_msgs::msg::Image>(mLeftTopic, mVideoQos);
         RCLCPP_INFO(get_logger(), " * '%s'", mLeftTopic.c_str());
-        mPubRawLeft = create_publisher<sensor_msgs::msg::Image>(mLeftRawTopic, camera_qos_profile);
+        mPubRawLeft = create_publisher<sensor_msgs::msg::Image>(mLeftRawTopic, mVideoQos);
         RCLCPP_INFO(get_logger(), " * '%s'", mLeftRawTopic.c_str());
-        mPubRight = create_publisher<sensor_msgs::msg::Image>(mRightTopic, camera_qos_profile);
+        mPubRight = create_publisher<sensor_msgs::msg::Image>(mRightTopic, mVideoQos);
         RCLCPP_INFO(get_logger(), " * '%s'", mRightTopic.c_str());
-        mPubRawRight = create_publisher<sensor_msgs::msg::Image>(mRightRawTopic, camera_qos_profile);
+        mPubRawRight = create_publisher<sensor_msgs::msg::Image>(mRightRawTopic, mVideoQos);
         RCLCPP_INFO(get_logger(), " * '%s'", mRightRawTopic.c_str());
-        mPubDepth = create_publisher<sensor_msgs::msg::Image>(mDepthTopic, camera_qos_profile);
+        mPubDepth = create_publisher<sensor_msgs::msg::Image>(mDepthTopic, mVideoQos);
         RCLCPP_INFO(get_logger(), " * '%s'", mDepthTopic.c_str());
-        mPubConfImg = create_publisher<sensor_msgs::msg::Image>(mConfImgTopic, camera_qos_profile);
+        mPubConfImg = create_publisher<sensor_msgs::msg::Image>(mConfImgTopic, mVideoQos);
         RCLCPP_INFO(get_logger(), " * '%s'", mConfImgTopic.c_str());
-        mPubConfMap = create_publisher<sensor_msgs::msg::Image>(mConfMapTopic, camera_qos_profile);
+        mPubConfMap = create_publisher<sensor_msgs::msg::Image>(mConfMapTopic, mVideoQos);
         RCLCPP_INFO(get_logger(), " * '%s'", mConfMapTopic.c_str());
         // <<<<< Create Video publishers
 
         // >>>>> Create Camera Info publishers
-        mPubRgbCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mRgbCamInfoTopic, camera_qos_profile);
+        mPubRgbCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mRgbCamInfoTopic, mVideoQos);
         RCLCPP_INFO(get_logger(), " * '%s'", mRgbCamInfoTopic.c_str());
-        mPubRgbCamInfoRaw = create_publisher<sensor_msgs::msg::CameraInfo>(mRgbCamInfoRawTopic, camera_qos_profile);
+        mPubRgbCamInfoRaw = create_publisher<sensor_msgs::msg::CameraInfo>(mRgbCamInfoRawTopic, mVideoQos);
         RCLCPP_INFO(get_logger(), " * '%s'", mRgbCamInfoRawTopic.c_str());
-        mPubLeftCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mLeftCamInfoTopic, camera_qos_profile);
+        mPubLeftCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mLeftCamInfoTopic, mVideoQos);
         RCLCPP_INFO(get_logger(), " * '%s'", mLeftCamInfoTopic.c_str());
-        mPubLeftCamInfoRaw = create_publisher<sensor_msgs::msg::CameraInfo>(mLeftCamInfoRawTopic, camera_qos_profile);
+        mPubLeftCamInfoRaw = create_publisher<sensor_msgs::msg::CameraInfo>(mLeftCamInfoRawTopic, mVideoQos);
         RCLCPP_INFO(get_logger(), " * '%s'", mLeftCamInfoRawTopic.c_str());
-        mPubRightCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mRightCamInfoTopic, camera_qos_profile);
+        mPubRightCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mRightCamInfoTopic, mVideoQos);
         RCLCPP_INFO(get_logger(), " * '%s'", mRightCamInfoTopic.c_str());
-        mPubRightCamInfoRaw = create_publisher<sensor_msgs::msg::CameraInfo>(mRightCamInfoRawTopic, camera_qos_profile);
+        mPubRightCamInfoRaw = create_publisher<sensor_msgs::msg::CameraInfo>(mRightCamInfoRawTopic, mVideoQos);
         RCLCPP_INFO(get_logger(), " * '%s'", mRightCamInfoRawTopic.c_str());
-        mPubDepthCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mDepthCamInfoTopic, camera_qos_profile);
+        mPubDepthCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mDepthCamInfoTopic, mVideoQos);
         RCLCPP_INFO(get_logger(), " * '%s'", mDepthCamInfoTopic.c_str());
-        mPubConfidenceCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mConfCamInfoTopic, camera_qos_profile);
+        mPubConfidenceCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mConfCamInfoTopic, mVideoQos);
         RCLCPP_INFO(get_logger(), " * '%s'", mConfCamInfoTopic.c_str());
         // <<<<< Create Camera Info publishers
 
         // >>>>> Create Depth Publishers
-        // https://github.com/ros2/ros2/wiki/About-Quality-of-Service-Settings
-        rmw_qos_profile_t depth_qos_profile = rmw_qos_profile_sensor_data; // Default QOS profile
-        depth_qos_profile.depth = 2;
-
-        mPubPointcloud = create_publisher<sensor_msgs::msg::PointCloud2>(mPointcloudTopic, depth_qos_profile);
+        mPubPointcloud = create_publisher<sensor_msgs::msg::PointCloud2>(mPointcloudTopic, mDepthQos);
         RCLCPP_INFO(get_logger(), " * '%s'", mPointcloudTopic.c_str());
 
-        mPubDisparity = create_publisher<stereo_msgs::msg::DisparityImage>(mDispTopic, depth_qos_profile);
+        mPubDisparity = create_publisher<stereo_msgs::msg::DisparityImage>(mDispTopic, mDepthQos);
         RCLCPP_INFO(get_logger(), " * '%s'", mDispTopic.c_str());
         // <<<<< Create Depth Publishers
 
         // >>>>> Create IMU Publishers
         if (mImuPubRate > 0 && mZedUserCamModel == 1) {
-            // https://github.com/ros2/ros2/wiki/About-Quality-of-Service-Settings
-            rmw_qos_profile_t imu_qos_profile = rmw_qos_profile_sensor_data; // Default QOS profile
-            imu_qos_profile.depth = 2;
-
             mImuTopic = topicPrefix + mImuTopicRoot + mImuTopic;
             mImuRawTopic = topicPrefix + mImuTopicRoot + mImuRawTopic;
 
-            mPubImu = create_publisher<sensor_msgs::msg::Imu>(mImuTopic, imu_qos_profile);
+            mPubImu = create_publisher<sensor_msgs::msg::Imu>(mImuTopic, mImuQos);
             RCLCPP_INFO(get_logger(), " * '%s'", mImuTopic.c_str());
 
-            mPubImuRaw = create_publisher<sensor_msgs::msg::Imu>(mImuRawTopic, imu_qos_profile);
+            mPubImuRaw = create_publisher<sensor_msgs::msg::Imu>(mImuRawTopic, mImuQos);
             RCLCPP_INFO(get_logger(), " * '%s'", mImuRawTopic.c_str());
         }
 

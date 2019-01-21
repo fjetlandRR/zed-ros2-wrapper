@@ -28,41 +28,57 @@
 
 namespace sl_tools {
 
-    /* \brief Check if a ZED camera is ready
+    /*! \brief Check if a ZED camera is ready
     * \param serial_number : the serial number of the camera to be checked
     */
     int checkCameraReady(unsigned int serial_number);
 
-    /* \brief Get ZED camera properties
+    /*! \brief Get ZED camera properties
     * \param serial_number : the serial number of the camera
     */
     sl::DeviceProperties getZEDFromSN(unsigned int serial_number);
 
     std::vector<float> convertRodrigues(sl::float3 r);
 
-    /* \brief Test if a file exist
+    /*! \brief Test if a file exist
     * \param name : the path to the file
     */
     bool file_exist(const std::string& name);
 
-    /* \brief Get Stereolabs SDK version
+    /*! \brief Get Stereolabs SDK version
      * \param major : major value for version
      * \param minor : minor value for version
      * \param sub_minor _ sub_minor value for version
      */
     std::string getSDKVersion(int& major, int& minor, int& sub_minor);
 
-    /* \brief Convert StereoLabs timestamp to ROS timestamp
+    /*! \brief Convert StereoLabs timestamp to ROS timestamp
      *  \param t : Stereolabs timestamp to be converted
      */
     rclcpp::Time slTime2Ros(sl::timeStamp t);
 
-    /* \brief sl::Mat to ros message conversion
+    /*! \brief sl::Mat to ros message conversion
      * \param img : the image to publish
      * \param frameId : the id of the reference frame of the image
      * \param t : the ros::Time to stamp the image
      */
     std::shared_ptr<sensor_msgs::msg::Image> imageToROSmsg(sl::Mat img, std::string frameId, rclcpp::Time t);
+
+    /*! \bried qos value to string
+     * \param qos the value to convert
+     */
+    std::string qos2str(rmw_qos_history_policy_t qos);
+
+    /*! \bried qos value to string
+     * \param qos the value to convert
+     */
+    std::string qos2str(rmw_qos_reliability_policy_t qos);
+
+    /*! \bried qos value to string
+     * \param qos the value to convert
+     */
+    std::string qos2str(rmw_qos_durability_policy_t qos);
+
 } // namespace
 
 #endif // SL_TOOLS_H

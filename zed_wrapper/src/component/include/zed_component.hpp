@@ -152,7 +152,14 @@ namespace stereolabs {
         void zedReconnectThreadFunc();
 
         void initPublishers();
+
+
+        void getGeneralParams();
+        void getVideoParams();
+        void getDepthParams();
+        void getImuParams();
         void initParameters();
+
 
         void publishImages(rclcpp::Time timeStamp);
         void publishDepthData(rclcpp::Time timeStamp);
@@ -268,6 +275,12 @@ namespace stereolabs {
 
         double mImuPubRate = 500.0;
         bool mImuTimestampSync = true;
+
+        // QoS profiles
+        // https://github.com/ros2/ros2/wiki/About-Quality-of-Service-Settings
+        rmw_qos_profile_t mVideoQos = rmw_qos_profile_default;
+        rmw_qos_profile_t mDepthQos = rmw_qos_profile_default;
+        rmw_qos_profile_t mImuQos = rmw_qos_profile_default;
 
         // ZED dynamic params
         double mZedMatResizeFactor = 1.0;   // Dynamic...

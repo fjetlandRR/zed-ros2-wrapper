@@ -56,12 +56,11 @@ namespace stereolabs {
         void depthCallback(const sensor_msgs::msg::Image::SharedPtr msg);
         void depthInfoCallback(const sensor_msgs::msg::CameraInfo::SharedPtr msg);
 
+        void initSubscribers();
         void initParameters();
         void initPublishers();
 
       private:
-        rmw_qos_profile_t mCamQosProfile;
-
         // Params
         bool mOpenniDepthMode = false;
         std::string mLeftTopicRoot = "left";
@@ -85,8 +84,11 @@ namespace stereolabs {
         imgSub mDepthSub;
         camInfoSub mDepthInfoSub;
 
-        // Subscribers topic names
-
+        // QoS profiles
+        // https://github.com/ros2/ros2/wiki/About-Quality-of-Service-Settings
+        rmw_qos_profile_t mVideoQos = rmw_qos_profile_default;
+        rmw_qos_profile_t mDepthQos = rmw_qos_profile_default;
+        rmw_qos_profile_t mImuQos = rmw_qos_profile_default;
 
         // Publisher topics
         std::string mRgbTopic;

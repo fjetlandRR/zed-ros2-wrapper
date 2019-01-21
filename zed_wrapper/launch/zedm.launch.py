@@ -22,7 +22,7 @@ import lifecycle_msgs.msg
 def generate_launch_description():
 
     # use: 'zed' for "ZED" camera - 'zedm' for "ZED mini" camera
-    camera_model = 'zed'
+    camera_model = 'zedm'
 
     # URDF file to be loaded by Robot State Publisher
     urdf = os.path.join(
