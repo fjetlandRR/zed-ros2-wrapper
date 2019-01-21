@@ -45,7 +45,6 @@
 #include "sensor_msgs/msg/imu.hpp"
 #include "stereo_msgs/msg/disparity_image.hpp"
 
-
 #include "sl/Camera.hpp"
 
 namespace stereolabs {

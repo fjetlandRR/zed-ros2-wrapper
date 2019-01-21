@@ -439,10 +439,6 @@ namespace stereolabs {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
         }
 
-        if (!mRgbTopicRoot.back() != '/') {
-            mRgbTopicRoot.push_back('/');
-        }
-
         RCLCPP_INFO(get_logger(), " * RGB topic root: '%s'", mRgbTopicRoot.c_str());
 
 
@@ -454,10 +450,6 @@ namespace stereolabs {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
         }
 
-        if (!mLeftTopicRoot.back() != '/') {
-            mLeftTopicRoot.push_back('/');
-        }
-
         RCLCPP_INFO(get_logger(), " * Left topic root: '%s'", mLeftTopicRoot.c_str());
 
         paramName = "video.right_topic_root";
@@ -466,10 +458,6 @@ namespace stereolabs {
             mRightTopicRoot = paramVal.as_string();
         } else {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
-        }
-
-        if (!mRightTopicRoot.back() != '/') {
-            mRightTopicRoot.push_back('/');
         }
 
         RCLCPP_INFO(get_logger(), " * Right topic root: '%s'", mRightTopicRoot.c_str());
@@ -890,23 +878,25 @@ namespace stereolabs {
         //        camera_qos_profile.durability = RMW_QOS_POLICY_DURABILITY_SYSTEM_DEFAULT;
 
         // >>>>> Video topics
-        std::string img_topic = "image_rect_color";
-        std::string img_raw_topic = "image_raw_color";
+        std::string img_topic = "/image_rect_color";
+        std::string img_raw_topic = "/image_raw_color";
         std::string cam_info_topic = "/camera_info";
+        std::string raw_suffix = "_raw";
+
         // Set the default topic names
         mLeftTopic = topicPrefix + mLeftTopicRoot + img_topic;
         mLeftCamInfoTopic = mLeftTopic + cam_info_topic;
-        mLeftRawTopic = topicPrefix + mLeftTopicRoot + img_raw_topic;
+        mLeftRawTopic = topicPrefix + mLeftTopicRoot + raw_suffix + img_raw_topic;
         mLeftCamInfoRawTopic = mLeftRawTopic + cam_info_topic;
 
         mRightTopic = topicPrefix + mRightTopicRoot + img_topic;
         mRightCamInfoTopic = mRightTopic + cam_info_topic;
-        mRightRawTopic = topicPrefix + mRightTopicRoot + img_raw_topic;
+        mRightRawTopic = topicPrefix + mRightTopicRoot + raw_suffix + img_raw_topic;
         mRightCamInfoRawTopic = mRightRawTopic + cam_info_topic;
 
         mRgbTopic = topicPrefix + mRgbTopicRoot + img_topic;
         mRgbCamInfoTopic = mRgbTopic + cam_info_topic;
-        mRgbRawTopic = topicPrefix + mRgbTopicRoot + img_raw_topic;
+        mRgbRawTopic = topicPrefix + mRgbTopicRoot + raw_suffix + img_raw_topic;
         mRgbCamInfoRawTopic = mRgbRawTopic + cam_info_topic;
         // <<<<< Video topics
 

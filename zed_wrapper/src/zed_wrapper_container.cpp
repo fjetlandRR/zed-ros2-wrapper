@@ -22,6 +22,7 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include "zed_component.hpp"
+#include "zed_it_broadcaster.hpp"
 
 int main(int argc, char* argv[]) {
 
@@ -34,9 +35,27 @@ int main(int argc, char* argv[]) {
 
     rclcpp::executors::MultiThreadedExecutor exe;
 
-    // namespace: zed - node_name: zed_node - intra-process communication: false
-    auto lc_node = std::make_shared<stereolabs::ZedCameraComponent>("zed_node", "zed", false);
+    // namespace: zed - node_name: zed_node - intra-process communication: true
+    std::string defNamespace = "zed";
+    std::string defNodeName = "zed_node";
+    bool intraProcComm = true;
+
+    // ZED main component
+    auto lc_node = std::make_shared<stereolabs::ZedCameraComponent>(defNodeName, defNamespace, intraProcComm);
     exe.add_node(lc_node->get_node_base_interface());
+
+    // Note: image topics published by the main component do not support the ROS standard for `camera_info`
+    //       topics to be compatible with the `camera view` plugin of `RVIZ2`.
+    //       See
+    //          * https://answers.ros.org/question/312930/ros2-image_transport-and-rviz2-camera-something-wrong/
+    //          * https://github.com/ros2/rviz/issues/207
+
+    // ZED Image Transport broadcaster
+    // Note: this is required since `image_transport` stack in ROS Crystal Clemmys does not support
+    //       Lifecycle nodes. The component subscribes to image and depth topics from the main component
+    //       and re-publish them using `image_transport`
+    auto it_node = std::make_shared<stereolabs::ZedItBroadcaster>(defNodeName, defNamespace, intraProcComm);
+    exe.add_node(it_node->get_node_base_interface());
 
     exe.spin();
 
