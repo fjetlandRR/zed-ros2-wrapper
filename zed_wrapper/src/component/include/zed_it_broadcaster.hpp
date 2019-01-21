@@ -56,12 +56,18 @@ namespace stereolabs {
         void depthCallback(const sensor_msgs::msg::Image::SharedPtr msg);
         void depthInfoCallback(const sensor_msgs::msg::CameraInfo::SharedPtr msg);
 
-        void initPub();
+        void initParameters();
+        void initPublishers();
 
       private:
         rmw_qos_profile_t mCamQosProfile;
 
-        bool mOpenNIMode = false;
+        // Params
+        bool mOpenniDepthMode = false;
+        std::string mLeftTopicRoot = "left";
+        std::string mRightTopicRoot = "right";
+        std::string mRgbTopicRoot = "rgb";
+        std::string mDepthTopicRoot = "depth";
 
         // Subscribers
         imgSub mRgbSub;
@@ -78,6 +84,9 @@ namespace stereolabs {
         camInfoSub mRawLeftInfoSub;
         imgSub mDepthSub;
         camInfoSub mDepthInfoSub;
+
+        // Subscribers topic names
+
 
         // Publisher topics
         std::string mRgbTopic;

@@ -30,8 +30,11 @@ namespace stereolabs {
             topicPrefix += "/";
         }
 
-        topicPrefix += get_name(); // TODO get from params?
+        topicPrefix += get_name();
         topicPrefix += "/";
+
+        // Parameters
+        initParameters();
 
         // QOS Profile
         mCamQosProfile = rmw_qos_profile_sensor_data; // Default QOS profile
@@ -46,41 +49,36 @@ namespace stereolabs {
         std::string depth_topic = "/depth_registered";
         std::string depth_openni_topic = "/depth_raw_registered";
 
-        std::string leftTopicRoot = "left";     // TODO get from params
-        std::string rightTopicRoot = "right";   // TODO get from params
-        std::string rgbTopicRoot = "rgb";       // TODO get from params
-        std::string depthTopicRoot = "depth";   // TODO get from params
-
         // Set the default input topic names
-        std::string leftTopic = topicPrefix + leftTopicRoot + img_topic;
+        std::string leftTopic = topicPrefix + mLeftTopicRoot + img_topic;
         std::string leftCamInfoTopic = leftTopic + cam_info_topic;
-        std::string leftRawTopic = topicPrefix + leftTopicRoot + raw_suffix + img_raw_topic;
+        std::string leftRawTopic = topicPrefix + mLeftTopicRoot + raw_suffix + img_raw_topic;
         std::string leftCamInfoRawTopic = leftRawTopic + cam_info_topic;
 
-        std::string rightTopic = topicPrefix + rightTopicRoot + img_topic;
+        std::string rightTopic = topicPrefix + mRightTopicRoot + img_topic;
         std::string rightCamInfoTopic = rightTopic + cam_info_topic;
-        std::string rightRawTopic = topicPrefix + rightTopicRoot + raw_suffix + img_raw_topic;
+        std::string rightRawTopic = topicPrefix + mRightTopicRoot + raw_suffix + img_raw_topic;
         std::string rightCamInfoRawTopic = rightRawTopic + cam_info_topic;
 
-        std::string rgbTopic = topicPrefix + rgbTopicRoot + img_topic;
+        std::string rgbTopic = topicPrefix + mRgbTopicRoot + img_topic;
         std::string rgbCamInfoTopic = rgbTopic + cam_info_topic;
-        std::string rgbRawTopic = topicPrefix + rgbTopicRoot + raw_suffix + img_raw_topic;
+        std::string rgbRawTopic = topicPrefix + mRgbTopicRoot + raw_suffix + img_raw_topic;
         std::string rgbCamInfoRawTopic = rgbRawTopic + cam_info_topic;
 
-        std::string depthTopic = topicPrefix + depthTopicRoot + (mOpenNIMode ? depth_openni_topic :
-                                 depth_topic); // TODO get mOpenNIMode from parameters
+        std::string depthTopic = topicPrefix + mDepthTopicRoot + (mOpenniDepthMode ? depth_openni_topic :
+                                 depth_topic);
         std::string depthCamInfoTopic = depthTopic + cam_info_topic;
 
         // Image Transport output topic names
-        mRgbTopic = topicPrefix + it_prefix + rgbTopicRoot + img_topic;
-        mRightTopic = topicPrefix + it_prefix + rightTopicRoot + img_topic;
-        mLeftTopic = topicPrefix + it_prefix + leftTopicRoot + img_topic;
-        mRawRgbTopic = topicPrefix + it_prefix + rgbTopicRoot + raw_suffix + img_raw_topic;
-        mRawRightTopic = topicPrefix + it_prefix + rightTopicRoot + raw_suffix + img_raw_topic;
-        mRawLeftTopic = topicPrefix + it_prefix + leftTopicRoot + raw_suffix + img_raw_topic;
+        mRgbTopic = topicPrefix + it_prefix + mRgbTopicRoot + img_topic;
+        mRightTopic = topicPrefix + it_prefix + mRightTopicRoot + img_topic;
+        mLeftTopic = topicPrefix + it_prefix + mLeftTopicRoot + img_topic;
+        mRawRgbTopic = topicPrefix + it_prefix + mRgbTopicRoot + raw_suffix + img_raw_topic;
+        mRawRightTopic = topicPrefix + it_prefix + mRightTopicRoot + raw_suffix + img_raw_topic;
+        mRawLeftTopic = topicPrefix + it_prefix + mLeftTopicRoot + raw_suffix + img_raw_topic;
 
-        mDepthTopic = topicPrefix + it_prefix + depthTopicRoot + (mOpenNIMode ? depth_openni_topic :
-                      depth_topic); // TODO get mOpenNIMode from parameters
+        mDepthTopic = topicPrefix + it_prefix + mDepthTopicRoot + (mOpenniDepthMode ? depth_openni_topic :
+                      depth_topic);
 
         // Video Subscribers
         mRgbSub = create_subscription<sensor_msgs::msg::Image>(
@@ -171,7 +169,52 @@ namespace stereolabs {
         RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mDepthInfoSub->get_topic_name());
     }
 
-    void ZedItBroadcaster::initPub() {
+    void ZedItBroadcaster::initParameters() {
+        rclcpp::Parameter paramVal;
+        std::string paramName;
+
+        paramName = "video.rgb_topic_root";
+
+        if (get_parameter(paramName, paramVal)) {
+            mRgbTopicRoot = paramVal.as_string();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        paramName = "video.left_topic_root";
+
+        if (get_parameter(paramName, paramVal)) {
+            mLeftTopicRoot = paramVal.as_string();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        paramName = "video.right_topic_root";
+
+        if (get_parameter(paramName, paramVal)) {
+            mRightTopicRoot = paramVal.as_string();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        paramName = "depth.openni_depth_mode";
+
+        if (get_parameter(paramName, paramVal)) {
+            mOpenniDepthMode = paramVal.as_int();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        paramName = "depth.depth_topic_root";
+
+        if (get_parameter(paramName, paramVal)) {
+            mDepthTopicRoot = paramVal.as_string();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+    }
+
+    void ZedItBroadcaster::initPublishers() {
         if (mPubInitialized) {
             return;
         }
@@ -220,7 +263,7 @@ namespace stereolabs {
     }
 
     void ZedItBroadcaster::rgbInfoCallback(const sensor_msgs::msg::CameraInfo::SharedPtr msg) {
-        initPub();
+        initPublishers();
 
         mRgbInfoMsg = *msg;
     }
@@ -236,7 +279,7 @@ namespace stereolabs {
     }
 
     void ZedItBroadcaster::rightInfoCallback(const sensor_msgs::msg::CameraInfo::SharedPtr msg) {
-        initPub();
+        initPublishers();
 
         mRightInfoMsg = *msg;
     }
@@ -252,7 +295,7 @@ namespace stereolabs {
     }
 
     void ZedItBroadcaster::leftInfoCallback(const sensor_msgs::msg::CameraInfo::SharedPtr msg) {
-        initPub();
+        initPublishers();
 
         mLeftInfoMsg = *msg;
     }
@@ -268,7 +311,7 @@ namespace stereolabs {
     }
 
     void ZedItBroadcaster::rgbInfoRawCallback(const sensor_msgs::msg::CameraInfo::SharedPtr msg) {
-        initPub();
+        initPublishers();
 
         mRawRgbInfoMsg = *msg;
     }
@@ -284,7 +327,7 @@ namespace stereolabs {
     }
 
     void ZedItBroadcaster::rightInfoRawCallback(const sensor_msgs::msg::CameraInfo::SharedPtr msg) {
-        initPub();
+        initPublishers();
 
         mRawRightInfoMsg = *msg;
     }
@@ -300,7 +343,7 @@ namespace stereolabs {
     }
 
     void ZedItBroadcaster::leftInfoRawCallback(const sensor_msgs::msg::CameraInfo::SharedPtr msg) {
-        initPub();
+        initPublishers();
 
         mRawLeftInfoMsg = *msg;
     }
@@ -316,7 +359,7 @@ namespace stereolabs {
     }
 
     void ZedItBroadcaster::depthInfoCallback(const sensor_msgs::msg::CameraInfo::SharedPtr msg) {
-        initPub();
+        initPublishers();
 
         mDepthInfoMsg = *msg;
     }
