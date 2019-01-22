@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
     // namespace: zed - node_name: zed_node - intra-process communication: true
     std::string defNamespace = "zed";
     std::string defNodeName = "zed_node";
-    bool intraProcComm = true;
+    bool intraProcComm = false;
 
     // ZED main component
     auto lc_node = std::make_shared<stereolabs::ZedCameraComponent>(defNodeName, defNamespace, intraProcComm);

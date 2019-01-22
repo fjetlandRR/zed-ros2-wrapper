@@ -62,6 +62,9 @@ namespace stereolabs {
 
         void checkSubscribersCallback();
 
+        bool checkVideoSubs(std::string topic, std::string camInfoTopic);
+        bool checkDepthSubs(std::string topic, std::string camInfoTopic);
+
       private:
         // Params
         bool mOpenniDepthMode = false;

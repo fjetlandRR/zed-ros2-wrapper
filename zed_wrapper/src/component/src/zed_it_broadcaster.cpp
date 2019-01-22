@@ -227,42 +227,29 @@ namespace stereolabs {
         std::string depthCamInfoTopic = depthTopic + cam_info_topic;
 
         // Subscribers QoS
-        // Note: settings compatible with all the possible publisher QoS settings
-        rmw_qos_profile_t subQos;
-        subQos.history = RMW_QOS_POLICY_HISTORY_KEEP_LAST;
-        subQos.depth = 1;
-        subQos.reliability = RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT;
-        subQos.durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
-
-        size_t rgbSubnumber = count_subscribers(mRgbTopic) + count_subscribers(mRgbPub.getInfoTopic());  // mPubRgb subscribers
-        size_t rgbRawSubnumber = count_subscribers(mRawRgbTopic) + count_subscribers(
-                                     mRawRgbPub.getInfoTopic());  //mPubRawRgb subscribers
-        size_t leftSubnumber = count_subscribers(mLeftTopic) + count_subscribers(
-                                   mLeftPub.getInfoTopic());  //mPubLeft subscribers
-        size_t leftRawSubnumber = count_subscribers(mRawLeftTopic) + count_subscribers(
-                                      mRawLeftPub.getInfoTopic());  //mPubRawLeft subscribers
-        size_t rightSubnumber = count_subscribers(mRightTopic) + count_subscribers(
-                                    mRightPub.getInfoTopic());  //mPubRight subscribers
-        size_t rightRawSubnumber = count_subscribers(mRawRightTopic) + count_subscribers(
-                                       mRawRightPub.getInfoTopic());  //mPubRawRight subscribers
-        size_t depthSubnumber = count_subscribers(mDepthTopic) + count_subscribers(
-                                    mDepthPub.getInfoTopic());  //mDepthPub subscribers
+        bool rgbSub = checkVideoSubs(mRgbTopic, mRgbPub.getInfoTopic());
+        bool rgbRawSub = checkVideoSubs(mRawRgbTopic, mRawRgbPub.getInfoTopic());
+        bool leftSub = checkVideoSubs(mLeftTopic, mLeftPub.getInfoTopic());
+        bool leftRawSub = checkVideoSubs(mRawLeftTopic, mRawLeftPub.getInfoTopic());
+        bool rightSub = checkVideoSubs(mRightTopic, mRightPub.getInfoTopic());
+        bool rightRawSub = checkVideoSubs(mRawRightTopic, mRawRightPub.getInfoTopic());
+        bool depthSub = checkVideoSubs(mDepthTopic, mDepthPub.getInfoTopic());
 
         // Video Subscribers
-        if (rgbSubnumber > 0 && (!mRgbSub || !mRgbInfoSub)) {
+        if (rgbSub  && (!mRgbSub || !mRgbInfoSub)) {
             mRgbSub = create_subscription<sensor_msgs::msg::Image>(
                           rgbTopic,
                           std::bind(&ZedItBroadcaster::rgbCallback, this, _1),
-                          subQos);
-            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRgbSub->get_topic_name());
+                          mVideoQos);
+            RCLCPP_DEBUG(get_logger(), " * Subscribed to '%s'", mRgbSub->get_topic_name());
 
             mRgbInfoSub = create_subscription<sensor_msgs::msg::CameraInfo>(
                               rgbCamInfoTopic,
                               std::bind(&ZedItBroadcaster::rgbInfoCallback, this, _1),
-                              subQos);
-            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRgbInfoSub->get_topic_name());
+                              mVideoQos);
+            RCLCPP_DEBUG(get_logger(), " * Subscribed to '%s'", mRgbInfoSub->get_topic_name());
         } else {
-            if (rgbSubnumber == 0 && (mRgbSub || mRgbInfoSub)) {
+            if (!rgbSub  && (mRgbSub || mRgbInfoSub)) {
                 mRgbSub.reset();
                 mRgbInfoSub.reset();
 
@@ -270,20 +257,20 @@ namespace stereolabs {
             }
         }
 
-        if (rightSubnumber > 0 && (!mRightSub || !mRightInfoSub)) {
+        if (rightSub  && (!mRightSub || !mRightInfoSub)) {
             mRightSub = create_subscription<sensor_msgs::msg::Image>(
                             rightTopic,
                             std::bind(&ZedItBroadcaster::rightCallback, this, _1),
-                            subQos);
-            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRightSub->get_topic_name());
+                            mVideoQos);
+            RCLCPP_DEBUG(get_logger(), " * Subscribed to '%s'", mRightSub->get_topic_name());
 
             mRightInfoSub = create_subscription<sensor_msgs::msg::CameraInfo>(
                                 rightCamInfoTopic,
                                 std::bind(&ZedItBroadcaster::rightInfoCallback, this, _1),
-                                subQos);
-            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRightInfoSub->get_topic_name());
+                                mVideoQos);
+            RCLCPP_DEBUG(get_logger(), " * Subscribed to '%s'", mRightInfoSub->get_topic_name());
         } else {
-            if (rightSubnumber == 0 && (mRightSub || mRightInfoSub)) {
+            if (!rightSub  && (mRightSub || mRightInfoSub)) {
                 mRightSub.reset();
                 mRightInfoSub.reset();
 
@@ -291,21 +278,21 @@ namespace stereolabs {
             }
         }
 
-        if (leftSubnumber > 0 && (!mLeftSub || !mLeftInfoSub)) {
+        if (leftSub  && (!mLeftSub || !mLeftInfoSub)) {
             mLeftSub = create_subscription<sensor_msgs::msg::Image>(
                            leftTopic,
                            std::bind(&ZedItBroadcaster::leftCallback, this, _1),
-                           subQos);
-            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mLeftSub->get_topic_name());
+                           mVideoQos);
+            RCLCPP_DEBUG(get_logger(), " * Subscribed to '%s'", mLeftSub->get_topic_name());
 
 
             mLeftInfoSub = create_subscription<sensor_msgs::msg::CameraInfo>(
                                leftCamInfoTopic,
                                std::bind(&ZedItBroadcaster::leftInfoCallback, this, _1),
-                               subQos);
-            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mLeftInfoSub->get_topic_name());
+                               mVideoQos);
+            RCLCPP_DEBUG(get_logger(), " * Subscribed to '%s'", mLeftInfoSub->get_topic_name());
         } else {
-            if (leftSubnumber == 0 && (mLeftSub || mLeftInfoSub)) {
+            if (!leftSub  && (mLeftSub || mLeftInfoSub)) {
                 mLeftSub.reset();
                 mLeftInfoSub.reset();
 
@@ -313,20 +300,20 @@ namespace stereolabs {
             }
         }
 
-        if (rgbRawSubnumber > 0 && (!mRawRgbSub || !mRawRgbInfoSub)) {
+        if (rgbRawSub  && (!mRawRgbSub || !mRawRgbInfoSub)) {
             mRawRgbSub = create_subscription<sensor_msgs::msg::Image>(
                              rgbRawTopic,
                              std::bind(&ZedItBroadcaster::rgbRawCallback, this, _1),
-                             subQos);
-            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRawRgbSub->get_topic_name());
+                             mVideoQos);
+            RCLCPP_DEBUG(get_logger(), " * Subscribed to '%s'", mRawRgbSub->get_topic_name());
 
             mRawRgbInfoSub = create_subscription<sensor_msgs::msg::CameraInfo>(
                                  rgbCamInfoRawTopic,
                                  std::bind(&ZedItBroadcaster::rgbInfoRawCallback, this, _1),
-                                 subQos);
-            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRawRgbInfoSub->get_topic_name());
+                                 mVideoQos);
+            RCLCPP_DEBUG(get_logger(), " * Subscribed to '%s'", mRawRgbInfoSub->get_topic_name());
         } else {
-            if (rgbRawSubnumber == 0 && (mRawRgbSub || mRawRgbInfoSub)) {
+            if (!rgbRawSub  && (mRawRgbSub || mRawRgbInfoSub)) {
                 mRawRgbSub.reset();
                 mRawRgbInfoSub.reset();
 
@@ -334,20 +321,20 @@ namespace stereolabs {
             }
         }
 
-        if (rightRawSubnumber > 0 && (!mRawRightSub || !mRawRightInfoSub)) {
+        if (rightRawSub  && (!mRawRightSub || !mRawRightInfoSub)) {
             mRawRightSub = create_subscription<sensor_msgs::msg::Image>(
                                rightRawTopic,
                                std::bind(&ZedItBroadcaster::rightRawCallback, this, _1),
-                               subQos);
-            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRawRightSub->get_topic_name());
+                               mVideoQos);
+            RCLCPP_DEBUG(get_logger(), " * Subscribed to '%s'", mRawRightSub->get_topic_name());
 
             mRawRightInfoSub = create_subscription<sensor_msgs::msg::CameraInfo>(
                                    rightCamInfoRawTopic,
                                    std::bind(&ZedItBroadcaster::rightInfoRawCallback, this, _1),
-                                   subQos);
-            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRawRightInfoSub->get_topic_name());
+                                   mVideoQos);
+            RCLCPP_DEBUG(get_logger(), " * Subscribed to '%s'", mRawRightInfoSub->get_topic_name());
         } else {
-            if (rightRawSubnumber == 0 && (mRawRightSub || mRawRightInfoSub)) {
+            if (!rightRawSub  && (mRawRightSub || mRawRightInfoSub)) {
                 mRawRightSub.reset();
                 mRawRightInfoSub.reset();
 
@@ -355,21 +342,21 @@ namespace stereolabs {
             }
         }
 
-        if (leftRawSubnumber > 0 && (!mRawLeftSub || !mRawLeftInfoSub)) {
+        if (leftRawSub  && (!mRawLeftSub || !mRawLeftInfoSub)) {
             mRawLeftSub = create_subscription<sensor_msgs::msg::Image>(
                               leftRawTopic,
                               std::bind(&ZedItBroadcaster::leftRawCallback, this, _1),
-                              subQos);
-            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRawLeftSub->get_topic_name());
+                              mVideoQos);
+            RCLCPP_DEBUG(get_logger(), " * Subscribed to '%s'", mRawLeftSub->get_topic_name());
 
 
             mRawLeftInfoSub = create_subscription<sensor_msgs::msg::CameraInfo>(
                                   leftCamInfoRawTopic,
                                   std::bind(&ZedItBroadcaster::leftInfoRawCallback, this, _1),
-                                  subQos);
-            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRawLeftInfoSub->get_topic_name());
+                                  mVideoQos);
+            RCLCPP_DEBUG(get_logger(), " * Subscribed to '%s'", mRawLeftInfoSub->get_topic_name());
         } else {
-            if (leftRawSubnumber == 0 && (mRawLeftSub || mRawLeftInfoSub)) {
+            if (!leftRawSub  && (mRawLeftSub || mRawLeftInfoSub)) {
                 mRawLeftSub.reset();
                 mRawLeftInfoSub.reset();
 
@@ -377,21 +364,21 @@ namespace stereolabs {
             }
         }
 
-        if (depthSubnumber > 0 && (!mDepthSub || !mDepthInfoSub)) {
+        if (depthSub  && (!mDepthSub || !mDepthInfoSub)) {
             // Depth Subsubscribers
             mDepthSub = create_subscription<sensor_msgs::msg::Image>(
                             depthTopic,
                             std::bind(&ZedItBroadcaster::depthCallback, this, _1),
-                            subQos);
-            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mDepthSub->get_topic_name());
+                            mDepthQos);
+            RCLCPP_DEBUG(get_logger(), " * Subscribed to '%s'", mDepthSub->get_topic_name());
 
             mDepthInfoSub = create_subscription<sensor_msgs::msg::CameraInfo>(
                                 depthCamInfoTopic,
                                 std::bind(&ZedItBroadcaster::depthInfoCallback, this, _1),
-                                subQos);
-            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mDepthInfoSub->get_topic_name());
+                                mDepthQos);
+            RCLCPP_DEBUG(get_logger(), " * Subscribed to '%s'", mDepthInfoSub->get_topic_name());
         } else {
-            if (depthSubnumber == 0 && (mDepthSub || mDepthInfoSub)) {
+            if (!depthSub  && (mDepthSub || mDepthInfoSub)) {
                 mDepthSub.reset();
                 mDepthInfoSub.reset();
 
@@ -406,32 +393,32 @@ namespace stereolabs {
         }
 
         mRgbPub = image_transport::create_camera_publisher(this, mRgbTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mRgbPub.getTopic().c_str());
-        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mRgbPub.getInfoTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * IT Advertised '%s'", mRgbPub.getTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * IT Advertised '%s'", mRgbPub.getInfoTopic().c_str());
 
         mRightPub = image_transport::create_camera_publisher(this, mRightTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mRightPub.getTopic().c_str());
-        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mRightPub.getInfoTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * IT Advertised '%s'", mRightPub.getTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * IT Advertised '%s'", mRightPub.getInfoTopic().c_str());
 
         mLeftPub = image_transport::create_camera_publisher(this, mLeftTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mLeftPub.getTopic().c_str());
-        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mLeftPub.getInfoTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * IT Advertised '%s'", mLeftPub.getTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * IT Advertised '%s'", mLeftPub.getInfoTopic().c_str());
 
         mRawRgbPub = image_transport::create_camera_publisher(this, mRawRgbTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mRawRgbPub.getTopic().c_str());
-        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mRawRgbPub.getInfoTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * IT Advertised '%s'", mRawRgbPub.getTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * IT Advertised '%s'", mRawRgbPub.getInfoTopic().c_str());
 
         mRawRightPub = image_transport::create_camera_publisher(this, mRawRightTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mRawRightPub.getTopic().c_str());
-        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mRawRightPub.getInfoTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * IT Advertised '%s'", mRawRightPub.getTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * IT Advertised '%s'", mRawRightPub.getInfoTopic().c_str());
 
         mRawLeftPub = image_transport::create_camera_publisher(this, mRawLeftTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mRawLeftPub.getTopic().c_str());
-        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mRawLeftPub.getInfoTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * IT Advertised '%s'", mRawLeftPub.getTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * IT Advertised '%s'", mRawLeftPub.getInfoTopic().c_str());
 
         mDepthPub = image_transport::create_camera_publisher(this, mDepthTopic, mDepthQos);
-        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mDepthPub.getTopic().c_str());
-        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mDepthPub.getInfoTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * IT Advertised '%s'", mDepthPub.getTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * IT Advertised '%s'", mDepthPub.getInfoTopic().c_str());
 
         mPubInitialized = true;
     }
@@ -532,6 +519,29 @@ namespace stereolabs {
         initPublishers();
 
         mDepthInfoMsg = *msg;
+    }
+
+    bool ZedItBroadcaster::checkVideoSubs(std::string topic, std::string camInfoTopic) {
+        size_t subs = 0;
+
+        subs += count_subscribers(topic);        // Image topic subscribers
+        subs += count_subscribers(camInfoTopic); // Camera Info topic subscribers
+
+        subs += count_subscribers(topic + "/compressed"); // Compressed image subscribers
+        subs += count_subscribers(topic + "/theora");     // Compressed Theora image subscribers
+
+        return (subs > 0);
+    }
+
+    bool ZedItBroadcaster::checkDepthSubs(std::string topic, std::string camInfoTopic) {
+        size_t subs = 0;
+
+        subs += count_subscribers(topic);        // Image topic subscribers
+        subs += count_subscribers(camInfoTopic); // Camera Info topic subscribers
+
+        subs += count_subscribers(topic + "/compressedDepth"); // Compressed image subscribers
+
+        return (subs > 0);
     }
 
 }  // namespace stereolabs
