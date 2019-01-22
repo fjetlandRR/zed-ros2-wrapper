@@ -60,6 +60,8 @@ namespace stereolabs {
         void initParameters();
         void initPublishers();
 
+        void checkSubscribersCallback();
+
       private:
         // Params
         bool mOpenniDepthMode = false;
@@ -67,6 +69,9 @@ namespace stereolabs {
         std::string mRightTopicRoot = "right";
         std::string mRgbTopicRoot = "rgb";
         std::string mDepthTopicRoot = "depth";
+
+        // Check Subscribers Timer
+        rclcpp::TimerBase::SharedPtr mSubTimer = nullptr;
 
         // Subscribers
         imgSub mRgbSub;

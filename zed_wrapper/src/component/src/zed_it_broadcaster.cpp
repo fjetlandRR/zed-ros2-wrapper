@@ -1,4 +1,6 @@
 #include "zed_it_broadcaster.hpp"
+#include <chrono>
+#include <thread>
 
 using namespace std::placeholders;
 
@@ -39,31 +41,11 @@ namespace stereolabs {
         // Video topics
         std::string img_topic = "/image_rect_color";
         std::string img_raw_topic = "/image_raw_color";
-        std::string cam_info_topic = "/camera_info";
         std::string raw_suffix = "_raw";
         std::string it_prefix = "it_";
+        // Depth topics
         std::string depth_topic = "/depth_registered";
         std::string depth_openni_topic = "/depth_raw_registered";
-
-        // Set the default input topic names
-        std::string leftTopic = topicPrefix + mLeftTopicRoot + img_topic;
-        std::string leftCamInfoTopic = leftTopic + cam_info_topic;
-        std::string leftRawTopic = topicPrefix + mLeftTopicRoot + raw_suffix + img_raw_topic;
-        std::string leftCamInfoRawTopic = leftRawTopic + cam_info_topic;
-
-        std::string rightTopic = topicPrefix + mRightTopicRoot + img_topic;
-        std::string rightCamInfoTopic = rightTopic + cam_info_topic;
-        std::string rightRawTopic = topicPrefix + mRightTopicRoot + raw_suffix + img_raw_topic;
-        std::string rightCamInfoRawTopic = rightRawTopic + cam_info_topic;
-
-        std::string rgbTopic = topicPrefix + mRgbTopicRoot + img_topic;
-        std::string rgbCamInfoTopic = rgbTopic + cam_info_topic;
-        std::string rgbRawTopic = topicPrefix + mRgbTopicRoot + raw_suffix + img_raw_topic;
-        std::string rgbCamInfoRawTopic = rgbRawTopic + cam_info_topic;
-
-        std::string depthTopic = topicPrefix + mDepthTopicRoot + (mOpenniDepthMode ? depth_openni_topic :
-                                 depth_topic);
-        std::string depthCamInfoTopic = depthTopic + cam_info_topic;
 
         // Image Transport output topic names
         mRgbTopic = topicPrefix + it_prefix + mRgbTopicRoot + img_topic;
@@ -72,105 +54,18 @@ namespace stereolabs {
         mRawRgbTopic = topicPrefix + it_prefix + mRgbTopicRoot + raw_suffix + img_raw_topic;
         mRawRightTopic = topicPrefix + it_prefix + mRightTopicRoot + raw_suffix + img_raw_topic;
         mRawLeftTopic = topicPrefix + it_prefix + mLeftTopicRoot + raw_suffix + img_raw_topic;
-
         mDepthTopic = topicPrefix + it_prefix + mDepthTopicRoot + (mOpenniDepthMode ? depth_openni_topic :
                       depth_topic);
 
-        // Subscribers QoS
-        // Note: settings compatible with all the possible publisher QoS settings
-        rmw_qos_profile_t subQos;
-        subQos.history = RMW_QOS_POLICY_HISTORY_KEEP_LAST;
-        subQos.depth = 1;
-        subQos.reliability = RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT;
-        subQos.durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
 
-        // Video Subscribers
-        mRgbSub = create_subscription<sensor_msgs::msg::Image>(
-                      rgbTopic,
-                      std::bind(&ZedItBroadcaster::rgbCallback, this, _1),
-                      subQos);
-        RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRgbSub->get_topic_name());
+        // Advertise publishers
+        initPublishers();
 
-        mRgbInfoSub = create_subscription<sensor_msgs::msg::CameraInfo>(
-                          rgbCamInfoTopic,
-                          std::bind(&ZedItBroadcaster::rgbInfoCallback, this, _1),
-                          subQos);
-        RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRgbInfoSub->get_topic_name());
+        // Subscribers checking
+        std::chrono::milliseconds checkPeriodMsec(100);
 
-        mRightSub = create_subscription<sensor_msgs::msg::Image>(
-                        rightTopic,
-                        std::bind(&ZedItBroadcaster::rightCallback, this, _1),
-                        subQos);
-        RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRightSub->get_topic_name());
-
-        mRightInfoSub = create_subscription<sensor_msgs::msg::CameraInfo>(
-                            rightCamInfoTopic,
-                            std::bind(&ZedItBroadcaster::rightInfoCallback, this, _1),
-                            subQos);
-        RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRightInfoSub->get_topic_name());
-
-        mLeftSub = create_subscription<sensor_msgs::msg::Image>(
-                       leftTopic,
-                       std::bind(&ZedItBroadcaster::leftCallback, this, _1),
-                       subQos);
-        RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mLeftSub->get_topic_name());
-
-
-        mLeftInfoSub = create_subscription<sensor_msgs::msg::CameraInfo>(
-                           leftCamInfoTopic,
-                           std::bind(&ZedItBroadcaster::leftInfoCallback, this, _1),
-                           subQos);
-        RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mLeftInfoSub->get_topic_name());
-
-        mRawRgbSub = create_subscription<sensor_msgs::msg::Image>(
-                         rgbRawTopic,
-                         std::bind(&ZedItBroadcaster::rgbRawCallback, this, _1),
-                         subQos);
-        RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRawRgbSub->get_topic_name());
-
-        mRawRgbInfoSub = create_subscription<sensor_msgs::msg::CameraInfo>(
-                             rgbCamInfoRawTopic,
-                             std::bind(&ZedItBroadcaster::rgbInfoRawCallback, this, _1),
-                             subQos);
-        RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRawRgbInfoSub->get_topic_name());
-
-        mRawRightSub = create_subscription<sensor_msgs::msg::Image>(
-                           rightRawTopic,
-                           std::bind(&ZedItBroadcaster::rightRawCallback, this, _1),
-                           subQos);
-        RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRawRightSub->get_topic_name());
-
-        mRawRightInfoSub = create_subscription<sensor_msgs::msg::CameraInfo>(
-                               rightCamInfoRawTopic,
-                               std::bind(&ZedItBroadcaster::rightInfoRawCallback, this, _1),
-                               subQos);
-        RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRawRightInfoSub->get_topic_name());
-
-        mRawLeftSub = create_subscription<sensor_msgs::msg::Image>(
-                          leftRawTopic,
-                          std::bind(&ZedItBroadcaster::leftRawCallback, this, _1),
-                          subQos);
-        RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRawLeftSub->get_topic_name());
-
-
-        mRawLeftInfoSub = create_subscription<sensor_msgs::msg::CameraInfo>(
-                              leftCamInfoRawTopic,
-                              std::bind(&ZedItBroadcaster::leftInfoRawCallback, this, _1),
-                              subQos);
-        RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRawLeftInfoSub->get_topic_name());
-
-        // Depth Subsubscribers
-        mDepthSub = create_subscription<sensor_msgs::msg::Image>(
-                        depthTopic,
-                        std::bind(&ZedItBroadcaster::depthCallback, this, _1),
-                        subQos);
-        RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mDepthSub->get_topic_name());
-
-        mDepthInfoSub = create_subscription<sensor_msgs::msg::CameraInfo>(
-                            depthCamInfoTopic,
-                            std::bind(&ZedItBroadcaster::depthInfoCallback, this, _1),
-                            subQos);
-        RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mDepthInfoSub->get_topic_name());
+        mSubTimer = create_wall_timer(std::chrono::duration_cast<std::chrono::microseconds>(checkPeriodMsec),
+                                      std::bind(&ZedItBroadcaster::checkSubscribersCallback, this));
     }
 
     void ZedItBroadcaster::initParameters() {
@@ -286,8 +181,223 @@ namespace stereolabs {
         }
     }
 
+    void ZedItBroadcaster::checkSubscribersCallback() {
+        initSubscribers();
+    }
+
     void ZedItBroadcaster::initSubscribers() {
 
+        // Topics
+        std::string topicPrefix = get_namespace();
+
+        if (topicPrefix.length() > 1) {
+            topicPrefix += "/";
+        }
+
+        topicPrefix += get_name();
+        topicPrefix += "/";
+
+        // Video topics
+        std::string img_topic = "/image_rect_color";
+        std::string img_raw_topic = "/image_raw_color";
+        std::string cam_info_topic = "/camera_info";
+        std::string raw_suffix = "_raw";
+        // Depth topics
+        std::string depth_topic = "/depth_registered";
+        std::string depth_openni_topic = "/depth_raw_registered";
+
+        // Set the default input topic names
+        std::string leftTopic = topicPrefix + mLeftTopicRoot + img_topic;
+        std::string leftCamInfoTopic = leftTopic + cam_info_topic;
+        std::string leftRawTopic = topicPrefix + mLeftTopicRoot + raw_suffix + img_raw_topic;
+        std::string leftCamInfoRawTopic = leftRawTopic + cam_info_topic;
+
+        std::string rightTopic = topicPrefix + mRightTopicRoot + img_topic;
+        std::string rightCamInfoTopic = rightTopic + cam_info_topic;
+        std::string rightRawTopic = topicPrefix + mRightTopicRoot + raw_suffix + img_raw_topic;
+        std::string rightCamInfoRawTopic = rightRawTopic + cam_info_topic;
+
+        std::string rgbTopic = topicPrefix + mRgbTopicRoot + img_topic;
+        std::string rgbCamInfoTopic = rgbTopic + cam_info_topic;
+        std::string rgbRawTopic = topicPrefix + mRgbTopicRoot + raw_suffix + img_raw_topic;
+        std::string rgbCamInfoRawTopic = rgbRawTopic + cam_info_topic;
+
+        std::string depthTopic = topicPrefix + mDepthTopicRoot + (mOpenniDepthMode ? depth_openni_topic :
+                                 depth_topic);
+        std::string depthCamInfoTopic = depthTopic + cam_info_topic;
+
+        // Subscribers QoS
+        // Note: settings compatible with all the possible publisher QoS settings
+        rmw_qos_profile_t subQos;
+        subQos.history = RMW_QOS_POLICY_HISTORY_KEEP_LAST;
+        subQos.depth = 1;
+        subQos.reliability = RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT;
+        subQos.durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
+
+        size_t rgbSubnumber = count_subscribers(mRgbTopic) + count_subscribers(mRgbPub.getInfoTopic());  // mPubRgb subscribers
+        size_t rgbRawSubnumber = count_subscribers(mRawRgbTopic) + count_subscribers(
+                                     mRawRgbPub.getInfoTopic());  //mPubRawRgb subscribers
+        size_t leftSubnumber = count_subscribers(mLeftTopic) + count_subscribers(
+                                   mLeftPub.getInfoTopic());  //mPubLeft subscribers
+        size_t leftRawSubnumber = count_subscribers(mRawLeftTopic) + count_subscribers(
+                                      mRawLeftPub.getInfoTopic());  //mPubRawLeft subscribers
+        size_t rightSubnumber = count_subscribers(mRightTopic) + count_subscribers(
+                                    mRightPub.getInfoTopic());  //mPubRight subscribers
+        size_t rightRawSubnumber = count_subscribers(mRawRightTopic) + count_subscribers(
+                                       mRawRightPub.getInfoTopic());  //mPubRawRight subscribers
+        size_t depthSubnumber = count_subscribers(mDepthTopic) + count_subscribers(
+                                    mDepthPub.getInfoTopic());  //mDepthPub subscribers
+
+        // Video Subscribers
+        if (rgbSubnumber > 0 && (!mRgbSub || !mRgbInfoSub)) {
+            mRgbSub = create_subscription<sensor_msgs::msg::Image>(
+                          rgbTopic,
+                          std::bind(&ZedItBroadcaster::rgbCallback, this, _1),
+                          subQos);
+            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRgbSub->get_topic_name());
+
+            mRgbInfoSub = create_subscription<sensor_msgs::msg::CameraInfo>(
+                              rgbCamInfoTopic,
+                              std::bind(&ZedItBroadcaster::rgbInfoCallback, this, _1),
+                              subQos);
+            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRgbInfoSub->get_topic_name());
+        } else {
+            if (rgbSubnumber == 0 && (mRgbSub || mRgbInfoSub)) {
+                mRgbSub.reset();
+                mRgbInfoSub.reset();
+
+                RCLCPP_DEBUG(get_logger(), " * RGB Unsubscribed");
+            }
+        }
+
+        if (rightSubnumber > 0 && (!mRightSub || !mRightInfoSub)) {
+            mRightSub = create_subscription<sensor_msgs::msg::Image>(
+                            rightTopic,
+                            std::bind(&ZedItBroadcaster::rightCallback, this, _1),
+                            subQos);
+            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRightSub->get_topic_name());
+
+            mRightInfoSub = create_subscription<sensor_msgs::msg::CameraInfo>(
+                                rightCamInfoTopic,
+                                std::bind(&ZedItBroadcaster::rightInfoCallback, this, _1),
+                                subQos);
+            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRightInfoSub->get_topic_name());
+        } else {
+            if (rightSubnumber == 0 && (mRightSub || mRightInfoSub)) {
+                mRightSub.reset();
+                mRightInfoSub.reset();
+
+                RCLCPP_DEBUG(get_logger(), " * Right Unsubscribed");
+            }
+        }
+
+        if (leftSubnumber > 0 && (!mLeftSub || !mLeftInfoSub)) {
+            mLeftSub = create_subscription<sensor_msgs::msg::Image>(
+                           leftTopic,
+                           std::bind(&ZedItBroadcaster::leftCallback, this, _1),
+                           subQos);
+            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mLeftSub->get_topic_name());
+
+
+            mLeftInfoSub = create_subscription<sensor_msgs::msg::CameraInfo>(
+                               leftCamInfoTopic,
+                               std::bind(&ZedItBroadcaster::leftInfoCallback, this, _1),
+                               subQos);
+            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mLeftInfoSub->get_topic_name());
+        } else {
+            if (leftSubnumber == 0 && (mLeftSub || mLeftInfoSub)) {
+                mLeftSub.reset();
+                mLeftInfoSub.reset();
+
+                RCLCPP_DEBUG(get_logger(), " * Left Unsubscribed");
+            }
+        }
+
+        if (rgbRawSubnumber > 0 && (!mRawRgbSub || !mRawRgbInfoSub)) {
+            mRawRgbSub = create_subscription<sensor_msgs::msg::Image>(
+                             rgbRawTopic,
+                             std::bind(&ZedItBroadcaster::rgbRawCallback, this, _1),
+                             subQos);
+            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRawRgbSub->get_topic_name());
+
+            mRawRgbInfoSub = create_subscription<sensor_msgs::msg::CameraInfo>(
+                                 rgbCamInfoRawTopic,
+                                 std::bind(&ZedItBroadcaster::rgbInfoRawCallback, this, _1),
+                                 subQos);
+            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRawRgbInfoSub->get_topic_name());
+        } else {
+            if (rgbRawSubnumber == 0 && (mRawRgbSub || mRawRgbInfoSub)) {
+                mRawRgbSub.reset();
+                mRawRgbInfoSub.reset();
+
+                RCLCPP_DEBUG(get_logger(), " * Raw RGB Unsubscribed");
+            }
+        }
+
+        if (rightRawSubnumber > 0 && (!mRawRightSub || !mRawRightInfoSub)) {
+            mRawRightSub = create_subscription<sensor_msgs::msg::Image>(
+                               rightRawTopic,
+                               std::bind(&ZedItBroadcaster::rightRawCallback, this, _1),
+                               subQos);
+            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRawRightSub->get_topic_name());
+
+            mRawRightInfoSub = create_subscription<sensor_msgs::msg::CameraInfo>(
+                                   rightCamInfoRawTopic,
+                                   std::bind(&ZedItBroadcaster::rightInfoRawCallback, this, _1),
+                                   subQos);
+            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRawRightInfoSub->get_topic_name());
+        } else {
+            if (rightRawSubnumber == 0 && (mRawRightSub || mRawRightInfoSub)) {
+                mRawRightSub.reset();
+                mRawRightInfoSub.reset();
+
+                RCLCPP_DEBUG(get_logger(), " * Raw Right Unsubscribed");
+            }
+        }
+
+        if (leftRawSubnumber > 0 && (!mRawLeftSub || !mRawLeftInfoSub)) {
+            mRawLeftSub = create_subscription<sensor_msgs::msg::Image>(
+                              leftRawTopic,
+                              std::bind(&ZedItBroadcaster::leftRawCallback, this, _1),
+                              subQos);
+            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRawLeftSub->get_topic_name());
+
+
+            mRawLeftInfoSub = create_subscription<sensor_msgs::msg::CameraInfo>(
+                                  leftCamInfoRawTopic,
+                                  std::bind(&ZedItBroadcaster::leftInfoRawCallback, this, _1),
+                                  subQos);
+            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mRawLeftInfoSub->get_topic_name());
+        } else {
+            if (leftRawSubnumber == 0 && (mRawLeftSub || mRawLeftInfoSub)) {
+                mRawLeftSub.reset();
+                mRawLeftInfoSub.reset();
+
+                RCLCPP_DEBUG(get_logger(), " * Raw Left Unsubscribed");
+            }
+        }
+
+        if (depthSubnumber > 0 && (!mDepthSub || !mDepthInfoSub)) {
+            // Depth Subsubscribers
+            mDepthSub = create_subscription<sensor_msgs::msg::Image>(
+                            depthTopic,
+                            std::bind(&ZedItBroadcaster::depthCallback, this, _1),
+                            subQos);
+            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mDepthSub->get_topic_name());
+
+            mDepthInfoSub = create_subscription<sensor_msgs::msg::CameraInfo>(
+                                depthCamInfoTopic,
+                                std::bind(&ZedItBroadcaster::depthInfoCallback, this, _1),
+                                subQos);
+            RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mDepthInfoSub->get_topic_name());
+        } else {
+            if (depthSubnumber == 0 && (mDepthSub || mDepthInfoSub)) {
+                mDepthSub.reset();
+                mDepthInfoSub.reset();
+
+                RCLCPP_DEBUG(get_logger(), " * Depth Unsubscribed");
+            }
+        }
     }
 
     void ZedItBroadcaster::initPublishers() {
@@ -295,35 +405,33 @@ namespace stereolabs {
             return;
         }
 
-        RCLCPP_INFO(get_logger(), "IMAGE TRANSPORT TOPICS:");
-
         mRgbPub = image_transport::create_camera_publisher(this, mRgbTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * '%s'", mRgbPub.getTopic().c_str());
-        RCLCPP_INFO(get_logger(), " * '%s'", mRgbPub.getInfoTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mRgbPub.getTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mRgbPub.getInfoTopic().c_str());
 
         mRightPub = image_transport::create_camera_publisher(this, mRightTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * '%s'", mRightPub.getTopic().c_str());
-        RCLCPP_INFO(get_logger(), " * '%s'", mRightPub.getInfoTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mRightPub.getTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mRightPub.getInfoTopic().c_str());
 
         mLeftPub = image_transport::create_camera_publisher(this, mLeftTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * '%s'", mLeftPub.getTopic().c_str());
-        RCLCPP_INFO(get_logger(), " * '%s'", mLeftPub.getInfoTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mLeftPub.getTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mLeftPub.getInfoTopic().c_str());
 
         mRawRgbPub = image_transport::create_camera_publisher(this, mRawRgbTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * '%s'", mRawRgbPub.getTopic().c_str());
-        RCLCPP_INFO(get_logger(), " * '%s'", mRawRgbPub.getInfoTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mRawRgbPub.getTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mRawRgbPub.getInfoTopic().c_str());
 
         mRawRightPub = image_transport::create_camera_publisher(this, mRawRightTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * '%s'", mRawRightPub.getTopic().c_str());
-        RCLCPP_INFO(get_logger(), " * '%s'", mRawRightPub.getInfoTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mRawRightPub.getTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mRawRightPub.getInfoTopic().c_str());
 
         mRawLeftPub = image_transport::create_camera_publisher(this, mRawLeftTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * '%s'", mRawLeftPub.getTopic().c_str());
-        RCLCPP_INFO(get_logger(), " * '%s'", mRawLeftPub.getInfoTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mRawLeftPub.getTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mRawLeftPub.getInfoTopic().c_str());
 
         mDepthPub = image_transport::create_camera_publisher(this, mDepthTopic, mDepthQos);
-        RCLCPP_INFO(get_logger(), " * '%s'", mDepthPub.getTopic().c_str());
-        RCLCPP_INFO(get_logger(), " * '%s'", mDepthPub.getInfoTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mDepthPub.getTopic().c_str());
+        RCLCPP_INFO(get_logger(), " * Advertised '%s'", mDepthPub.getInfoTopic().c_str());
 
         mPubInitialized = true;
     }
@@ -333,9 +441,7 @@ namespace stereolabs {
             return;
         }
 
-        //        if (mRgbPub.getNumSubscribers() > 0) {
         mRgbPub.publish(*msg, mRgbInfoMsg);
-        //        }
     }
 
     void ZedItBroadcaster::rgbInfoCallback(const sensor_msgs::msg::CameraInfo::SharedPtr msg) {
@@ -349,9 +455,7 @@ namespace stereolabs {
             return;
         }
 
-        //        if (mRightPub.getNumSubscribers() > 0) {
         mRightPub.publish(*msg, mRightInfoMsg);
-        //        }
     }
 
     void ZedItBroadcaster::rightInfoCallback(const sensor_msgs::msg::CameraInfo::SharedPtr msg) {
@@ -365,9 +469,7 @@ namespace stereolabs {
             return;
         }
 
-        //        if (mLeftPub.getNumSubscribers() > 0) {
         mLeftPub.publish(*msg, mLeftInfoMsg);
-        //        }
     }
 
     void ZedItBroadcaster::leftInfoCallback(const sensor_msgs::msg::CameraInfo::SharedPtr msg) {
@@ -381,9 +483,7 @@ namespace stereolabs {
             return;
         }
 
-        //        if (mRawRgbPub.getNumSubscribers() > 0) {
         mRawRgbPub.publish(*msg, mRawRgbInfoMsg);
-        //        }
     }
 
     void ZedItBroadcaster::rgbInfoRawCallback(const sensor_msgs::msg::CameraInfo::SharedPtr msg) {
@@ -397,9 +497,7 @@ namespace stereolabs {
             return;
         }
 
-        //        if (mRawRightPub.getNumSubscribers() > 0) {
         mRawRightPub.publish(*msg, mRawRightInfoMsg);
-        //        }
     }
 
     void ZedItBroadcaster::rightInfoRawCallback(const sensor_msgs::msg::CameraInfo::SharedPtr msg) {
@@ -413,9 +511,7 @@ namespace stereolabs {
             return;
         }
 
-        //        if (mRawLeftPub.getNumSubscribers() > 0) {
         mRawLeftPub.publish(*msg, mRawLeftInfoMsg);
-        //        }
     }
 
     void ZedItBroadcaster::leftInfoRawCallback(const sensor_msgs::msg::CameraInfo::SharedPtr msg) {
@@ -429,9 +525,7 @@ namespace stereolabs {
             return;
         }
 
-        //        if (mDepthPub.getNumSubscribers() > 0) {
         mDepthPub.publish(*msg, mDepthInfoMsg);
-        //        }
     }
 
     void ZedItBroadcaster::depthInfoCallback(const sensor_msgs::msg::CameraInfo::SharedPtr msg) {

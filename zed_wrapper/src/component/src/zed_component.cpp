@@ -1199,8 +1199,8 @@ namespace stereolabs {
         // <<<<< ZED configuration
 
         // >>>>> Try to open ZED camera or to load SVO
-        INIT_TIMER
-        START_TIMER
+        INIT_TIMER;
+        START_TIMER;
 
         if (mSvoFilepath != "") {
             mSvoMode = true;
@@ -1242,8 +1242,6 @@ namespace stereolabs {
                 std::this_thread::sleep_for(std::chrono::seconds(mCamTimeoutSec));
             }
         }
-
-        START_TIMER
 
         while (1) {
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -1426,7 +1424,7 @@ namespace stereolabs {
         if (mImuPubRate > 0 && mZedRealCamModel == sl::MODEL_ZED_M) {
             std::chrono::milliseconds imuPeriodMsec(static_cast<int>(1000.0 / mImuPubRate));
 
-            mImuTimer = create_wall_timer(std::chrono::duration_cast<std::chrono::nanoseconds>(imuPeriodMsec),
+            mImuTimer = create_wall_timer(std::chrono::duration_cast<std::chrono::microseconds>(imuPeriodMsec),
                                           std::bind(&ZedCameraComponent::imuPubCallback, this));
         }
 
@@ -1550,6 +1548,10 @@ namespace stereolabs {
     void ZedCameraComponent::zedGrabThreadFunc() {
         RCLCPP_INFO(get_logger(), "ZED thread started");
 
+        mElabPeriodMean_sec.reset(new sl_tools::CSmartMean(mZedFrameRate));
+        mGrabPeriodMean_usec.reset(new sl_tools::CSmartMean(mZedFrameRate));
+        mPcPeriodMean_usec.reset(new sl_tools::CSmartMean(mZedFrameRate));
+
         mPrevTransition = 255;
         sl::ERROR_CODE grab_status;
 
@@ -1573,9 +1575,9 @@ namespace stereolabs {
 
         rclcpp::WallRate loop_rate(mZedFrameRate);
 
-        INIT_TIMER;
-
         while (1) {
+            std::chrono::steady_clock::time_point start_elab = std::chrono::steady_clock::now();
+
             //>>>>> Interruption check
             if (!rclcpp::ok()) {
                 RCLCPP_DEBUG(get_logger(), "Ctrl+C received");
@@ -1588,6 +1590,7 @@ namespace stereolabs {
             }
 
             //<<<<< Interruption check
+
 
             //>>>>> Subscribers check
             size_t rgbSub = count_subscribers(mRgbTopic);           // mPubRgb subscribers
@@ -1609,6 +1612,7 @@ namespace stereolabs {
             //<<<<< Subscribers check
 
             if (mRunGrabLoop) {
+
                 if (pubDepthData) {
                     int actual_confidence = mZed.getConfidenceThreshold();
 
@@ -1648,6 +1652,7 @@ namespace stereolabs {
                     if (grab_status != sl::ERROR_CODE_NOT_A_NEW_FRAME) {
                         RCLCPP_WARN(get_logger(), "%s", sl::toString(grab_status).c_str());
                     } else {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
                         continue;
                     }
 
@@ -1678,6 +1683,17 @@ namespace stereolabs {
                 // Last frame timestamp
                 mLastGrabTimestamp = grabTimestamp;
 
+                // Publish freq calculation
+                static std::chrono::steady_clock::time_point last_time = std::chrono::steady_clock::now();
+                std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+
+                double elapsed_usec = std::chrono::duration_cast<std::chrono::microseconds>(now - last_time).count();
+                last_time = now;
+
+                double meanGrabPeriod_usec = mGrabPeriodMean_usec->addValue(elapsed_usec);
+
+                //RCLCPP_DEBUG(get_logger(), "Mean grab frequency: %g Hz", 1000000. / meanGrabPeriod_usec);
+
                 // >>>>> Apply video dynamic parameters
                 if (mZedAutoExposure) {
                     if (mTriggerAutoExposure) {
@@ -1700,7 +1716,6 @@ namespace stereolabs {
                 }
 
                 // <<<<< Apply video dynamic parameters
-
                 mCamDataMutex.lock();
 
                 if (pubImages) {
@@ -1714,29 +1729,26 @@ namespace stereolabs {
                 mCamDataMutex.unlock();
 
                 // >>>>> Thread sleep
-                TIMER_ELAPSED;
-                START_TIMER;
+                std::chrono::steady_clock::time_point end_elab = std::chrono::steady_clock::now();
+                double elab_usec = std::chrono::duration_cast<std::chrono::microseconds>(end_elab - start_elab).count();
 
-                static int rateWarnCount = 0;
+                double mean_elab_sec = mElabPeriodMean_sec->addValue(elab_usec / 1000000.);
+
+                //RCLCPP_DEBUG(get_logger(), "Mean elab time: %g sec", mean_elab_sec);
 
                 if (!loop_rate.sleep()) {
-                    rateWarnCount++;
+                    if (mean_elab_sec > (1. / mZedFrameRate)) {
 
-                    if (rateWarnCount == mZedFrameRate) {
                         RCLCPP_WARN(get_logger(),  "Expected cycle time: %g sec  - Real cycle time: %g sec ",
-                                    1.0 / mZedFrameRate, elapsed / 1000.0);
+                                    1.0 / mZedFrameRate, mean_elab_sec);
                         RCLCPP_INFO(get_logger(),  "Elaboration takes longer than requested "
                                     "by the FPS rate. Please consider to "
                                     "lower the 'frame_rate' setting.");
 
-                        rateWarnCount = 0;
                         loop_rate.reset();
                     }
-                } else {
-                    rateWarnCount = 0;
                 }
 
-                //RCLCPP_DEBUG(get_logger(), "Thread freq: %g Hz", 1000.0 / elapsed);
                 // <<<<< Thread sleep
             } else {
                 static int noSubInfoCount = 0;
@@ -1812,7 +1824,7 @@ namespace stereolabs {
 
         // <<<<< Publish the right image if someone has subscribed to
 
-        // >>>>> Publish the right image if someone has subscribed to
+        // >>>>> Publish the right raw image if someone has subscribed to
         if (rightRawSubnumber > 0) {
             // Retrieve RGBA Right image
             mZed.retrieveImage(rightZEDMat, sl::VIEW_RIGHT_UNRECTIFIED, sl::MEM_CPU, mMatWidth, mMatHeight);

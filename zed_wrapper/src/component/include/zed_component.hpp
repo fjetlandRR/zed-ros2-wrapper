@@ -47,6 +47,8 @@
 
 #include "sl/Camera.hpp"
 
+#include "sl_tools.h"
+
 namespace stereolabs {
 
     // >>>>> Typedefs to simplify declarations
@@ -393,6 +395,12 @@ namespace stereolabs {
         std::condition_variable mPcDataReadyCondVar;
         bool mPcDataReady = false;
         bool mTriggerAutoExposure = false;
+
+        // Diagnostic
+        std::unique_ptr<sl_tools::CSmartMean> mElabPeriodMean_sec;
+        std::unique_ptr<sl_tools::CSmartMean> mGrabPeriodMean_usec;
+        std::unique_ptr<sl_tools::CSmartMean> mPcPeriodMean_usec;
+        std::unique_ptr<sl_tools::CSmartMean> mImuPeriodMean_usec;
     };
 }
 
