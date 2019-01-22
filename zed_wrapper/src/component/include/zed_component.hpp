@@ -397,6 +397,7 @@ namespace stereolabs {
         bool mTriggerAutoExposure = false;
 
         // Diagnostic
+        // TODO Publish Diagnostic when available
         std::unique_ptr<sl_tools::CSmartMean> mElabPeriodMean_sec;
         std::unique_ptr<sl_tools::CSmartMean> mGrabPeriodMean_usec;
         std::unique_ptr<sl_tools::CSmartMean> mPcPeriodMean_usec;

@@ -1117,6 +1117,8 @@ namespace stereolabs {
 
             mPubImuRaw = create_publisher<sensor_msgs::msg::Imu>(mImuRawTopic, mImuQos);
             RCLCPP_INFO(get_logger(), " * '%s'", mImuRawTopic.c_str());
+
+            mImuPeriodMean_usec.reset(new sl_tools::CSmartMean(mImuPubRate / 2));
         }
 
         // <<<<< Create IMU Publishers
@@ -2050,6 +2052,15 @@ namespace stereolabs {
     }
 
     void ZedCameraComponent::publishPointCloud() {
+        // Publish freq calculation
+        static std::chrono::steady_clock::time_point last_time = std::chrono::steady_clock::now();
+        std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+
+        double elapsed_usec = std::chrono::duration_cast<std::chrono::microseconds>(now - last_time).count();
+        last_time = now;
+
+        mPcPeriodMean_usec->addValue(elapsed_usec);
+
         // Initialize Point Cloud message
         // https://github.com/ros/common_msgs/blob/jade-devel/sensor_msgs/include/sensor_msgs/point_cloud2_iterator.h
 
@@ -2169,6 +2180,17 @@ namespace stereolabs {
 
         sl::IMUData imu_data;
         mZed.getIMUData(imu_data, sl::TIME_REFERENCE_CURRENT);
+
+
+        // Publish freq calculation
+        static std::chrono::steady_clock::time_point last_time = std::chrono::steady_clock::now();
+        std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+
+        double elapsed_usec = std::chrono::duration_cast<std::chrono::microseconds>(now - last_time).count();
+        last_time = now;
+
+        mImuPeriodMean_usec->addValue(elapsed_usec);
+
 
         if (imu_SubNumber > 0) {
             sensor_msgs::msg::Imu imu_msg;
