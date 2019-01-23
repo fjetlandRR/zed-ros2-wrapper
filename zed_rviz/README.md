@@ -2,7 +2,7 @@
 
 This package lets you visualize in the RViz2 application all the possible information that can be acquired using a ZED camera.
 
-![ZED rendering on Rviz](images/depthcloud-RGB.png)
+![ZED rendering on Rviz](images/depthcloud-RGB.jpg)
 
 ### Run the program
 
