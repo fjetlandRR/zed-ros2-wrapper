@@ -21,8 +21,8 @@ This package lets you use the ZED stereo camera with ROS2. It provides access to
 - [ZED SDK](https://www.stereolabs.com/developers/release/latest/) v2.6 or later
 - [CUDA](https://developer.nvidia.com/cuda-downloads) dependency
 - ROS2 Crystal: 
-  - Ubuntu 16.04 [[source](https://index.ros.org/doc/ros2/Linux-Development-Setup)] 
-  - Ubuntu 18.04 [[binaries](https://index.ros.org/doc/ros2/Linux-Install-Debians) - [source](https://index.ros.org/doc/ros2/Linux-Development-Setup)]
+  - Ubuntu 16.04 [[source](https://index.ros.org/doc/ros2/Installation/Linux-Development-Setup/)] 
+  - Ubuntu 18.04 [[binaries]https://index.ros.org/doc/ros2/Installation/Linux-Install-Debians/) - [source](https://index.ros.org/doc/ros2/Installation/Linux-Development-Setup/)]
 
 ### Build the package
 The **zed_ros2_wrapper** is a [colcon](http://design.ros2.org/articles/build_tool.html) package. It depends on the following ROS2 packages:
@@ -43,7 +43,7 @@ The **zed_ros2_wrapper** is a [colcon](http://design.ros2.org/articles/build_too
   - message_runtime
   - image_transport
 
-**Note:** If you haven’t set up your colcon workspace yet, please follow this short [tutorial](https://index.ros.org/doc/ros2/Colcon-Tutorial/). 
+**Note:** If you haven’t set up your colcon workspace yet, please follow this short [tutorial](https://index.ros.org/doc/ros2/Tutorials/Colcon-Tutorial/). 
 
 To install the **zed_ros2_wrapper**, open a bash terminal, clone the package from Github, and build it:
 
@@ -68,9 +68,9 @@ $ sudo rm /usr/lib/x86_64-linux-gnu/libEGL.so; sudo ln /usr/lib/x86_64-linux-gnu
 ```
 
 ## Starting the ZED node
-The ZED is available in ROS2 as a [lifecycle managed node](https://index.ros.org/doc/ros2/Managed-Nodes/) that publishes its data to topics. You can get the full list of the available topics [here](/integrations/ros2/zed_node/). 
+The ZED is available in ROS2 as a [lifecycle managed node](https://index.ros.org/doc/ros2/Tutorials/Managed-Nodes/) that publishes its data to topics. You can get the full list of the available topics [here](/integrations/ros2/zed_node/). 
 
-To start the ZED node, open a terminal and use the [CLI](https://index.ros.org/doc/ros2/Introspection-with-command-line-tools/) command `ros2 launch`:
+To start the ZED node, open a terminal and use the [CLI](https://index.ros.org/doc/ros2/Tutorials/Introspection-with-command-line-tools/) command `ros2 launch`:
 
 ```bash
 $ ros2 launch stereolabs_zed zed.launch.py
@@ -149,7 +149,7 @@ You can dynamically change many configuration parameters during the execution of
   - **depth.confidence**: Sets a threshold that filters the values of the depth or the point cloud. With a *confidence threshold* set to 100, all depth values will be written to the depth and the point cloud. This is set to 80 by default, which removes the least accurate values.
   - **depth.max_depth**: Sets the maximum depth range 
 
-You can set the parameters using the [CLI](https://index.ros.org/doc/ros2/Introspection-with-command-line-tools) command `ros2 param set`, e.g.:
+You can set the parameters using the [CLI](https://index.ros.org/doc/ros2/Tutorials/Introspection-with-command-line-tools/) command `ros2 param set`, e.g.:
 
 ```bash
 $ ros2 param set /zed/zed_node depth.confidence 80
