@@ -1,42 +1,95 @@
 ![](../images/Picto+STEREOLABS_Black.jpg)
-# ZED ROS2 COMPONENT and CONTAINER
+# ZED ROS2 wrapper
 
-## START THE NODE
-
-To start the node in its own container executable:
-
-``` 
-$ ros2 run stereolabs_zed zed_wrapper_node
+The easiest way to start a ZED ROS2 node is to use the command line:
+```bash
+$ ros2 launch stereolabs_zed zed.py.launch
 ```
 
-To start the ZED component in an external container:
+## Published Topics
+The ZED node publishes data to the following topics:
 
-Console 1:
-```
-$ ros2 run composition api_composition
-```
+- **Left camera**
 
-Console 2:
+   - `zed/zed_node/rgb/image_rect_color`: Color rectified image (left RGB image by default) 
+   - `zed/zed_node/rgb/image_rect_color/camera_info`: Color camera calibration data 
+   - `zed/zed_node/rgb/image_raw_color`: Color unrectified image (left RGB image by default) 
+   - `zed/zed_node/rgb/image_raw_color/camera_info`: Color camera calibration data 
+   - `zed/zed_node/left/image_rect_color`: Left camera color rectified image 
+   - `zed/zed_node/left/image_rect_color/camera_info`: Left camera calibration data 
+   - `zed/zed_node/left/image_raw_color`: Left camera color unrectified image 
+   - `zed/zed_node/left/image_raw_color/camera_info`: Left camera calibration data 
 
-```
-$ ros2 run composition api_composition_cli stereolabs_zed stereolabs::ZedCameraComponent
-```
+- **Right camera**
 
-### MANAGE NODE STATE USING SERVICE CALLS
+  - `zed/zed_node/right/image_rect_color`: Color rectified right image 
+  - `zed/zed_node/right/image_rect_color/camera_info`: Right camera calibration data 
+  - `zed/zed_node/right/image_raw_color`: Color unrectified right image 
+  - `zed/zed_node/right/image_raw_color/camera_info`: Right camera calibration data 
 
-Command line:
-```
-$ ros2 service call /zed_node/change_state lifecycle_msgs/ChangeState "{node_name: zed_node, transition: {id: X}}"
-```
+- **Depth and point cloud**
 
-Replace `X` with one of the following ID
-* ID: 1 -> CONFIGURE  - **UNCONFIGURED -> INACTIVE**
-* ID: 2 -> CLEANUP    - **INACTIVE -> UNCONFIGURED**
-* ID: 3 -> ACTIVATE   - **INACTIVE -> ACTIVE**
-* ID: 4 -> DEACTIVATE - **ACTIVE -> INACTIVE**
-* ID: 5 -> SHUTDOWN   - **everyState -> FINALIZED**
+   - `zed/zed_node/depth/depth_registered`: Depth map image registered on left image (**Normal mode** - 32-bit float in meters) 
+   - `zed/zed_node/depth/depth_registered/camera_info`: Depth camera calibration data (**Normal mode**) 
+   - `zed/zed_node/depth/depth_raw_registered`: Depth map image registered on left image (**OpenNI mode** - 16-bit unsigned in millimeters) 
+   - `zed/zed_node/depth/depth_raw_registered/camera_info`: Depth camera calibration data (**OpenNI mode**) 
+   - `zed/zed_node/point_cloud/cloud_registered`: Registered color point cloud 
+   - `zed/zed_node/confidence/confidence_image`: Confidence image 
+   - `zed/zed_node/confidence/confidence_image/camera_info`: Depth camera calibration data 
+   - `zed/zed_node/confidence/confidence_map`: Confidence image (floating point values) 
+   - `zed/zed_node/disparity/disparity_image`: Disparity image 
 
-To receive a message for each valid state transition:
-```
-$ ros2 topic echo /zed_node/transition_event
-```
+- **Inertial data**
+
+   - `zed/zed_node/imu/data`: Accelerometer, gyroscope, and orientation data in Earth frame 
+   - `zed/zed_node/imu/data_raw`: Accelerometer and gyroscope data in Earth frame 
+
+- **Lyfecycle transitions**
+
+  - `zed/zed_node/transition_event`: notification of lifecycle state changing (see the [lifecycle tutorial](/integrations/ros2/lifecycle/))
+
+The `transition_event` topic has default system settings.
+
+### Image Transport
+
+The ROS wrapper supports the stack [`image_transport`](http://wiki.ros.org/image_transport) introduced with ROS2 Crystal Clemmys.
+
+The `rgb`, `left`, `right` and `depth` topics are republished using the `image_transport::CameraPublisher` object, that correctly associates the `sensor_msgs::msg::CameraInfo` message to the relative `sensor_msg::msg::Image` message and creates the compressed image streams.
+
+The prefix `it_` is added to the root of each image stream to indicate that the images are published using `image_transport` (e.g. `/zed/zed_node/it_rgb/image_rect_color/compressed`).
+
+### QoS profiles
+
+All the topics are configured to use the default ROS2 [QoS profile](http://design.ros2.org/articles/qos.html):
+
+* **History**: `KEEP_LAST`
+* **Depth**: `10`
+* **Reliability**: `RELIABLE`
+* **Durability**: `VOLATILE`
+
+The QoS settings can be modified changing the relative parameters in the YAML files, as described below.
+
+When creating a subscriber, be sure to use a compatible QOS profile according to the following tables:
+
+*Compatibility of QoS durability profiles:*
+
+Publisher       | Subscriber      | Connection  | Result
+----------------|-----------------|-------------|--------
+Volatile	      | Volatile        |	Yes         |	Volatile
+**Volatile**	  | **Transient local** | **No**  | **-**
+Transient local | Volatile	      | Yes         | Volatile
+Transient local |	Transient local	| Yes         | Transient local
+
+*Compatibility of QoS reliability profiles:*
+
+Publisher       | Subscriber      | Connection  | Result
+----------------|-----------------|-------------|--------
+Best effort	    | Best effort     | Yes	        | Best effort
+**Best effort** | **Reliable**    | **No**      | **-**
+Reliable	      | Best effort	    | Yes         |	Best effort
+Reliable	      | Reliable	      | Yes	        | Reliable
+
+In order for a connection to be made, *all* of the policies that affect compatibility must be compatible. For instance, if a publisher-subscriber pair has compatible reliability QoS profiles, but incompatible durability QoS profiles, the connection will not be made.
+
+## Detailed guide
+For a detailed description of the parameter settings and the different mode to execute a ZED ROS2 node please refer to the [online documentation](https://www.stereolabs.com/docs/ros2/zed_node/)
