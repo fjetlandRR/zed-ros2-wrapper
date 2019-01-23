@@ -20,7 +20,7 @@ This package lets you use the ZED stereo camera with ROS2. It provides access to
 - Ubuntu 16.04 or Ubuntu 18.04 (*support for Windows 10 will be provided soon*)
 - [ZED SDK](https://www.stereolabs.com/developers/release/latest/) v2.6 or later
 - [CUDA](https://developer.nvidia.com/cuda-downloads) dependency
-- ROS2 Bouncy: 
+- ROS2 Crystal: 
   - Ubuntu 16.04 [[source](https://index.ros.org/doc/ros2/Linux-Development-Setup)] 
   - Ubuntu 18.04 [[binaries](https://index.ros.org/doc/ros2/Linux-Install-Debians) - [source](https://index.ros.org/doc/ros2/Linux-Development-Setup)]
 
@@ -41,6 +41,7 @@ The **zed_ros2_wrapper** is a [colcon](http://design.ros2.org/articles/build_too
   - urdf
   - robot_state_publisher
   - message_runtime
+  - image_transport
 
 **Note:** If you haven’t set up your colcon workspace yet, please follow this short [tutorial](https://index.ros.org/doc/ros2/Colcon-Tutorial/). 
 
