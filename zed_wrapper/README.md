@@ -1,3 +1,4 @@
+![](../images/Picto+STEREOLABS_Black.jpg)
 # ZED ROS2 COMPONENT and CONTAINER
 
 ## START THE NODE
