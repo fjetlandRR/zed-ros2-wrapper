@@ -1,3 +1,4 @@
+![](../../images/Picto+STEREOLABS_Black.jpg)
 # ZED Multi Camera
 
 This is an example that illustrates how to configure and run a multi camera rig composed by a ZED-M camera lying on a ZED.
