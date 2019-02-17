@@ -171,3 +171,7 @@ and the ZED node will report a warning message explaining the error type:
 ```
 1538556595.265117561: [zed.zed_node] [WARN]	The param 'depth.confidence' requires an INTEGER value in the range ]0,100]
 ```
+
+## Limitations
+The ROS2 wrapper is released as beta version. Many features available in the ROS wrapper are not yet introduced.
+Due to problems with TF2 in ROS2 Crystal Clemmys the positional tracking is not yet enabled, but we are working to enable it with the next ROS2 releasenin June 2019.
