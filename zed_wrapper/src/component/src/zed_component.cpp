@@ -714,6 +714,181 @@ namespace stereolabs {
         RCLCPP_INFO(get_logger(), " * Depth QoS Durability: '%s'", sl_tools::qos2str(mDepthQos.durability).c_str());
     }
 
+    void ZedCameraComponent::getPoseParams() {
+        rclcpp::Parameter paramVal;
+        std::string paramName;
+
+        RCLCPP_INFO(get_logger(), "*** POSITIONAL TRACKING parameters ***");
+
+        paramName = "tracking.publish_tf";
+
+        if (get_parameter(paramName, paramVal)) {
+            if (paramVal.get_type() == rclcpp::PARAMETER_BOOL) {
+                mPublishTF = paramVal.as_bool();
+            } else {
+                RCLCPP_WARN(get_logger(), "The parameter '%s' must be a BOOL, using the default value", paramName.c_str());
+            }
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * Publish TF: %s", mPublishTF ? "ENABLED" : "DISABLED");
+
+        if (mPublishTF) {
+            paramName = "tracking.publish_map_tf";
+
+            if (get_parameter(paramName, paramVal)) {
+                if (paramVal.get_type() == rclcpp::PARAMETER_BOOL) {
+                    mPublishMapTF = paramVal.as_bool();
+                } else {
+                    RCLCPP_WARN(get_logger(), "The parameter '%s' must be a BOOL, using the default value", paramName.c_str());
+                }
+            } else {
+                RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+            }
+        } else {
+            mPublishMapTF = false;
+        }
+
+        RCLCPP_INFO(get_logger(), " * Publish Map TF: %s", mPublishMapTF ? "ENABLED" : "DISABLED");
+
+        paramName = "tracking.world_frame";
+
+        if (get_parameter(paramName, paramVal)) {
+            if (paramVal.get_type() == rclcpp::PARAMETER_STRING) {
+                mWorldFrame = paramVal.as_string();
+            } else {
+                RCLCPP_WARN(get_logger(), "The parameter '%s' must be a STRING, using the default value", paramName.c_str());
+            }
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * World frame: '%s'", mWorldFrame.c_str());
+
+        paramName = "tracking.pose_frame";
+
+        if (get_parameter(paramName, paramVal)) {
+            if (paramVal.get_type() == rclcpp::PARAMETER_STRING) {
+                mMapFrame = paramVal.as_string();
+            } else {
+                RCLCPP_WARN(get_logger(), "The parameter '%s' must be a STRING, using the default value", paramName.c_str());
+            }
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * Pose (map) frame: '%s'", mMapFrame.c_str());
+
+        paramName = "tracking.odometry_frame";
+
+        if (get_parameter(paramName, paramVal)) {
+            if (paramVal.get_type() == rclcpp::PARAMETER_STRING) {
+                mOdomFrame = paramVal.as_string();
+            } else {
+                RCLCPP_WARN(get_logger(), "The parameter '%s' must be a STRING, using the default value", paramName.c_str());
+            }
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * Odometry frame: '%s'", mOdomFrame.c_str());
+
+        // TODO Check how to handle the Odometry DB
+
+        paramName = "tracking.pose_smoothing";
+
+        if (get_parameter(paramName, paramVal)) {
+            if (paramVal.get_type() == rclcpp::PARAMETER_BOOL) {
+                mPoseSmoothing = paramVal.as_bool();
+            } else {
+                RCLCPP_WARN(get_logger(), "The parameter '%s' must be a BOOL, using the default value", paramName.c_str());
+            }
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * Pose Smothing: %s", mPoseSmoothing ? "ENABLED" : "DISABLED");
+
+        paramName = "tracking.spatial_memory";
+
+        if (get_parameter(paramName, paramVal)) {
+            if (paramVal.get_type() == rclcpp::PARAMETER_BOOL) {
+                mSpatialMemory = paramVal.as_bool();
+            } else {
+                RCLCPP_WARN(get_logger(), "The parameter '%s' must be a BOOL, using the default value", paramName.c_str());
+            }
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * Spatial Memory: %s", mSpatialMemory ? "ENABLED" : "DISABLED");
+
+        paramName = "tracking.floor_alignment";
+
+        if (get_parameter(paramName, paramVal)) {
+            if (paramVal.get_type() == rclcpp::PARAMETER_BOOL) {
+                mFloorAlignment = paramVal.as_bool();
+            } else {
+                RCLCPP_WARN(get_logger(), "The parameter '%s' must be a BOOL, using the default value", paramName.c_str());
+            }
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * Floor Alignment: %s", mFloorAlignment ? "ENABLED" : "DISABLED");
+
+        paramName = "tracking.two_d_mode";
+
+        if (get_parameter(paramName, paramVal)) {
+            if (paramVal.get_type() == rclcpp::PARAMETER_BOOL) {
+                m2dMode = paramVal.as_bool();
+            } else {
+                RCLCPP_WARN(get_logger(), "The parameter '%s' must be a BOOL, using the default value", paramName.c_str());
+            }
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * Force 2D mode: %s", m2dMode ? "ENABLED" : "DISABLED");
+
+        paramName = "tracking.initial_tracking_pose";
+
+        if (get_parameter(paramName, paramVal)) {
+            if (paramVal.get_type() == rclcpp::PARAMETER_DOUBLE_ARRAY) {
+                mInitialPose = paramVal.as_double_array();
+
+                if (mInitialPose.size() != 6) {
+                    mInitialPose.resize(6, 0.0);
+
+                    RCLCPP_WARN(get_logger(), "The pose vector '%s' must contain SIX values, using the default value", paramName.c_str());
+                }
+            } else {
+                RCLCPP_WARN(get_logger(), "The parameter '%s' must be an ARRAY OF DOUBLE, using the default value", paramName.c_str());
+            }
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * Initial pose: [%g,%g,%g, %g,%g,%g]",
+                    mInitialPose[0], mInitialPose[1], mInitialPose[2],
+                    mInitialPose[3], mInitialPose[4], mInitialPose[5]);
+
+        paramName = "tracking.pose_topic";
+
+        if (get_parameter(paramName, paramVal)) {
+            if (paramVal.get_type() == rclcpp::PARAMETER_STRING) {
+                mOdomFrame = paramVal.as_string();
+            } else {
+                RCLCPP_WARN(get_logger(), "The parameter '%s' must be a STRING, using the default value", paramName.c_str());
+            }
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * Odometry frame: '%s'", mOdomFrame.c_str());
+    }
+
     void ZedCameraComponent::getImuParams() {
         rclcpp::Parameter paramVal;
         std::string paramName;
@@ -846,8 +1021,7 @@ namespace stereolabs {
         getDepthParams();
 
         // >>>>>> TRACKING parameters
-        //RCLCPP_INFO(get_logger(), "*** TRACKING parameters ***" );
-        // TODO parse tracking parameters when TRACKING is available
+        getPoseParams();
         // <<<<<< TRACKING parameters
 
         // IMU parameters

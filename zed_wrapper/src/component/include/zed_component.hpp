@@ -44,6 +44,10 @@
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 #include "stereo_msgs/msg/disparity_image.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "geometry_msgs/msg/pose_with_covariance_stamped.h"
+#include "nav_msgs/msg/odometry.hpp"
+#include "nav_msgs/msg/path.hpp"
 
 #include "sl/Camera.hpp"
 
@@ -160,6 +164,7 @@ namespace stereolabs {
         void getVideoParams();
         void getDepthParams();
         void getImuParams();
+        void getPoseParams();
         void initParameters();
 
 
@@ -278,11 +283,31 @@ namespace stereolabs {
         double mImuPubRate = 500.0;
         bool mImuTimestampSync = true;
 
+        bool mPublishTF = true;
+        bool mPublishMapTF = true;
+        std::string mWorldFrame = "world";
+        std::string mMapFrame = "map";
+        std::string mOdomFrame = "odom";
+        bool mPoseSmoothing = false;
+        bool mSpatialMemory = true;
+        bool mFloorAlignment = false;
+        bool m2dMode = false;
+        std::vector<double> mInitialPose;
+        std::string mPoseTopic = "pose";
+        std::string mOdomTopic = "odom";
+        bool mInitOdomWithPose = true;
+        double mPathPubRate = 2.0;
+        int mPathMaxCount = -1;
+        bool mPublishPoseCov = true;
+
+
         // QoS profiles
         // https://github.com/ros2/ros2/wiki/About-Quality-of-Service-Settings
         rmw_qos_profile_t mVideoQos = rmw_qos_profile_default;
         rmw_qos_profile_t mDepthQos = rmw_qos_profile_default;
-        rmw_qos_profile_t mImuQos = rmw_qos_profile_default;
+        rmw_qos_profile_t mImuQos   = rmw_qos_profile_default;
+        rmw_qos_profile_t mPoseQos  = rmw_qos_profile_default;
+
 
         // ZED dynamic params
         double mZedMatResizeFactor = 1.0;   // Dynamic...
@@ -327,28 +352,32 @@ namespace stereolabs {
         std::string mConfTopicRoot = "confidence";
         std::string mImuTopicRoot = "imu";
 
-        std::string mLeftTopic;
+        std::string mLeftTopic = "left";
         std::string mLeftRawTopic;
         std::string mLeftCamInfoTopic;
         std::string mLeftCamInfoRawTopic;
-        std::string mRightTopic;
+        std::string mRightTopic = "right";
         std::string mRightRawTopic;
         std::string mRightCamInfoTopic;
         std::string mRightCamInfoRawTopic;
-        std::string mRgbTopic;
+        std::string mRgbTopic = "rgb";
         std::string mRgbRawTopic;
         std::string mRgbCamInfoTopic;
         std::string mRgbCamInfoRawTopic;
 
-        std::string mDepthTopic;
+        std::string mDepthTopic = "depth";
         std::string mDepthCamInfoTopic;
-        std::string mConfImgTopic;
+        std::string mConfImgTopic = "confidence_image";
         std::string mConfCamInfoTopic;
-        std::string mConfMapTopic;
-        std::string mDispTopic;
-        std::string mPointcloudTopic;
-        std::string mImuTopic;
-        std::string mImuRawTopic;
+        std::string mConfMapTopic = "confidence_map";
+        std::string mDispTopic = "disparity/disparity_image";
+        std::string mPointcloudTopic = "point_cloud/cloud_registered";
+        std::string mImuTopic = "data";
+        std::string mImuRawTopic = "data_raw";
+
+        std::string mOdomTopic;
+        std::string mPoseTopic;
+        std::string mPoseCovTopic;
 
         // Messages
         // Camera info
@@ -402,6 +431,8 @@ namespace stereolabs {
         std::unique_ptr<sl_tools::CSmartMean> mGrabPeriodMean_usec;
         std::unique_ptr<sl_tools::CSmartMean> mPcPeriodMean_usec;
         std::unique_ptr<sl_tools::CSmartMean> mImuPeriodMean_usec;
+
+
     };
 }
 
