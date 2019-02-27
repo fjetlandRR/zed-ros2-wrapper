@@ -293,8 +293,6 @@ namespace stereolabs {
         bool mFloorAlignment = false;
         bool m2dMode = false;
         std::vector<double> mInitialPose;
-        std::string mPoseTopic = "pose";
-        std::string mOdomTopic = "odom";
         bool mInitOdomWithPose = true;
         double mPathPubRate = 2.0;
         int mPathMaxCount = -1;
@@ -375,9 +373,9 @@ namespace stereolabs {
         std::string mImuTopic = "data";
         std::string mImuRawTopic = "data_raw";
 
-        std::string mOdomTopic;
-        std::string mPoseTopic;
-        std::string mPoseCovTopic;
+        std::string mOdomTopic = "odom";
+        std::string mPoseTopic = "pose";
+        std::string mPoseCovTopic = "pose_with_covariance";
 
         // Messages
         // Camera info

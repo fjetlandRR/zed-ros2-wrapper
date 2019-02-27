@@ -71,7 +71,7 @@ zed:
                 odometry_topic:             'odom'
                 init_odom_with_first_valid_pose: true                
                 path_pub_rate:              2.0
-                path_max_count:             -1
+                path_max_count:             -1                                  # Number of position kept in path vector. '-1' for no limitations
                 publish_pose_covariance:    true
                 qos_history:                0                                   # '0': KEEP_LAST - '1': KEEP_ALL
                 qos_depth:                  10                                  # Queue size if using KEEP_LAST

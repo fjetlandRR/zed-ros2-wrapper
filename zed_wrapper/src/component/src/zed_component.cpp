@@ -190,12 +190,16 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), "*** GENERAL parameters ***");
 
+        // ------------------------------------------
+
         paramName = "general.svo_file";
 
         if (get_parameter(paramName, paramVal)) {
             mSvoFilepath = paramVal.as_string();
             RCLCPP_INFO(get_logger(), " * SVO: `%s`", mSvoFilepath.c_str());
         }
+
+        // ------------------------------------------
 
         paramName = "general.camera_model";
 
@@ -208,6 +212,8 @@ namespace stereolabs {
         RCLCPP_INFO(get_logger(), " * Camera model: %d (%s)",
                     mZedUserCamModel, sl::toString(static_cast<sl::MODEL>(mZedUserCamModel)).c_str());
 
+        // ------------------------------------------
+
         paramName = "general.camera_timeout_sec";
 
         if (get_parameter(paramName, paramVal)) {
@@ -217,6 +223,8 @@ namespace stereolabs {
         }
 
         RCLCPP_INFO(get_logger(), " * Camera timeout: %d sec", mCamTimeoutSec);
+
+        // ------------------------------------------
 
         paramName = "general.camera_reactivate";
 
@@ -228,6 +236,8 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), " * Camera reconnection if disconnected: %s", mZedReactivate ? "ENABLED" : "DISABLED");
 
+        // ------------------------------------------
+
         paramName = "general.camera_max_reconnect";
 
         if (get_parameter(paramName, paramVal)) {
@@ -237,6 +247,8 @@ namespace stereolabs {
         }
 
         RCLCPP_INFO(get_logger(), " * Camera reconnection temptatives: %d", mMaxReconnectTemp);
+
+        // ------------------------------------------
 
         paramName = "general.camera_flip";
 
@@ -249,6 +261,8 @@ namespace stereolabs {
         RCLCPP_INFO(get_logger(), " * Camera flip: %s", mCameraFlip ? "TRUE" : "FALSE");
 
 
+        // ------------------------------------------
+
         paramName = "general.zed_id";
 
         if (get_parameter(paramName, paramVal)) {
@@ -259,6 +273,8 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), " * ZED ID: %d", mZedId);
 
+        // ------------------------------------------
+
         paramName = "general.serial_number";
 
         if (get_parameter(paramName, paramVal)) {
@@ -268,6 +284,8 @@ namespace stereolabs {
         }
 
         RCLCPP_INFO(get_logger(), " * ZED serial number: %d", mZedSerialNumber);
+
+        // ------------------------------------------
 
         paramName = "general.resolution";
 
@@ -280,6 +298,8 @@ namespace stereolabs {
         RCLCPP_INFO(get_logger(), " * ZED resolution: %d (%s)", mZedResol,
                     sl::toString(static_cast<sl::RESOLUTION>(mZedResol)).c_str());
 
+        // ------------------------------------------
+
         paramName = "general.verbose";
 
         if (get_parameter(paramName, paramVal)) {
@@ -289,6 +309,8 @@ namespace stereolabs {
         }
 
         RCLCPP_INFO(get_logger(), " * Verbose: %s", mVerbose ? "TRUE" : "FALSE");
+
+        // ------------------------------------------
 
         paramName = "general.mat_resize_factor";
 
@@ -312,6 +334,8 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), " * Data resize factor: %g [DYNAMIC]", mZedMatResizeFactor);
 
+        // ------------------------------------------
+
         paramName = "general.frame_rate";
 
         if (get_parameter(paramName, paramVal)) {
@@ -321,6 +345,8 @@ namespace stereolabs {
         }
 
         RCLCPP_INFO(get_logger(), " * ZED framerate: %d", mZedFrameRate);
+
+        // ------------------------------------------
 
         paramName = "general.gpu_id";
 
@@ -332,6 +358,8 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), " * GPU ID: %d", mGpuId);
 
+        // ------------------------------------------
+
         paramName = "general.base_frame";
 
         if (get_parameter(paramName, paramVal)) {
@@ -341,6 +369,8 @@ namespace stereolabs {
         }
 
         RCLCPP_INFO(get_logger(), " * BASE frame: '%s'", mBaseFrameId.c_str());
+
+        // ------------------------------------------
 
         paramName = "general.camera_frame";
 
@@ -352,6 +382,8 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), " * CAMERA CENTER frame: '%s'", mCameraFrameId.c_str());
 
+        // ------------------------------------------
+
         paramName = "general.left_camera_frame";
 
         if (get_parameter(paramName, paramVal)) {
@@ -361,6 +393,8 @@ namespace stereolabs {
         }
 
         RCLCPP_INFO(get_logger(), " * LEFT CAMERA frame: '%s'", mLeftCamFrameId.c_str());
+
+        // ------------------------------------------
 
         paramName = "general.left_camera_optical_frame";
 
@@ -372,6 +406,8 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), " * LEFT CAMERA OPTICAL frame: '%s'", mLeftCamOptFrameId.c_str());
 
+        // ------------------------------------------
+
         paramName = "general.right_camera_frame";
 
         if (get_parameter(paramName, paramVal)) {
@@ -381,6 +417,8 @@ namespace stereolabs {
         }
 
         RCLCPP_INFO(get_logger(), " * RIGHT CAMERA frame: '%s'", mRightCamFrameId.c_str());
+
+        // ------------------------------------------
 
         paramName = "general.right_camera_optical_frame";
 
@@ -399,6 +437,8 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), "*** VIDEO parameters ***");
 
+        // ------------------------------------------
+
         paramName = "video.auto_exposure";
 
         if (get_parameter(paramName, paramVal)) {
@@ -413,6 +453,8 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), " * Auto exposure: %s [DYNAMIC]", mZedAutoExposure ? "TRUE" : "FALSE");
 
+        // ------------------------------------------
+
         paramName = "video.exposure";
 
         if (get_parameter(paramName, paramVal)) {
@@ -423,6 +465,8 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), " * Exposure: %d [DYNAMIC]", mZedExposure);
 
+        // ------------------------------------------
+
         paramName = "video.gain";
 
         if (get_parameter(paramName, paramVal)) {
@@ -432,6 +476,8 @@ namespace stereolabs {
         }
 
         RCLCPP_INFO(get_logger(), " * Gain: %d [DYNAMIC]", mZedGain);
+
+        // ------------------------------------------
 
         paramName = "video.rgb_topic_root";
 
@@ -444,6 +490,8 @@ namespace stereolabs {
         RCLCPP_INFO(get_logger(), " * RGB topic root: '%s'", mRgbTopicRoot.c_str());
 
 
+        // ------------------------------------------
+
         paramName = "video.left_topic_root";
 
         if (get_parameter(paramName, paramVal)) {
@@ -453,6 +501,8 @@ namespace stereolabs {
         }
 
         RCLCPP_INFO(get_logger(), " * Left topic root: '%s'", mLeftTopicRoot.c_str());
+
+        // ------------------------------------------
 
         paramName = "video.right_topic_root";
 
@@ -464,6 +514,8 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), " * Right topic root: '%s'", mRightTopicRoot.c_str());
 
+        // ------------------------------------------
+
         paramName = "video.qos_history";
 
         if (get_parameter(paramName, paramVal)) {
@@ -473,6 +525,8 @@ namespace stereolabs {
         }
 
         RCLCPP_INFO(get_logger(), " * Video QoS History: '%s'", sl_tools::qos2str(mVideoQos.history).c_str());
+
+        // ------------------------------------------
 
         paramName = "video.qos_depth";
 
@@ -484,6 +538,8 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), " * Video QoS History depth: '%d'", mVideoQos.depth);
 
+        // ------------------------------------------
+
         paramName = "video.qos_reliability";
 
         if (get_parameter(paramName, paramVal)) {
@@ -494,6 +550,8 @@ namespace stereolabs {
         }
 
         RCLCPP_INFO(get_logger(), " * Video QoS Reliability: '%s'", sl_tools::qos2str(mVideoQos.reliability).c_str());
+
+        // ------------------------------------------
 
         paramName = "video.qos_durability";
 
@@ -512,6 +570,8 @@ namespace stereolabs {
         std::string paramName;
 
         RCLCPP_INFO(get_logger(), "*** DEPTH parameters ***");
+
+        // ------------------------------------------
 
         paramName = "depth.min_depth";
 
@@ -537,6 +597,8 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), " * Min depth: %g m", mZedMinDepth);
 
+        // ------------------------------------------
+
         paramName = "depth.max_depth";
 
         if (get_parameter(paramName, paramVal)) {
@@ -551,6 +613,8 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), " * Max depth: %g m [DYNAMIC]", mZedMaxDepth);
 
+        // ------------------------------------------
+
         paramName = "depth.quality";
 
         if (get_parameter(paramName, paramVal)) {
@@ -561,6 +625,8 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), " * Quality: %d (%s)", mZedQuality,
                     sl::toString(static_cast<sl::DEPTH_MODE>(mZedQuality)).c_str());
+
+        // ------------------------------------------
 
         paramName = "depth.sensing_mode";
 
@@ -573,6 +639,8 @@ namespace stereolabs {
         RCLCPP_INFO(get_logger(), " * Sensing mode: %d (%s)", mZedSensingMode,
                     sl::toString(static_cast<sl::SENSING_MODE>(mZedSensingMode)).c_str());
 
+        // ------------------------------------------
+
         paramName = "depth.confidence";
 
         if (get_parameter(paramName, paramVal)) {
@@ -582,6 +650,8 @@ namespace stereolabs {
         }
 
         RCLCPP_INFO(get_logger(), " * Confidence: %d", mZedConfidence);
+
+        // ------------------------------------------
 
         paramName = "depth.depth_stabilization";
 
@@ -593,6 +663,8 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), " * Depth stabilization: %s", mDepthStabilization ? "ENABLED" : "DISABLED");
 
+        // ------------------------------------------
+
         paramName = "depth.openni_depth_mode";
 
         if (get_parameter(paramName, paramVal)) {
@@ -602,6 +674,8 @@ namespace stereolabs {
         }
 
         RCLCPP_INFO(get_logger(), " * OpenNI mode: %s", mOpenniDepthMode == 0 ? "DISABLED" : "ENABLED");
+
+        // ------------------------------------------
 
         paramName = "depth.depth_topic_root";
 
@@ -617,6 +691,8 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), " * Depth topic root: '%s'", mDepthTopicRoot.c_str());
 
+        // ------------------------------------------
+
         paramName = "depth.point_cloud_topic";
 
         if (get_parameter(paramName, paramVal)) {
@@ -627,6 +703,8 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), " * Pointcloud topic: '%s'", mPointcloudTopic.c_str());
 
+        // ------------------------------------------
+
         paramName = "depth.disparity_topic";
 
         if (get_parameter(paramName, paramVal)) {
@@ -636,6 +714,8 @@ namespace stereolabs {
         }
 
         RCLCPP_INFO(get_logger(), " * Disparity topic: '%s'", mDispTopic.c_str());
+
+        // ------------------------------------------
 
         paramName = "depth.confidence_root";
 
@@ -651,6 +731,8 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), " * Confidence topics root: '%s'", mConfTopicRoot.c_str());
 
+        // ------------------------------------------
+
         paramName = "depth.confidence_map_topic";
 
         if (get_parameter(paramName, paramVal)) {
@@ -660,6 +742,8 @@ namespace stereolabs {
         }
 
         RCLCPP_INFO(get_logger(), " * Confidence map topic: '%s'", mConfMapTopic.c_str());
+
+        // ------------------------------------------
 
         paramName = "depth.confidence_img_topic";
 
@@ -671,6 +755,8 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), " * Confidence image topic: '%s'", mConfImgTopic.c_str());
 
+        // ------------------------------------------
+
         paramName = "depth.qos_history";
 
         if (get_parameter(paramName, paramVal)) {
@@ -680,6 +766,8 @@ namespace stereolabs {
         }
 
         RCLCPP_INFO(get_logger(), " * Depth QoS History: '%s'", sl_tools::qos2str(mDepthQos.history).c_str());
+
+        // ------------------------------------------
 
         paramName = "depth.qos_depth";
 
@@ -691,6 +779,8 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), " * Depth QoS History depth: '%d'", mDepthQos.depth);
 
+        // ------------------------------------------
+
         paramName = "depth.qos_reliability";
 
         if (get_parameter(paramName, paramVal)) {
@@ -701,6 +791,8 @@ namespace stereolabs {
         }
 
         RCLCPP_INFO(get_logger(), " * Depth QoS Reliability: '%s'", sl_tools::qos2str(mDepthQos.reliability).c_str());
+
+        // ------------------------------------------
 
         paramName = "depth.qos_durability";
 
@@ -720,6 +812,8 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), "*** POSITIONAL TRACKING parameters ***");
 
+        // ------------------------------------------
+
         paramName = "tracking.publish_tf";
 
         if (get_parameter(paramName, paramVal)) {
@@ -735,6 +829,8 @@ namespace stereolabs {
         RCLCPP_INFO(get_logger(), " * Publish TF: %s", mPublishTF ? "ENABLED" : "DISABLED");
 
         if (mPublishTF) {
+            // ------------------------------------------
+
             paramName = "tracking.publish_map_tf";
 
             if (get_parameter(paramName, paramVal)) {
@@ -752,6 +848,8 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), " * Publish Map TF: %s", mPublishMapTF ? "ENABLED" : "DISABLED");
 
+        // ------------------------------------------
+
         paramName = "tracking.world_frame";
 
         if (get_parameter(paramName, paramVal)) {
@@ -765,6 +863,8 @@ namespace stereolabs {
         }
 
         RCLCPP_INFO(get_logger(), " * World frame: '%s'", mWorldFrame.c_str());
+
+        // ------------------------------------------
 
         paramName = "tracking.pose_frame";
 
@@ -780,6 +880,8 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), " * Pose (map) frame: '%s'", mMapFrame.c_str());
 
+        // ------------------------------------------
+
         paramName = "tracking.odometry_frame";
 
         if (get_parameter(paramName, paramVal)) {
@@ -794,7 +896,11 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), " * Odometry frame: '%s'", mOdomFrame.c_str());
 
+        // ------------------------------------------
+
         // TODO Check how to handle the Odometry DB
+
+        // ------------------------------------------
 
         paramName = "tracking.pose_smoothing";
 
@@ -810,6 +916,8 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), " * Pose Smothing: %s", mPoseSmoothing ? "ENABLED" : "DISABLED");
 
+        // ------------------------------------------
+
         paramName = "tracking.spatial_memory";
 
         if (get_parameter(paramName, paramVal)) {
@@ -823,6 +931,8 @@ namespace stereolabs {
         }
 
         RCLCPP_INFO(get_logger(), " * Spatial Memory: %s", mSpatialMemory ? "ENABLED" : "DISABLED");
+
+        // ------------------------------------------
 
         paramName = "tracking.floor_alignment";
 
@@ -838,6 +948,8 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), " * Floor Alignment: %s", mFloorAlignment ? "ENABLED" : "DISABLED");
 
+        // ------------------------------------------
+
         paramName = "tracking.two_d_mode";
 
         if (get_parameter(paramName, paramVal)) {
@@ -851,6 +963,8 @@ namespace stereolabs {
         }
 
         RCLCPP_INFO(get_logger(), " * Force 2D mode: %s", m2dMode ? "ENABLED" : "DISABLED");
+
+        // ------------------------------------------
 
         paramName = "tracking.initial_tracking_pose";
 
@@ -868,17 +982,23 @@ namespace stereolabs {
             }
         } else {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+
+            if (mInitialPose.size() != 6) {
+                mInitialPose.resize(6, 0.0);
+            }
         }
 
         RCLCPP_INFO(get_logger(), " * Initial pose: [%g,%g,%g, %g,%g,%g]",
                     mInitialPose[0], mInitialPose[1], mInitialPose[2],
                     mInitialPose[3], mInitialPose[4], mInitialPose[5]);
 
+        // ------------------------------------------
+
         paramName = "tracking.pose_topic";
 
         if (get_parameter(paramName, paramVal)) {
             if (paramVal.get_type() == rclcpp::PARAMETER_STRING) {
-                mOdomFrame = paramVal.as_string();
+                mPoseTopic = paramVal.as_string();
             } else {
                 RCLCPP_WARN(get_logger(), "The parameter '%s' must be a STRING, using the default value", paramName.c_str());
             }
@@ -886,7 +1006,138 @@ namespace stereolabs {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
         }
 
-        RCLCPP_INFO(get_logger(), " * Odometry frame: '%s'", mOdomFrame.c_str());
+        RCLCPP_INFO(get_logger(), " * Pose topic: '%s'", mPoseTopic.c_str());
+
+        // ------------------------------------------
+
+        paramName = "tracking.odometry_topic";
+
+        if (get_parameter(paramName, paramVal)) {
+            if (paramVal.get_type() == rclcpp::PARAMETER_STRING) {
+                mOdomTopic = paramVal.as_string();
+            } else {
+                RCLCPP_WARN(get_logger(), "The parameter '%s' must be a STRING, using the default value", paramName.c_str());
+            }
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * Odometry topic: '%s'", mOdomTopic.c_str());
+
+        // ------------------------------------------
+
+        paramName = "tracking.init_odom_with_first_valid_pose";
+
+        if (get_parameter(paramName, paramVal)) {
+            if (paramVal.get_type() == rclcpp::PARAMETER_BOOL) {
+                mInitOdomWithPose = paramVal.as_bool();
+            } else {
+                RCLCPP_WARN(get_logger(), "The parameter '%s' must be a BOOL, using the default value", paramName.c_str());
+            }
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * Init odometry with first valid pose: %s", mInitOdomWithPose ? "ENABLED" : "DISABLED");
+
+        // ------------------------------------------
+
+        paramName = "tracking.path_pub_rate";
+
+        if (get_parameter(paramName, paramVal)) {
+            if (paramVal.get_type() == rclcpp::PARAMETER_DOUBLE) {
+                mPathPubRate = paramVal.as_double();
+            } else {
+                RCLCPP_WARN(get_logger(), "The parameter '%s' must be a BOOL, using the default value", paramName.c_str());
+            }
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * Path publishing frequency: %g Hz", mPathPubRate);
+
+        // ------------------------------------------
+
+        paramName = "tracking.path_max_count";
+
+        if (get_parameter(paramName, paramVal)) {
+            if (paramVal.get_type() == rclcpp::PARAMETER_INTEGER) {
+                mPathMaxCount = paramVal.as_double();
+            } else {
+                RCLCPP_WARN(get_logger(), "The parameter '%s' must be a BOOL, using the default value", paramName.c_str());
+            }
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * Path queue size: %d", mPathMaxCount);
+
+        // ------------------------------------------
+
+        paramName = "tracking.publish_pose_covariance";
+
+        if (get_parameter(paramName, paramVal)) {
+            if (paramVal.get_type() == rclcpp::PARAMETER_BOOL) {
+                mPublishPoseCov = paramVal.as_bool();
+            } else {
+                RCLCPP_WARN(get_logger(), "The parameter '%s' must be a BOOL, using the default value", paramName.c_str());
+            }
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * Pose with covariance topic: %s", mPublishPoseCov ? "ENABLED" : "DISABLED");
+
+        // ------------------------------------------
+
+        paramName = "tracking.qos_history";
+
+        if (get_parameter(paramName, paramVal)) {
+            mPoseQos.history = paramVal.as_int() == 0 ? RMW_QOS_POLICY_HISTORY_KEEP_LAST : RMW_QOS_POLICY_HISTORY_KEEP_ALL;
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * Pose/Odometry QoS History: '%s'", sl_tools::qos2str(mPoseQos.history).c_str());
+
+        // ------------------------------------------
+
+        paramName = "tracking.qos_depth";
+
+        if (get_parameter(paramName, paramVal)) {
+            mPoseQos.depth = paramVal.as_int();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * Pose/Odometry QoS History depth: '%d'", mPoseQos.depth);
+
+        // ------------------------------------------
+
+        paramName = "tracking.qos_reliability";
+
+        if (get_parameter(paramName, paramVal)) {
+            mPoseQos.reliability = paramVal.as_int() == 0 ? RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT :
+                                   RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * Pose/Odometry QoS Reliability: '%s'", sl_tools::qos2str(mPoseQos.reliability).c_str());
+
+        // ------------------------------------------
+
+        paramName = "tracking.qos_durability";
+
+        if (get_parameter(paramName, paramVal)) {
+            mPoseQos.durability = paramVal.as_int() == 0 ? RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL :
+                                  RMW_QOS_POLICY_DURABILITY_VOLATILE;
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+        }
+
+        RCLCPP_INFO(get_logger(), " * Pose/Odometry QoS Durability: '%s'", sl_tools::qos2str(mPoseQos.durability).c_str());
+
     }
 
     void ZedCameraComponent::getImuParams() {
@@ -895,6 +1146,8 @@ namespace stereolabs {
 
         if (mZedUserCamModel == 1) {
             RCLCPP_INFO(get_logger(), "*** IMU parameters ***");
+
+            // ------------------------------------------
 
             paramName = "imu.imu_frame";
 
@@ -905,6 +1158,8 @@ namespace stereolabs {
             }
 
             RCLCPP_INFO(get_logger(), " * IMU frame: '%s'", mImuFrameId.c_str());
+
+            // ------------------------------------------
 
             paramName = "imu.imu_topic_root";
 
@@ -920,6 +1175,8 @@ namespace stereolabs {
 
             RCLCPP_INFO(get_logger(), " * IMU topic root: '%s'", mImuTopicRoot.c_str());
 
+            // ------------------------------------------
+
             paramName = "imu.imu_topic";
 
             if (get_parameter(paramName, paramVal)) {
@@ -930,6 +1187,8 @@ namespace stereolabs {
 
             RCLCPP_INFO(get_logger(), " * IMU topic: '%s'", mImuTopic.c_str());
 
+            // ------------------------------------------
+
             paramName = "imu.imu_raw_topic";
 
             if (get_parameter(paramName, paramVal)) {
@@ -939,6 +1198,8 @@ namespace stereolabs {
             }
 
             RCLCPP_INFO(get_logger(), " * IMU RAW topic: '%s'", mImuRawTopic.c_str());
+
+            // ------------------------------------------
 
             paramName = "imu.imu_pub_rate";
 
@@ -954,6 +1215,8 @@ namespace stereolabs {
 
             RCLCPP_INFO(get_logger(), " * IMU rate: %g Hz", mImuPubRate);
 
+            // ------------------------------------------
+
             paramName = "imu.imu_sync_frame";
 
             if (get_parameter(paramName, paramVal)) {
@@ -965,6 +1228,8 @@ namespace stereolabs {
             RCLCPP_INFO(get_logger(), " * IMU timestamp sync with last frame: %s", mImuTimestampSync ? "ENABLED" : "DISABLED");
         }
 
+        // ------------------------------------------
+
         paramName = "imu.qos_history";
 
         if (get_parameter(paramName, paramVal)) {
@@ -974,6 +1239,8 @@ namespace stereolabs {
         }
 
         RCLCPP_INFO(get_logger(), " * IMU QoS History: '%s'", sl_tools::qos2str(mImuQos.history).c_str());
+
+        // ------------------------------------------
 
         paramName = "imu.qos_depth";
 
@@ -985,6 +1252,8 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), " * IMU QoS History depth: '%d'", mImuQos.depth);
 
+        // ------------------------------------------
+
         paramName = "imu.qos_reliability";
 
         if (get_parameter(paramName, paramVal)) {
@@ -995,6 +1264,8 @@ namespace stereolabs {
         }
 
         RCLCPP_INFO(get_logger(), " * IMU QoS Reliability: '%s'", sl_tools::qos2str(mImuQos.reliability).c_str());
+
+        // ------------------------------------------
 
         paramName = "imu.qos_durability";
 
