@@ -3,7 +3,7 @@
 
 // /////////////////////////////////////////////////////////////////////////
 //
-// Copyright (c) 2018, STEREOLABS.
+// Copyright (c) 2019, STEREOLABS.
 //
 // All rights reserved.
 //
@@ -49,13 +49,17 @@
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
 
+#include "tf2_ros/buffer.h"
+#include "tf2_ros/transform_listener.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+
 #include "sl/Camera.hpp"
 
 #include "sl_tools.h"
 
 namespace stereolabs {
 
-    // >>>>> Typedefs to simplify declarations
+    // ----> Typedefs to simplify declarations
     typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::Image>> imagePub;
     typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::CameraInfo>> camInfoPub;
     typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<stereo_msgs::msg::DisparityImage>> disparityPub;
@@ -64,10 +68,20 @@ namespace stereolabs {
 
     typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::Imu>> imuPub;
 
+    typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<geometry_msgs::msg::PoseStamped>> posePub;
+    typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<geometry_msgs::msg::PoseWithCovariance>> poseCovPub;
+    typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<nav_msgs::msg::Odometry>> odomPub;
+    typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<nav_msgs::msg::Path>> pathPub;
+
     typedef std::shared_ptr<sensor_msgs::msg::CameraInfo> camInfoMsgPtr;
     typedef std::shared_ptr<sensor_msgs::msg::PointCloud2> pointcloudMsgPtr;
     typedef std::shared_ptr<sensor_msgs::msg::Imu> imuMsgPtr;
-    // <<<<< Typedefs to simplify declarations
+
+    typedef std::shared_ptr<geometry_msgs::msg::PoseStamped> poseMsgPtr;
+    typedef std::shared_ptr<geometry_msgs::msg::PoseWithCovariance> poseCovMsgPtr;
+    typedef std::shared_ptr<nav_msgs::msg::Odometry> odomMsgPtr;
+    typedef std::shared_ptr<nav_msgs::msg::Path> pathMsgPtr;
+    // <---- Typedefs to simplify declarations
 
     /// ZedCameraComponent inheriting from rclcpp_lifecycle::LifecycleNode
     class ZedCameraComponent : public rclcpp_lifecycle::LifecycleNode {
@@ -159,7 +173,6 @@ namespace stereolabs {
 
         void initPublishers();
 
-
         void getGeneralParams();
         void getVideoParams();
         void getDepthParams();
@@ -167,9 +180,16 @@ namespace stereolabs {
         void getPoseParams();
         void initParameters();
 
-
         void publishImages(rclcpp::Time timeStamp);
         void publishDepthData(rclcpp::Time timeStamp);
+        void publishOdom(tf2::Transform odom2baseTransf, sl::Pose& slPose, rclcpp::Time t);
+
+        void initTransforms();
+        void startTracking();
+        void set_pose(float xt, float yt, float zt, float rr, float pr, float yr);
+
+        void processOdometry();
+        void processPose();
 
         /** \brief Get the information of the ZED cameras and store them in an
          * information message
@@ -219,12 +239,12 @@ namespace stereolabs {
          */
         void publishPointCloud();
 
-        /* \brief Callback to publish IMU raw data with a ROS publisher.
+        /** \brief Callback to publish IMU raw data with a ROS publisher.
          * \param e : the ros::TimerEvent binded to the callback
          */
         void imuPubCallback();
 
-        /* \brief Callback to handle parameters changing
+        /** \brief Callback to handle parameters changing
          * \param e : the ros::TimerEvent binded to the callback
          */
         rcl_interfaces::msg::SetParametersResult paramChangeCallback(std::vector<rclcpp::Parameter> parameters);
@@ -234,7 +254,8 @@ namespace stereolabs {
         uint8_t mPrevTransition = lifecycle_msgs::msg::Transition::TRANSITION_CREATE;
 
         // Timestamps
-        rclcpp::Time mLastGrabTimestamp;
+        rclcpp::Time mPrevFrameTimestamp;
+        rclcpp::Time mFrameTimestamp;
         rclcpp::Time mPointCloudTime;
 
         // Grab thread
@@ -271,8 +292,7 @@ namespace stereolabs {
         int mDepthStabilization = 1;
         int mCamTimeoutSec = 5;
         int mMaxReconnectTemp = 5;
-        bool mZedReactivate =
-            false; // Reactivate the camera after a "clean up"+"configure" due to a disconnection. Set to false if there is an external lifecycle node manager
+        bool mZedReactivate = false;
         bool mCameraFlip = false;
         int mZedSensingMode = 0; // Default Sensing mode: SENSING_MODE_STANDARD
         bool mOpenniDepthMode = false; // 16 bit UC data in mm else 32F in m,
@@ -285,18 +305,20 @@ namespace stereolabs {
 
         bool mPublishTF = true;
         bool mPublishMapTF = true;
-        std::string mWorldFrame = "world";
-        std::string mMapFrame = "map";
-        std::string mOdomFrame = "odom";
+        std::string mWorldFrameId = "map";
+        std::string mMapFrameId = "map";
+        std::string mOdomFrameId = "odom";
         bool mPoseSmoothing = false;
         bool mSpatialMemory = true;
         bool mFloorAlignment = false;
-        bool m2dMode = false;
-        std::vector<double> mInitialPose;
+        bool mTwoDMode = false;
+        double mFixedZValue = 0.0;
+        std::vector<double> mInitialBasePose;
         bool mInitOdomWithPose = true;
         double mPathPubRate = 2.0;
         int mPathMaxCount = -1;
         bool mPublishPoseCov = true;
+        std::string mOdometryDb = "";
 
 
         // QoS profiles
@@ -342,6 +364,12 @@ namespace stereolabs {
         imuPub mPubImu;
         imuPub mPubImuRaw;
 
+        posePub mPubPose;
+        poseCovPub mPubPoseCov;
+        odomPub mPubOdom;
+        pathPub mPubPathPose;
+        pathPub mPubPathOdom;
+
         // Topics
         std::string mLeftTopicRoot  = "left";
         std::string mRightTopicRoot = "right";
@@ -376,6 +404,8 @@ namespace stereolabs {
         std::string mOdomTopic = "odom";
         std::string mPoseTopic = "pose";
         std::string mPoseCovTopic = "pose_with_covariance";
+        std::string mPosePathTopic = "path_pose";
+        std::string mOdomPathTopic = "path_odom";
 
         // Messages
         // Camera info
@@ -392,6 +422,12 @@ namespace stereolabs {
         // IMU
         imuMsgPtr mImuMsg;
         imuMsgPtr mImuMsgRaw;
+        // Pos. Tracking
+        poseMsgPtr mPoseMsg;
+        poseCovMsgPtr mPoseCovMsg;
+        odomMsgPtr mOdomMsg;
+        pathMsgPtr mPathPoseMsg;
+        pathMsgPtr mPathOdomMsg;
 
         // Frame IDs
         std::string mRightCamFrameId = "zed_right_camera_frame";
@@ -430,7 +466,31 @@ namespace stereolabs {
         std::unique_ptr<sl_tools::CSmartMean> mPcPeriodMean_usec;
         std::unique_ptr<sl_tools::CSmartMean> mImuPeriodMean_usec;
 
+        //Tracking variables
+        sl::Pose mLastZedPose; // Sensor to Map transform
+        sl::Transform mInitialPoseSl;
+        std::vector<geometry_msgs::msg::PoseStamped> mOdomPath;
+        std::vector<geometry_msgs::msg::PoseStamped> mMapPath;
+        bool mTrackingActivated = false;
+        bool mTrackingReady = false;
+        sl::TRACKING_STATE mTrackingStatus;
 
+        // TF Transforms
+        tf2::Transform mMap2OdomTransf;         // Coordinates of the odometry frame in map frame
+        tf2::Transform mOdom2BaseTransf;        // Coordinates of the base in odometry frame
+        tf2::Transform mMap2BaseTransf;         // Coordinates of the base in map frame
+        tf2::Transform mMap2CameraTransf;       // Coordinates of the camera in base frame
+        tf2::Transform mSensor2BaseTransf;      // Coordinates of the base frame in sensor frame
+        tf2::Transform mSensor2CameraTransf;    // Coordinates of the camera frame in sensor frame
+        tf2::Transform mCamera2BaseTransf;      // Coordinates of the base frame in camera frame
+
+        bool mSensor2BaseTransfValid = false;
+        bool mSensor2CameraTransfValid = false;
+        bool mCamera2BaseTransfValid = false;
+
+        // initialization Transform listener
+        std::shared_ptr<tf2_ros::Buffer> mTfBuffer;
+        std::shared_ptr<tf2_ros::TransformListener> mTfListener;
     };
 }
 

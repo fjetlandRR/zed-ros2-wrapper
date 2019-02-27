@@ -1,6 +1,6 @@
 // /////////////////////////////////////////////////////////////////////////
 //
-// Copyright (c) 2018, STEREOLABS.
+// Copyright (c) 2019, STEREOLABS.
 //
 // All rights reserved.
 //
@@ -37,6 +37,7 @@ namespace stereolabs {
 
 #ifndef DEG2RAD
 #define DEG2RAD 0.017453293
+#define RAD2DEG 57.295777937
 #endif
 
     ZedCameraComponent::ZedCameraComponent(const std::string& node_name, const std::string& ros_namespace,
@@ -74,7 +75,7 @@ namespace stereolabs {
         RCLCPP_DEBUG(get_logger(), "Current state: %s", this->get_current_state().label().c_str());
         RCLCPP_DEBUG(get_logger(), "Previous state: %s (%d)", previous_state.label().c_str(), previous_state.id());
 
-        // >>>>> Verify that all the threads are not active
+        // ----> Verify that all the threads are not active
         if (!mThreadStop) {
             mThreadStop = true;
 
@@ -95,16 +96,16 @@ namespace stereolabs {
             }
         }
 
-        // <<<<< Verify that the grab thread is not active
+        // <---- Verify that the grab thread is not active
 
-        // >>>>> Verify that ZED is not opened
+        // ----> Verify that ZED is not opened
         if (mZed.isOpened()) {
             std::lock_guard<std::mutex> lock(mImuMutex);
             mZed.close();
             RCLCPP_INFO(get_logger(), "ZED Closed");
         }
 
-        // <<<<< Verify that ZED is not opened
+        // <---- Verify that ZED is not opened
 
         RCLCPP_INFO(get_logger(), "Shutdown complete");
 
@@ -112,7 +113,7 @@ namespace stereolabs {
     }
 
     ZedCameraComponent::~ZedCameraComponent() {
-        // >>>>> Verify that all the threads are not active
+        // ----> Verify that all the threads are not active
         if (!mThreadStop) {
             mThreadStop = true;
 
@@ -133,7 +134,7 @@ namespace stereolabs {
             }
         }
 
-        // <<<<< Verify that the grab thread is not active
+        // <---- Verify that the grab thread is not active
     }
 
     rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCameraComponent::on_error(
@@ -854,7 +855,7 @@ namespace stereolabs {
 
         if (get_parameter(paramName, paramVal)) {
             if (paramVal.get_type() == rclcpp::PARAMETER_STRING) {
-                mWorldFrame = paramVal.as_string();
+                mWorldFrameId = paramVal.as_string();
             } else {
                 RCLCPP_WARN(get_logger(), "The parameter '%s' must be a STRING, using the default value", paramName.c_str());
             }
@@ -862,7 +863,7 @@ namespace stereolabs {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
         }
 
-        RCLCPP_INFO(get_logger(), " * World frame: '%s'", mWorldFrame.c_str());
+        RCLCPP_INFO(get_logger(), " * World frame: '%s'", mWorldFrameId.c_str());
 
         // ------------------------------------------
 
@@ -870,7 +871,7 @@ namespace stereolabs {
 
         if (get_parameter(paramName, paramVal)) {
             if (paramVal.get_type() == rclcpp::PARAMETER_STRING) {
-                mMapFrame = paramVal.as_string();
+                mMapFrameId = paramVal.as_string();
             } else {
                 RCLCPP_WARN(get_logger(), "The parameter '%s' must be a STRING, using the default value", paramName.c_str());
             }
@@ -878,7 +879,7 @@ namespace stereolabs {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
         }
 
-        RCLCPP_INFO(get_logger(), " * Pose (map) frame: '%s'", mMapFrame.c_str());
+        RCLCPP_INFO(get_logger(), " * Pose (map) frame: '%s'", mMapFrameId.c_str());
 
         // ------------------------------------------
 
@@ -886,7 +887,7 @@ namespace stereolabs {
 
         if (get_parameter(paramName, paramVal)) {
             if (paramVal.get_type() == rclcpp::PARAMETER_STRING) {
-                mOdomFrame = paramVal.as_string();
+                mOdomFrameId = paramVal.as_string();
             } else {
                 RCLCPP_WARN(get_logger(), "The parameter '%s' must be a STRING, using the default value", paramName.c_str());
             }
@@ -894,7 +895,7 @@ namespace stereolabs {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
         }
 
-        RCLCPP_INFO(get_logger(), " * Odometry frame: '%s'", mOdomFrame.c_str());
+        RCLCPP_INFO(get_logger(), " * Odometry frame: '%s'", mOdomFrameId.c_str());
 
         // ------------------------------------------
 
@@ -954,7 +955,7 @@ namespace stereolabs {
 
         if (get_parameter(paramName, paramVal)) {
             if (paramVal.get_type() == rclcpp::PARAMETER_BOOL) {
-                m2dMode = paramVal.as_bool();
+                mTwoDMode = paramVal.as_bool();
             } else {
                 RCLCPP_WARN(get_logger(), "The parameter '%s' must be a BOOL, using the default value", paramName.c_str());
             }
@@ -962,7 +963,25 @@ namespace stereolabs {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
         }
 
-        RCLCPP_INFO(get_logger(), " * Force 2D mode: %s", m2dMode ? "ENABLED" : "DISABLED");
+        RCLCPP_INFO(get_logger(), " * Force 2D mode: %s", mTwoDMode ? "ENABLED" : "DISABLED");
+
+        // ------------------------------------------
+
+        if (mTwoDMode) {
+            paramName = "tracking.fixed_z_value";
+
+            if (get_parameter(paramName, paramVal)) {
+                if (paramVal.get_type() == rclcpp::PARAMETER_DOUBLE) {
+                    mFixedZValue = paramVal.as_double();
+                } else {
+                    RCLCPP_WARN(get_logger(), "The parameter '%s' must be a DOUBLE, using the default value", paramName.c_str());
+                }
+            } else {
+                RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+            }
+
+            RCLCPP_INFO(get_logger(), " * Fixed Z value: %g", mFixedZValue);
+        }
 
         // ------------------------------------------
 
@@ -970,10 +989,10 @@ namespace stereolabs {
 
         if (get_parameter(paramName, paramVal)) {
             if (paramVal.get_type() == rclcpp::PARAMETER_DOUBLE_ARRAY) {
-                mInitialPose = paramVal.as_double_array();
+                mInitialBasePose = paramVal.as_double_array();
 
-                if (mInitialPose.size() != 6) {
-                    mInitialPose.resize(6, 0.0);
+                if (mInitialBasePose.size() != 6) {
+                    mInitialBasePose.resize(6, 0.0);
 
                     RCLCPP_WARN(get_logger(), "The pose vector '%s' must contain SIX values, using the default value", paramName.c_str());
                 }
@@ -983,14 +1002,14 @@ namespace stereolabs {
         } else {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
 
-            if (mInitialPose.size() != 6) {
-                mInitialPose.resize(6, 0.0);
+            if (mInitialBasePose.size() != 6) {
+                mInitialBasePose.resize(6, 0.0);
             }
         }
 
         RCLCPP_INFO(get_logger(), " * Initial pose: [%g,%g,%g, %g,%g,%g]",
-                    mInitialPose[0], mInitialPose[1], mInitialPose[2],
-                    mInitialPose[3], mInitialPose[4], mInitialPose[5]);
+                    mInitialBasePose[0], mInitialBasePose[1], mInitialBasePose[2],
+                    mInitialBasePose[3], mInitialBasePose[4], mInitialBasePose[5]);
 
         // ------------------------------------------
 
@@ -1054,7 +1073,11 @@ namespace stereolabs {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
         }
 
-        RCLCPP_INFO(get_logger(), " * Path publishing frequency: %g Hz", mPathPubRate);
+        if (mPathPubRate > 0.0) {
+            RCLCPP_INFO(get_logger(), " * Path publishing frequency: %g Hz", mPathPubRate);
+        } else {
+            RCLCPP_INFO(get_logger(), " * Path publishing: DISABLED (%g)", mPathPubRate);
+        }
 
         // ------------------------------------------
 
@@ -1062,7 +1085,15 @@ namespace stereolabs {
 
         if (get_parameter(paramName, paramVal)) {
             if (paramVal.get_type() == rclcpp::PARAMETER_INTEGER) {
-                mPathMaxCount = paramVal.as_double();
+                mPathMaxCount = paramVal.as_int();
+
+                if (mPathMaxCount == 0) {
+                    RCLCPP_WARN(get_logger(),
+                                "The parameter '%s' cannot be '0'. To disable path publishing use please set 'path_pub_rate' to '0,0'. Using the default value",
+                                paramName.c_str());
+
+                    mPathMaxCount = -1;
+                }
             } else {
                 RCLCPP_WARN(get_logger(), "The parameter '%s' must be a BOOL, using the default value", paramName.c_str());
             }
@@ -1070,7 +1101,11 @@ namespace stereolabs {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
         }
 
-        RCLCPP_INFO(get_logger(), " * Path queue size: %d", mPathMaxCount);
+        if (mPathMaxCount > 0) {
+            RCLCPP_INFO(get_logger(), " * Path queue size: %d", mPathMaxCount);
+        } else {
+            RCLCPP_INFO(get_logger(), " * Path queue size: INFINITE (%d)", mPathMaxCount);
+        }
 
         // ------------------------------------------
 
@@ -1280,8 +1315,6 @@ namespace stereolabs {
     }
 
     void ZedCameraComponent::initParameters() {
-
-
         // GENERAL parameters
         getGeneralParams();
 
@@ -1291,9 +1324,8 @@ namespace stereolabs {
         // DEPTH parameters
         getDepthParams();
 
-        // >>>>>> TRACKING parameters
+        // TRACKING parameters
         getPoseParams();
-        // <<<<<< TRACKING parameters
 
         // IMU parameters
         getImuParams();
@@ -1322,7 +1354,7 @@ namespace stereolabs {
                         RCLCPP_INFO(get_logger(), "The param '%s' has changed to %g", param.get_name().c_str(), mZedMatResizeFactor);
                         result.successful = true;
 
-                        // >>>>> Modify data sizes
+                        // ----> Modify data sizes
                         mCamDataMutex.lock();
                         mMatWidth = static_cast<size_t>(mCamWidth * mZedMatResizeFactor);
                         mMatHeight = static_cast<size_t>(mCamHeight * mZedMatResizeFactor);
@@ -1334,7 +1366,7 @@ namespace stereolabs {
                         mRgbCamInfoMsg = mDepthCamInfoMsg = mLeftCamInfoMsg;
                         mRgbCamInfoRawMsg = mLeftCamInfoRawMsg;
                         mCamDataMutex.unlock();
-                        // <<<<< Modify data sizes
+                        // <---- Modify data sizes
                     } else {
                         RCLCPP_WARN(get_logger(), "The param '%s' requires a FLOATING POINT value in the range ]0.0,1.0]",
                                     param.get_name().c_str());
@@ -1460,7 +1492,7 @@ namespace stereolabs {
         topicPrefix += get_name();
         topicPrefix += "/";
 
-        // >>>>> Video topics
+        // ----> Video topics
         std::string img_topic = "/image_rect_color";
         std::string img_raw_topic = "/image_raw_color";
         std::string cam_info_topic = "/camera_info";
@@ -1481,9 +1513,9 @@ namespace stereolabs {
         mRgbCamInfoTopic = mRgbTopic + cam_info_topic;
         mRgbRawTopic = topicPrefix + mRgbTopicRoot + raw_suffix + img_raw_topic;
         mRgbCamInfoRawTopic = mRgbRawTopic + cam_info_topic;
-        // <<<<< Video topics
+        // <---- Video topics
 
-        // >>>>> Depth Topics
+        // ----> Depth Topics
         mDepthTopic = topicPrefix + mDepthTopicRoot;
 
         if (mOpenniDepthMode) {
@@ -1502,71 +1534,101 @@ namespace stereolabs {
         mDispTopic = topicPrefix + mDispTopic;
 
         mPointcloudTopic = topicPrefix + mPointcloudTopic;
-        // <<<<< Depth Topics
+        // <---- Depth Topics
 
-        // >>>>> Create Video publishers
+        // ----> IMU Topics
+        mImuTopic = topicPrefix + mImuTopicRoot + mImuTopic;
+        mImuRawTopic = topicPrefix + mImuTopicRoot + mImuRawTopic;
+        // <---- IMU Topics
+
+        // ----> Pos. Tracking topics
+        mPoseCovTopic = topicPrefix + mPoseTopic + "_with_covariance";
+        mPoseTopic = topicPrefix + mPoseTopic;
+        mOdomTopic = topicPrefix + mOdomTopic;
+        mPosePathTopic = topicPrefix + mPosePathTopic;
+        mOdomPathTopic = topicPrefix + mOdomPathTopic;
+        // <---- Pos. Tracking topics
+
+        // ----> Create Video publishers
         mPubRgb = create_publisher<sensor_msgs::msg::Image>(mRgbTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * '%s'", mRgbTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mPubRgb->get_topic_name());
         mPubRawRgb = create_publisher<sensor_msgs::msg::Image>(mRgbRawTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * '%s'", mRgbRawTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mPubRawRgb->get_topic_name());
         mPubLeft = create_publisher<sensor_msgs::msg::Image>(mLeftTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * '%s'", mLeftTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mPubLeft->get_topic_name());
         mPubRawLeft = create_publisher<sensor_msgs::msg::Image>(mLeftRawTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * '%s'", mLeftRawTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mPubRawLeft->get_topic_name());
         mPubRight = create_publisher<sensor_msgs::msg::Image>(mRightTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * '%s'", mRightTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mPubRight->get_topic_name());
         mPubRawRight = create_publisher<sensor_msgs::msg::Image>(mRightRawTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * '%s'", mRightRawTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mPubRawRight->get_topic_name());
         mPubDepth = create_publisher<sensor_msgs::msg::Image>(mDepthTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * '%s'", mDepthTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mPubDepth->get_topic_name());
         mPubConfImg = create_publisher<sensor_msgs::msg::Image>(mConfImgTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * '%s'", mConfImgTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mPubConfImg->get_topic_name());
         mPubConfMap = create_publisher<sensor_msgs::msg::Image>(mConfMapTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * '%s'", mConfMapTopic.c_str());
-        // <<<<< Create Video publishers
+        RCLCPP_INFO(get_logger(), " * '%s'", mPubConfMap->get_topic_name());
+        // <---- Create Video publishers
 
-        // >>>>> Create Camera Info publishers
+        // ----> Create Camera Info publishers
         mPubRgbCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mRgbCamInfoTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * '%s'", mRgbCamInfoTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mPubRgbCamInfo->get_topic_name());
         mPubRgbCamInfoRaw = create_publisher<sensor_msgs::msg::CameraInfo>(mRgbCamInfoRawTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * '%s'", mRgbCamInfoRawTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mPubRgbCamInfoRaw->get_topic_name());
         mPubLeftCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mLeftCamInfoTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * '%s'", mLeftCamInfoTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mPubLeftCamInfo->get_topic_name());
         mPubLeftCamInfoRaw = create_publisher<sensor_msgs::msg::CameraInfo>(mLeftCamInfoRawTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * '%s'", mLeftCamInfoRawTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mPubLeftCamInfoRaw->get_topic_name());
         mPubRightCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mRightCamInfoTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * '%s'", mRightCamInfoTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mPubRightCamInfo->get_topic_name());
         mPubRightCamInfoRaw = create_publisher<sensor_msgs::msg::CameraInfo>(mRightCamInfoRawTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * '%s'", mRightCamInfoRawTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mPubRightCamInfoRaw->get_topic_name());
         mPubDepthCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mDepthCamInfoTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * '%s'", mDepthCamInfoTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mPubDepthCamInfo->get_topic_name());
         mPubConfidenceCamInfo = create_publisher<sensor_msgs::msg::CameraInfo>(mConfCamInfoTopic, mVideoQos);
-        RCLCPP_INFO(get_logger(), " * '%s'", mConfCamInfoTopic.c_str());
-        // <<<<< Create Camera Info publishers
+        RCLCPP_INFO(get_logger(), " * '%s'", mPubConfidenceCamInfo->get_topic_name());
+        // <---- Create Camera Info publishers
 
-        // >>>>> Create Depth Publishers
+        // ----> Create Depth Publishers
         mPubPointcloud = create_publisher<sensor_msgs::msg::PointCloud2>(mPointcloudTopic, mDepthQos);
-        RCLCPP_INFO(get_logger(), " * '%s'", mPointcloudTopic.c_str());
+        RCLCPP_INFO(get_logger(), " * '%s'", mPubPointcloud->get_topic_name());
 
         mPubDisparity = create_publisher<stereo_msgs::msg::DisparityImage>(mDispTopic, mDepthQos);
-        RCLCPP_INFO(get_logger(), " * '%s'", mDispTopic.c_str());
-        // <<<<< Create Depth Publishers
+        RCLCPP_INFO(get_logger(), " * '%s'", mPubDisparity->get_topic_name());
+        // <---- Create Depth Publishers
 
-        // >>>>> Create IMU Publishers
+        // ----> Create IMU Publishers
         if (mImuPubRate > 0 && mZedUserCamModel == 1) {
-            mImuTopic = topicPrefix + mImuTopicRoot + mImuTopic;
-            mImuRawTopic = topicPrefix + mImuTopicRoot + mImuRawTopic;
-
             mPubImu = create_publisher<sensor_msgs::msg::Imu>(mImuTopic, mImuQos);
-            RCLCPP_INFO(get_logger(), " * '%s'", mImuTopic.c_str());
+            RCLCPP_INFO(get_logger(), " * '%s'", mPubImu->get_topic_name());
 
             mPubImuRaw = create_publisher<sensor_msgs::msg::Imu>(mImuRawTopic, mImuQos);
-            RCLCPP_INFO(get_logger(), " * '%s'", mImuRawTopic.c_str());
+            RCLCPP_INFO(get_logger(), " * '%s'", mPubImuRaw->get_topic_name());
 
             mImuPeriodMean_usec.reset(new sl_tools::CSmartMean(mImuPubRate / 2));
         }
 
-        // <<<<< Create IMU Publishers
+        // <---- Create IMU Publishers
+
+        // ----> Create Pose/Odom publishers
+        mPubPose = create_publisher<geometry_msgs::msg::PoseStamped>(mPoseTopic, mPoseQos);
+        RCLCPP_INFO(get_logger(), " * '%s'", mPubPose->get_topic_name());
+
+        mPubPoseCov = create_publisher<geometry_msgs::msg::PoseWithCovariance>(mPoseCovTopic, mPoseQos);
+        RCLCPP_INFO(get_logger(), " * '%s'", mPubPoseCov->get_topic_name());
+
+        mPubOdom = create_publisher<nav_msgs::msg::Odometry>(mOdomTopic, mPoseQos);
+        RCLCPP_INFO(get_logger(), " * '%s'", mPubOdom->get_topic_name());
+
+        if (mPathPubRate > 0.0) {
+            mPubPathPose = create_publisher<nav_msgs::msg::Path>(mPosePathTopic, mPoseQos);
+            RCLCPP_INFO(get_logger(), " * '%s'", mPubPathPose->get_topic_name());
+
+            mPubPathOdom = create_publisher<nav_msgs::msg::Path>(mOdomPathTopic, mPoseQos);
+            RCLCPP_INFO(get_logger(), " * '%s'", mPubPathOdom->get_topic_name());
+        }
+
+        // <---- Create Pose/Odom publishers
     }
 
     rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCameraComponent::on_configure(
@@ -1577,7 +1639,7 @@ namespace stereolabs {
 
         RCLCPP_DEBUG(get_logger(), "on_configure() is called.");
 
-        // >>>>> Check SDK version
+        // ----> Check SDK version
         RCLCPP_INFO(get_logger(), "SDK Version: %d.%d.%d - Build %d", ZED_SDK_MAJOR_VERSION, ZED_SDK_MINOR_VERSION,
                     ZED_SDK_PATCH_VERSION, ZED_SDK_BUILD_ID);
 #if (ZED_SDK_MAJOR_VERSION<2 || (ZED_SDK_MAJOR_VERSION==2 && ZED_SDK_MINOR_VERSION<6))
@@ -1585,18 +1647,26 @@ namespace stereolabs {
 
         return lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_ERROR;
 #endif
-        // <<<<< Check SDK version
+        // <---- Check SDK version
 
-        // >>>>> Load params from param server
+        // ----> Load params from param server
         initParameters();
-        // <<<<< Load params from param server
+        // <---- Load params from param server
 
-        // >>>>> Frame IDs
+        // ----> TF2 Transform
+        mTfBuffer.reset(new tf2_ros::Buffer(this->get_clock()));
+        mTfListener.reset(new tf2_ros::TransformListener(*mTfBuffer));
+
+        //        set_pose(mInitialBasePose[0], mInitialBasePose[1], mInitialBasePose[2],
+        //                 mInitialBasePose[3], mInitialBasePose[4], mInitialBasePose[5]);
+        // <---- TF2 Transform
+
+        // ----> Frame IDs
         mDepthFrameId = mLeftCamFrameId;
         mDepthOptFrameId = mLeftCamOptFrameId;
-        // <<<<< Frame IDs
+        // <---- Frame IDs
 
-        // >>>>> Create camera info
+        // ----> Create camera info
         mRgbCamInfoMsg = std::make_shared<sensor_msgs::msg::CameraInfo>();
         mRgbCamInfoRawMsg = std::make_shared<sensor_msgs::msg::CameraInfo>();
         mLeftCamInfoMsg = std::make_shared<sensor_msgs::msg::CameraInfo>();
@@ -1604,20 +1674,20 @@ namespace stereolabs {
         mRightCamInfoMsg = std::make_shared<sensor_msgs::msg::CameraInfo>();
         mRightCamInfoRawMsg = std::make_shared<sensor_msgs::msg::CameraInfo>();
         mDepthCamInfoMsg = std::make_shared<sensor_msgs::msg::CameraInfo>();
-        // <<<<< Create camera info
+        // <---- Create camera info
 
         // Create pointcloud message
         mPointcloudMsg = std::make_shared<sensor_msgs::msg::PointCloud2>();
 
-        // >>>>> Create IMU messages
+        // ----> Create IMU messages
         mImuMsg = std::make_shared<sensor_msgs::msg::Imu>();
         mImuMsgRaw = std::make_shared<sensor_msgs::msg::Imu>();
-        // <<<<< Create IMU messages
+        // <---- Create IMU messages
 
         // Initialize Message Publishers
         initPublishers();
 
-        // >>>>> ZED configuration
+        // ----> ZED configuration
         if (!mSvoFilepath.empty()) {
             RCLCPP_INFO(get_logger(), "*** SVO OPENING ***");
 
@@ -1643,9 +1713,9 @@ namespace stereolabs {
         mZedParams.depth_stabilization = mDepthStabilization;
         mZedParams.camera_image_flip = mCameraFlip;
         mZedParams.depth_minimum_distance = mZedMinDepth;
-        // <<<<< ZED configuration
+        // <---- ZED configuration
 
-        // >>>>> Try to open ZED camera or to load SVO
+        // ----> Try to open ZED camera or to load SVO
         INIT_TIMER;
         START_TIMER;
 
@@ -1731,7 +1801,7 @@ namespace stereolabs {
             std::this_thread::sleep_for(std::chrono::seconds(mCamTimeoutSec));
         }
 
-        // <<<<< Try to open ZED camera or to load SVO
+        // <---- Try to open ZED camera or to load SVO
 
         sl::CameraInformation camInfo = mZed.getCameraInformation();
         mZedRealCamModel = camInfo.camera_model;
@@ -1750,7 +1820,7 @@ namespace stereolabs {
             }
         }
 
-        // >>>>> Camera Parameters user feedback
+        // ----> Camera Parameters user feedback
         RCLCPP_INFO(get_logger(), "CAMERA MODEL: %s", sl::toString(mZedRealCamModel).c_str());
         mZedSerialNumber = mZed.getCameraInformation().serial_number;
         RCLCPP_INFO(get_logger(), "SERIAL NUMBER: %s", std::to_string(mZedSerialNumber).c_str());
@@ -1767,9 +1837,9 @@ namespace stereolabs {
         RCLCPP_INFO(get_logger(), "DEPTH MINIMUM DISTANCE: %s m", std::to_string(minDist).c_str());
         RCLCPP_INFO(get_logger(), "DEPTH STABILIZATION: %s", std::to_string(mZedParams.depth_stabilization).c_str());
         RCLCPP_INFO(get_logger(), "GPU ID: %s", std::to_string(mZedParams.sdk_gpu_id).c_str());
-        // <<<<< Camera Parameters user feedback
+        // <---- Camera Parameters user feedback
 
-        // >>>>> Images info
+        // ----> Images info
         // Get the parameters of the ZED images
         mCamWidth = mZed.getResolution().width;
         mCamHeight = mZed.getResolution().height;
@@ -1785,9 +1855,9 @@ namespace stereolabs {
         mRgbCamInfoRawMsg = mLeftCamInfoRawMsg;
         mDepthCamInfoMsg = mLeftCamInfoMsg;
         mConfidenceCamInfoMsg = mLeftCamInfoMsg;
-        // <<<<< Images info
+        // <---- Images info
 
-        // >>>>> IMU sensor
+        // ----> IMU sensor
         sl::Transform imuTransf = camInfo.camera_imu_transform;
 
         sl::Translation imuPos = imuTransf.getTranslation();
@@ -1800,7 +1870,7 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), "*** %s configured ***", sl::toString(mZedRealCamModel).c_str());
         RCLCPP_INFO(get_logger(), "Waiting for `ACTIVATE` request...");
-        // >>>>> IMU sensor
+        // ----> IMU sensor
 
         // We return a success and hence invoke the transition to the next
         // step: "inactive".
@@ -1825,7 +1895,7 @@ namespace stereolabs {
             return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
         }
 
-        // >>>>> Publishers activation
+        // ----> Publishers activation
         mPubRgb->on_activate();
         mPubRawRgb->on_activate();
         mPubLeft->on_activate();
@@ -1854,20 +1924,21 @@ namespace stereolabs {
             mPubImuRaw->on_activate();
         }
 
-        // <<<<< Publishers activation
+        mPubOdom->on_activate();
+        // <---- Publishers activation
 
-        // >>>>> Start Pointcloud thread
+        // ----> Start Pointcloud thread
         mPcDataReady = false;
         //RCLCPP_DEBUG(get_logger(), "on_activate -> mPcDataReady FALSE")
         mPcThread = std::thread(&ZedCameraComponent::pointcloudThreadFunc, this);
-        // <<<<< Start Pointcloud thread
+        // <---- Start Pointcloud thread
 
-        // >>>>> Start ZED thread
+        // ----> Start ZED thread
         mThreadStop = false;
         mGrabThread = std::thread(&ZedCameraComponent::zedGrabThreadFunc, this);
-        // <<<<< Start ZED thread
+        // <---- Start ZED thread
 
-        // >>>>> Start IMU timer
+        // ----> Start IMU timer
         if (mImuPubRate > 0 && mZedRealCamModel == sl::MODEL_ZED_M) {
             std::chrono::milliseconds imuPeriodMsec(static_cast<int>(1000.0 / mImuPubRate));
 
@@ -1875,7 +1946,7 @@ namespace stereolabs {
                                           std::bind(&ZedCameraComponent::imuPubCallback, this));
         }
 
-        // <<<<< Start IMU timer
+        // <---- Start IMU timer
 
         // We return a success and hence invoke the transition to the next
         // step: "active".
@@ -1894,14 +1965,14 @@ namespace stereolabs {
 
         RCLCPP_DEBUG(get_logger(), "on_deactivate() is called.");
 
-        // >>>>> Stop IMU timer
+        // ----> Stop IMU timer
         if (mImuTimer) {
             mImuTimer->cancel();
         }
 
-        // <<<<< Stop IMU timer
+        // <---- Stop IMU timer
 
-        // >>>>> Verify that all the threads are not active
+        // ----> Verify that all the threads are not active
         if (!mThreadStop) {
             mThreadStop = true;
 
@@ -1922,9 +1993,9 @@ namespace stereolabs {
             }
         }
 
-        // <<<<< Verify that the grab thread is not active
+        // <---- Verify that the grab thread is not active
 
-        // >>>>> Publishers deactivation
+        // ----> Publishers deactivation
         mPubRgb->on_deactivate();
         mPubRawRgb->on_deactivate();
         mPubLeft->on_deactivate();
@@ -1953,7 +2024,8 @@ namespace stereolabs {
             mPubImuRaw->on_deactivate();
         }
 
-        // <<<<< Publishers deactivation
+        mPubOdom->on_deactivate();
+        // <---- Publishers deactivation
 
         // We return a success and hence invoke the transition to the next
         // step: "inactive".
@@ -1972,14 +2044,14 @@ namespace stereolabs {
 
         RCLCPP_DEBUG(get_logger(), "on_cleanup() is called.");
 
-        // >>>>> Close ZED if opened
+        // ----> Close ZED if opened
         if (mZed.isOpened()) {
             std::lock_guard<std::mutex> lock(mImuMutex);
             mZed.close();
             RCLCPP_INFO(get_logger(), "ZED closed");
         }
 
-        // <<<<< Close ZED if opened
+        // <---- Close ZED if opened
 
         // TODO clean data structures
 
@@ -2002,30 +2074,30 @@ namespace stereolabs {
         mPrevTransition = 255;
         sl::ERROR_CODE grab_status;
 
-        // >>>>> Last frame time initialization
-        rclcpp::Time startTime;
-
+        // ----> Frame time initialization
         if (mSvoMode) {
-            startTime = now();
+            mFrameTimestamp = now();
         } else {
-            startTime = sl_tools::slTime2Ros(mZed.getTimestamp(sl::TIME_REFERENCE_CURRENT));
+            mFrameTimestamp = sl_tools::slTime2Ros(mZed.getTimestamp(sl::TIME_REFERENCE_CURRENT));
         }
 
-        mLastGrabTimestamp = startTime;
-        // <<<<< Last frame time initialization
+        mPrevFrameTimestamp = mFrameTimestamp;
+        // <---- Frame time initialization
 
-        // >>>>> Grab parameters
+        mTrackingActivated = false;
+
+        // ----> Grab parameters
         sl::RuntimeParameters runParams;
         runParams.sensing_mode = static_cast<sl::SENSING_MODE>(mZedSensingMode);
         runParams.enable_depth = false;
-        // <<<<< Grab parameters
+        // <---- Grab parameters
 
         rclcpp::WallRate loop_rate(mZedFrameRate);
 
         while (1) {
             std::chrono::steady_clock::time_point start_elab = std::chrono::steady_clock::now();
 
-            //>>>>> Interruption check
+            // ----> Interruption check
             if (!rclcpp::ok()) {
                 RCLCPP_DEBUG(get_logger(), "Ctrl+C received");
                 break;
@@ -2036,10 +2108,9 @@ namespace stereolabs {
                 break;
             }
 
-            //<<<<< Interruption check
+            // <---- Interruption check
 
-
-            //>>>>> Subscribers check
+            // ----> Subscribers check
             size_t rgbSub = count_subscribers(mRgbTopic);           // mPubRgb subscribers
             size_t rgbRawSub = count_subscribers(mRgbRawTopic);     // mPubRawRgb subscribers
             size_t leftSub = count_subscribers(mLeftTopic);         // mPubLeft subscribers
@@ -2051,14 +2122,31 @@ namespace stereolabs {
             size_t confMapSub = count_subscribers(mConfMapTopic);   // mPubConfMap subscribers
             size_t dispSub = count_subscribers(mDispTopic);         // mPubDisparity subscribers
             size_t cloudSub = count_subscribers(mPointcloudTopic);  // mPubPointcloud subscribers
+            size_t poseSub = count_subscribers(mPoseTopic);         // mPubPose subscribers
+            size_t poseCovSub = count_subscribers(mPoseCovTopic);   // mPubPoseCov subscribers
+            size_t odomSub = count_subscribers(mOdomTopic);         // mPubOdom subscribers
+            size_t pathPoseSub = count_subscribers(mPosePathTopic); // mPubPathPose subscribers
+            size_t pathOdomSub = count_subscribers(mOdomPathTopic); // mPubPathOdom subscribers
 
             bool pubImages = ((rgbSub + rgbRawSub + leftSub + leftRawSub + rightSub + rightRawSub) > 0);
             bool pubDepthData = ((depthSub + confImgSub + confMapSub + dispSub + cloudSub) > 0);
+            bool pubPosTrackData = ((poseSub + poseCovSub + odomSub + pathPoseSub + pathOdomSub) > 0);
 
-            mRunGrabLoop = pubImages | pubDepthData;
-            //<<<<< Subscribers check
+            bool computeTracking = pubPosTrackData || mDepthStabilization;
+
+            mRunGrabLoop = pubImages | pubDepthData | pubPosTrackData;
+            // <---- Subscribers check
 
             if (mRunGrabLoop) {
+
+                if ((computeTracking) && !mTrackingActivated && (mZedQuality != sl::DEPTH_MODE_NONE)) { // Start the tracking
+                    startTracking();
+                    RCLCPP_INFO(get_logger(), "*** Pos. Tracking processing STARTED ***");
+                } else if (!computeTracking && mTrackingActivated) { // Stop the tracking
+                    mZed.disableTracking();
+                    mTrackingActivated = false;
+                    RCLCPP_INFO(get_logger(), "*** Pos. Tracking processing STOPPED ***");
+                }
 
                 if (pubDepthData) {
                     int actual_confidence = mZed.getConfidenceThreshold();
@@ -2081,16 +2169,14 @@ namespace stereolabs {
                 // ZED grab
                 grab_status = mZed.grab(runParams);
 
-                // >>>>> Timestamp
-                rclcpp::Time grabTimestamp;
-
+                // ----> Timestamp
                 if (mSvoMode) {
-                    grabTimestamp = sl_tools::slTime2Ros(mZed.getTimestamp(sl::TIME_REFERENCE_CURRENT));
+                    mFrameTimestamp = sl_tools::slTime2Ros(mZed.getTimestamp(sl::TIME_REFERENCE_CURRENT));
                 } else {
-                    grabTimestamp = sl_tools::slTime2Ros(mZed.getTimestamp(sl::TIME_REFERENCE_IMAGE));
+                    mFrameTimestamp = sl_tools::slTime2Ros(mZed.getTimestamp(sl::TIME_REFERENCE_IMAGE));
                 }
 
-                // <<<<< Timestamp
+                // <---- Timestamp
 
                 if (grab_status != sl::ERROR_CODE::SUCCESS) {
                     // Detect if a error occurred (for example:
@@ -2105,7 +2191,7 @@ namespace stereolabs {
 
                     rclcpp::Time now = sl_tools::slTime2Ros(mZed.getTimestamp(sl::TIME_REFERENCE_CURRENT));
 
-                    rcl_time_point_value_t elapsed = (now - mLastGrabTimestamp).nanoseconds();
+                    rcl_time_point_value_t elapsed = (now - mPrevFrameTimestamp).nanoseconds();
                     rcl_time_point_value_t timeout = rclcpp::Duration(mCamTimeoutSec, 0).nanoseconds();
 
                     if (elapsed > timeout) {
@@ -2128,7 +2214,7 @@ namespace stereolabs {
                 }
 
                 // Last frame timestamp
-                mLastGrabTimestamp = grabTimestamp;
+                mPrevFrameTimestamp = mFrameTimestamp;
 
                 // Publish freq calculation
                 static std::chrono::steady_clock::time_point last_time = std::chrono::steady_clock::now();
@@ -2141,7 +2227,7 @@ namespace stereolabs {
 
                 //RCLCPP_DEBUG(get_logger(), "Mean grab frequency: %g Hz", 1000000. / meanGrabPeriod_usec);
 
-                // >>>>> Apply video dynamic parameters
+                // ----> Apply video dynamic parameters
                 if (mZedAutoExposure) {
                     if (mTriggerAutoExposure) {
                         mZed.setCameraSettings(sl::CAMERA_SETTINGS_EXPOSURE, 0, true);
@@ -2162,20 +2248,25 @@ namespace stereolabs {
                     }
                 }
 
-                // <<<<< Apply video dynamic parameters
+                // <---- Apply video dynamic parameters
                 mCamDataMutex.lock();
 
                 if (pubImages) {
-                    publishImages(grabTimestamp);
+                    publishImages(mFrameTimestamp);
                 }
 
                 if (pubDepthData) {
-                    publishDepthData(grabTimestamp);
+                    publishDepthData(mFrameTimestamp);
                 }
 
                 mCamDataMutex.unlock();
 
-                // >>>>> Thread sleep
+                if (pubPosTrackData) {
+                    processOdometry();
+                    processPose();
+                }
+
+                // ----> Thread sleep
                 std::chrono::steady_clock::time_point end_elab = std::chrono::steady_clock::now();
                 double elab_usec = std::chrono::duration_cast<std::chrono::microseconds>(end_elab - start_elab).count();
 
@@ -2196,12 +2287,12 @@ namespace stereolabs {
                     }
                 }
 
-                // <<<<< Thread sleep
+                // <---- Thread sleep
             } else {
                 static int noSubInfoCount = 0;
 
                 if (noSubInfoCount % 500 == 0) {
-                    RCLCPP_INFO(get_logger(), "No subscribers");
+                    RCLCPP_INFO(get_logger(), "*** No subscribers ***");
                 }
 
                 noSubInfoCount++;
@@ -2224,7 +2315,7 @@ namespace stereolabs {
 
         sl::Mat leftZEDMat, rightZEDMat;
 
-        // >>>>> Publish the left == rgb image if someone has subscribed to
+        // ----> Publish the left == rgb image if someone has subscribed to
         if (leftSubnumber > 0 || rgbSubnumber > 0) {
             // Retrieve RGBA Left image
             mZed.retrieveImage(leftZEDMat, sl::VIEW_LEFT, sl::MEM_CPU, mMatWidth, mMatHeight);
@@ -2240,9 +2331,9 @@ namespace stereolabs {
             }
         }
 
-        // <<<<< Publish the left == rgb image if someone has subscribed to
+        // <---- Publish the left == rgb image if someone has subscribed to
 
-        // >>>>> Publish the left_raw == rgb_raw image if someone has subscribed to
+        // ----> Publish the left_raw == rgb_raw image if someone has subscribed to
         if (leftRawSubnumber > 0 || rgbRawSubnumber > 0) {
             // Retrieve RGBA Left image
             mZed.retrieveImage(leftZEDMat, sl::VIEW_LEFT_UNRECTIFIED, sl::MEM_CPU, mMatWidth, mMatHeight);
@@ -2258,9 +2349,9 @@ namespace stereolabs {
             }
         }
 
-        // <<<<< Publish the left_raw == rgb_raw image if someone has subscribed to
+        // <---- Publish the left_raw == rgb_raw image if someone has subscribed to
 
-        // >>>>> Publish the right image if someone has subscribed to
+        // ----> Publish the right image if someone has subscribed to
         if (rightSubnumber > 0) {
             // Retrieve RGBA Right image
             mZed.retrieveImage(rightZEDMat, sl::VIEW_RIGHT, sl::MEM_CPU, mMatWidth, mMatHeight);
@@ -2269,9 +2360,9 @@ namespace stereolabs {
             publishImage(rightZEDMat, mPubRight, mRightCamOptFrameId, timeStamp);
         }
 
-        // <<<<< Publish the right image if someone has subscribed to
+        // <---- Publish the right image if someone has subscribed to
 
-        // >>>>> Publish the right raw image if someone has subscribed to
+        // ----> Publish the right raw image if someone has subscribed to
         if (rightRawSubnumber > 0) {
             // Retrieve RGBA Right image
             mZed.retrieveImage(rightZEDMat, sl::VIEW_RIGHT_UNRECTIFIED, sl::MEM_CPU, mMatWidth, mMatHeight);
@@ -2280,7 +2371,7 @@ namespace stereolabs {
             publishImage(rightZEDMat, mPubRawRight, mRightCamOptFrameId, timeStamp);
         }
 
-        // <<<<< Publish the right image if someone has subscribed to
+        // <---- Publish the right image if someone has subscribed to
     }
 
     void ZedCameraComponent::publishDepthData(rclcpp::Time timeStamp) {
@@ -2292,16 +2383,16 @@ namespace stereolabs {
 
         sl::Mat depthZEDMat, confImgZedMat, confMapZedMat, disparityZEDMat;
 
-        // >>>>>  Publish the depth image if someone has subscribed to
+        // ---->  Publish the depth image if someone has subscribed to
         if (depthSub > 0 /*|| dispImgSub > 0*/) {
             mZed.retrieveMeasure(depthZEDMat, sl::MEASURE_DEPTH, sl::MEM_CPU, mMatWidth, mMatHeight);
             publishCamInfo(mDepthCamInfoMsg, mPubDepthCamInfo, timeStamp);
             publishDepth(depthZEDMat, timeStamp);
         }
 
-        // <<<<<  Publish the depth image if someone has subscribed to
+        // <----  Publish the depth image if someone has subscribed to
 
-        // >>>>>  Publish the confidence image and map if someone has subscribed to
+        // ---->  Publish the confidence image and map if someone has subscribed to
         if (confImgSub > 0 || confMapSub > 0) {
             publishCamInfo(mConfidenceCamInfoMsg, mPubConfidenceCamInfo, timeStamp);
 
@@ -2318,18 +2409,18 @@ namespace stereolabs {
             }
         }
 
-        // <<<<<  Publish the confidence image and map if someone has subscribed to
+        // <----  Publish the confidence image and map if someone has subscribed to
 
-        // >>>>> Publish the disparity image if someone has subscribed to
+        // ----> Publish the disparity image if someone has subscribed to
         if (dispSub > 0) {
             mZed.retrieveMeasure(disparityZEDMat, sl::MEASURE_DISPARITY, sl::MEM_CPU, mMatWidth, mMatHeight);
 
             publishDisparity(disparityZEDMat, timeStamp);
         }
 
-        // <<<<< Publish the disparity image if someone has subscribed to
+        // <---- Publish the disparity image if someone has subscribed to
 
-        // >>>>> Publish the point cloud if someone has subscribed to
+        // ----> Publish the point cloud if someone has subscribed to
         if (cloudSub > 0) {
             // Run the point cloud conversion asynchronously to avoid slowing down
             // all the program
@@ -2349,7 +2440,7 @@ namespace stereolabs {
             }
         }
 
-        // <<<<< Publish the point cloud if someone has subscribed to
+        // <---- Publish the point cloud if someone has subscribed to
     }
 
     void ZedCameraComponent::fillCamInfo(sl::Camera& zed, std::shared_ptr<sensor_msgs::msg::CameraInfo> leftCamInfoMsg,
@@ -2620,7 +2711,7 @@ namespace stereolabs {
         if (mSvoMode || !mRunGrabLoop || !mImuTimestampSync) {
             t = now();
         } else {
-            t = mLastGrabTimestamp;
+            t = mFrameTimestamp;
         }
 
         sl::IMUData imu_data;
@@ -2725,6 +2816,243 @@ namespace stereolabs {
         //            // has subscribed to IMU
         //            publishImuFrame(imu_pose, mFrameTimestamp); // publish the imu Frame
         //        }
+    }
+
+    void ZedCameraComponent::startTracking() {
+        RCLCPP_INFO(get_logger(), "*** Starting Positional Tracking ***");
+
+        set_pose(mInitialBasePose[0], mInitialBasePose[1], mInitialBasePose[2],
+                 mInitialBasePose[3], mInitialBasePose[4], mInitialBasePose[5]);
+
+        if (mOdometryDb != "" && !sl_tools::file_exist(mOdometryDb)) {
+            mOdometryDb = "";
+            RCLCPP_WARN(get_logger(), "odometry_DB path doesn't exist or is unreachable.");
+        }
+
+        // Tracking parameters
+        sl::TrackingParameters trackParams;
+        trackParams.area_file_path = mOdometryDb.c_str();
+        trackParams.enable_pose_smoothing = mPoseSmoothing;
+        trackParams.enable_spatial_memory = mSpatialMemory;
+        trackParams.initial_world_transform = mInitialPoseSl;
+        trackParams.set_floor_as_origin = mFloorAlignment;
+        trackParams.enable_imu_fusion = true;
+
+        sl::ERROR_CODE err = mZed.enableTracking(trackParams);
+
+        if (err == sl::SUCCESS) {
+            mTrackingActivated = true;
+        } else {
+            mTrackingActivated = false;
+
+            RCLCPP_WARN(get_logger(), "Tracking not activated: %s", sl::toString(err).c_str());
+        }
+    }
+
+    void ZedCameraComponent::set_pose(float xt, float yt, float zt, float rr,
+                                      float pr, float yr) {
+        initTransforms();
+
+        // Apply Base to sensor transform
+        tf2::Transform initPose;
+        tf2::Vector3 origin(xt, yt, zt);
+        initPose.setOrigin(origin);
+        tf2::Quaternion quat;
+        quat.setRPY(rr, pr, yr);
+        initPose.setRotation(quat);
+
+        initPose = initPose * mSensor2BaseTransf.inverse();
+
+        // SL pose
+        sl::float3 t_vec;
+        t_vec[0] = initPose.getOrigin().x();
+        t_vec[1] = initPose.getOrigin().y();
+        t_vec[2] = initPose.getOrigin().z();
+
+        sl::float4 q_vec;
+        q_vec[0] = initPose.getRotation().x();
+        q_vec[1] = initPose.getRotation().y();
+        q_vec[2] = initPose.getRotation().z();
+        q_vec[3] = initPose.getRotation().w();
+
+        sl::Translation trasl(t_vec);
+        sl::Orientation orient(q_vec);
+        mInitialPoseSl.setTranslation(trasl);
+        mInitialPoseSl.setOrientation(orient);
+    }
+
+    void ZedCameraComponent::initTransforms() {
+        // Dynamic transforms
+        mOdom2BaseTransf.setIdentity();
+        mMap2OdomTransf.setIdentity();
+
+        // Static transforms
+        // Sensor to Base link
+        try {
+            // Save the transformation from base to frame
+            tf2::TimePoint tf2_time;
+            tf2_time = tf2::timeFromSec(mFrameTimestamp.seconds());
+            geometry_msgs::msg::TransformStamped s2b =
+                mTfBuffer->lookupTransform(mDepthFrameId, mBaseFrameId, tf2_time); // Coordinates of the base in sensor frame
+            // Get the TF2 transformation
+            tf2::fromMsg(s2b.transform, mSensor2BaseTransf);
+
+#if 0 //#ifndef NDEBUG // Enable for TF checking
+            double roll, pitch, yaw;
+            tf2::Matrix3x3(mSensor2BaseTransf.getRotation()).getRPY(roll, pitch, yaw);
+
+            RCLCPP_DEBUG(get_logger(), "Sensor2Base [%s -> %s] - {%.3f,%.3f,%.3f} {%.3f,%.3f,%.3f}",
+                         mDepthFrameId.c_str(), mBaseFrameId.c_str(),
+                         mSensor2BaseTransf.getOrigin().x(), mSensor2BaseTransf.getOrigin().y(), mSensor2BaseTransf.getOrigin().z(),
+                         roll * RAD2DEG, pitch * RAD2DEG, yaw * RAD2DEG);
+#endif
+
+
+        } catch (tf2::TransformException& ex) {
+            RCLCPP_WARN(get_logger(), "The tf from '%s' to '%s' does not seem to be available, "
+                        "will assume it as identity! Verify that the static transforms from URDF are correctly published",
+                        mDepthFrameId.c_str(), mBaseFrameId.c_str());
+            RCLCPP_DEBUG(get_logger(), "Transform error: %s", ex.what());
+            mSensor2BaseTransf.setIdentity();
+        }
+    }
+
+    void ZedCameraComponent::processOdometry() {
+
+        if (!mInitOdomWithPose) {
+            sl::Pose deltaOdom;
+            mTrackingStatus = mZed.getPosition(deltaOdom, sl::REFERENCE_FRAME_CAMERA);
+
+            sl::Translation translation = deltaOdom.getTranslation();
+            sl::Orientation quat = deltaOdom.getOrientation();
+
+            RCLCPP_DEBUG(get_logger(), "delta ODOM [%s] - %.2f,%.2f,%.2f %.2f,%.2f,%.2f,%.2f",
+                         sl::toString(mTrackingStatus).c_str(),
+                         translation(0), translation(1), translation(2),
+                         quat(0), quat(1), quat(2), quat(3));
+
+            if (mTrackingStatus == sl::TRACKING_STATE_OK || mTrackingStatus == sl::TRACKING_STATE_SEARCHING ||
+                mTrackingStatus == sl::TRACKING_STATE_FPS_TOO_LOW) {
+                // Transform ZED delta odom pose in TF2 Transformation
+                geometry_msgs::msg::Transform deltaTransf;
+                deltaTransf.translation.x = translation(0);
+                deltaTransf.translation.y = translation(1);
+                deltaTransf.translation.z = translation(2);
+                deltaTransf.rotation.x = quat(0);
+                deltaTransf.rotation.y = quat(1);
+                deltaTransf.rotation.z = quat(2);
+                deltaTransf.rotation.w = quat(3);
+                tf2::Transform deltaOdomTf;
+                tf2::fromMsg(deltaTransf, deltaOdomTf);
+                // delta odom from sensor to base frame
+                tf2::Transform deltaOdomTf_base =
+                    mSensor2BaseTransf.inverse() * deltaOdomTf * mSensor2BaseTransf;
+
+                // Propagate Odom transform in time
+                mOdom2BaseTransf = mOdom2BaseTransf * deltaOdomTf_base;
+
+                if (mTwoDMode) {
+                    tf2::Vector3 tr_2d = mOdom2BaseTransf.getOrigin();
+                    tr_2d.setZ(mFixedZValue);
+                    mOdom2BaseTransf.setOrigin(tr_2d);
+
+                    double roll, pitch, yaw;
+                    tf2::Matrix3x3(mOdom2BaseTransf.getRotation()).getRPY(roll, pitch, yaw);
+
+                    tf2::Quaternion quat_2d;
+                    quat_2d.setRPY(0.0, 0.0, yaw);
+
+                    mOdom2BaseTransf.setRotation(quat_2d);
+                }
+
+#ifndef NDEBUG // Enable for TF checking
+                double roll, pitch, yaw;
+                tf2::Matrix3x3(mOdom2BaseTransf.getRotation()).getRPY(roll, pitch, yaw);
+
+                RCLCPP_DEBUG(get_logger(), "+++ Odometry [%s -> %s] - {%.3f,%.3f,%.3f} {%.3f,%.3f,%.3f}",
+                             mOdomFrameId.c_str(), mBaseFrameId.c_str(),
+                             mOdom2BaseTransf.getOrigin().x(), mOdom2BaseTransf.getOrigin().y(), mOdom2BaseTransf.getOrigin().z(),
+                             roll * RAD2DEG, pitch * RAD2DEG, yaw * RAD2DEG);
+#endif
+
+                // Publish odometry message
+                publishOdom(mOdom2BaseTransf, deltaOdom, mFrameTimestamp);
+                mTrackingReady = true;
+            }
+        } else if (mFloorAlignment) {
+            static unsigned int count = 0;
+
+            if (count % 50 == 0) {
+                RCLCPP_DEBUG(get_logger(), "Odometry will be published as soon as the floor as been detected for the first time");
+            }
+
+            count++;
+        } else {
+            static unsigned int count = 0;
+
+            if (count % 50 == 0) {
+                RCLCPP_DEBUG(get_logger(), "Odometry will be published as soon as the first valid pose will be calculated");
+            }
+
+            count++;
+        }
+    }
+
+    void ZedCameraComponent::publishOdom(tf2::Transform odom2baseTransf, sl::Pose& slPose, rclcpp::Time t) {
+
+        nav_msgs::msg::Odometry odom;
+        odom.header.stamp = t;
+        odom.header.frame_id = mOdomFrameId; // frame
+        odom.child_frame_id = mBaseFrameId;      // camera_frame
+        // conversion from Tranform to message
+        geometry_msgs::msg::Transform base2odom = tf2::toMsg(odom2baseTransf);
+        // Add all value in odometry message
+        odom.pose.pose.position.x = base2odom.translation.x;
+        odom.pose.pose.position.y = base2odom.translation.y;
+        odom.pose.pose.position.z = base2odom.translation.z;
+        odom.pose.pose.orientation.x = base2odom.rotation.x;
+        odom.pose.pose.orientation.y = base2odom.rotation.y;
+        odom.pose.pose.orientation.z = base2odom.rotation.z;
+        odom.pose.pose.orientation.w = base2odom.rotation.w;
+
+        // Odometry pose covariance if available
+#if ((ZED_SDK_MAJOR_VERSION==2 && ZED_SDK_MINOR_VERSION>=6  && ZED_SDK_MINOR_VERSION<8))
+
+        if (!mSpatialMemory && mPublishPoseCov) {
+            for (size_t i = 0; i < odom.pose.covariance.size(); i++) {
+                // odom.pose.covariance[i] = static_cast<double>(slPose.pose_covariance[i]); // TODO USE THIS WHEN STEP BY STEP COVARIANCE WILL BE AVAILABLE IN CAMERA_FRAME
+
+                odom.pose.covariance[i] = static_cast<double>(mLastZedPose.pose_covariance[i]);
+
+                if (mTwoDMode) {
+                    if ((i >= 2 && i <= 4) ||
+                        (i >= 8 && i <= 10) ||
+                        (i >= 12 && i <= 29) ||
+                        (i >= 32 && i <= 34)) {
+                        odom.pose.covariance[i] = 1e-9; // Very low covariance if 2D mode
+                    }
+                }
+            }
+        } else if (mSpatialMemory && mPublishPoseCov) { // Use fixed diagonal covariance
+            for (size_t i = 0; i < odom.pose.covariance.size(); i++) {
+                if (i % 7 == 0) {
+                    odom.pose.covariance[i] = 1e-3;
+                } else {
+                    odom.pose.covariance[i] = 0.0;
+                }
+            }
+        }
+
+#elif ((ZED_SDK_MAJOR_VERSION==2 && ZED_SDK_MINOR_VERSION>=8))
+        // TODO use delta odometry covariance accumulation!
+#endif
+
+        // Publish odometry message
+        mPubOdom->publish(odom);
+    }
+
+    void ZedCameraComponent::processPose() {
+
     }
 }
 

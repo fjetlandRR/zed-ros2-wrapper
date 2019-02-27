@@ -63,13 +63,14 @@ zed:
                 odometry_frame:             'odom'
                 # odometry_db:              'odometry_db_path'                  # Future use
                 pose_smoothing:             false                               # Enable only if making an AR application
-                spatial_memory:             false
+                spatial_memory:             true
                 floor_alignment:            false
                 two_d_mode:                 false
+                fixed_z_value:              0.0                                 # if 2D mode this is the fixed value assigned to Z coordinate
                 initial_tracking_pose:      [0.0,0.0,0.0, 0.0,0.0,0.0]          # [X, Y, Z, R, P, Y]
                 pose_topic:                 'pose'
                 odometry_topic:             'odom'
-                init_odom_with_first_valid_pose: true                
+                init_odom_with_first_valid_pose: false                          # Wait for first valid "map pose" to initialize the odometry starting value
                 path_pub_rate:              2.0
                 path_max_count:             -1                                  # Number of position kept in path vector. '-1' for no limitations
                 publish_pose_covariance:    true

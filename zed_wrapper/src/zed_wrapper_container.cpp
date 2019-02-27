@@ -1,6 +1,6 @@
 // /////////////////////////////////////////////////////////////////////////
 //
-// Copyright (c) 2018, STEREOLABS.
+// Copyright (c) 2019, STEREOLABS.
 //
 // All rights reserved.
 //
@@ -23,6 +23,9 @@
 
 #include "zed_component.hpp"
 #include "zed_it_broadcaster.hpp"
+#include "zed_tf_broadcaster.hpp"
+
+#include <iostream>
 
 int main(int argc, char* argv[]) {
 
@@ -32,7 +35,6 @@ int main(int argc, char* argv[]) {
     setvbuf(stdout, NULL, _IONBF, BUFSIZ);
 
     rclcpp::init(argc, argv);
-
     rclcpp::executors::MultiThreadedExecutor exe;
 
     // namespace: zed - node_name: zed_node - intra-process communication: true
@@ -56,6 +58,13 @@ int main(int argc, char* argv[]) {
     //       and re-publish them using `image_transport`
     auto it_node = std::make_shared<stereolabs::ZedItBroadcaster>(defNodeName, defNamespace, intraProcComm);
     exe.add_node(it_node->get_node_base_interface());
+
+    // ZED TF broadcaster
+    // Note: this is required since `tf2_ros::TransformBroadcaster` in ROS Crystal Clemmys does not support
+    //       Lifecycle nodes. The component subscribes to ODOM and POSE topics from the main component
+    //       and re-publish them using `TransformBroadcaster`
+    auto tf_node = std::make_shared<stereolabs::ZedTfBroadcaster>(defNodeName, defNamespace, intraProcComm);
+    exe.add_node(tf_node->get_node_base_interface());
 
     exe.spin();
 

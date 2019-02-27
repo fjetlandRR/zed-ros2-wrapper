@@ -22,8 +22,8 @@ namespace stereolabs {
 
         RCLCPP_INFO(get_logger(), "ZED Image Transport Broadcaster Component created");
 
-        RCLCPP_INFO(get_logger(), "ZED Image Transport Broadcaster node: %s", get_name());
         RCLCPP_INFO(get_logger(), "ZED Image Transport Broadcaster namespace: %s", get_namespace());
+        RCLCPP_INFO(get_logger(), "ZED Image Transport Broadcaster node: %s", get_name());
 
         // Topics
         std::string topicPrefix = get_namespace();
@@ -56,7 +56,6 @@ namespace stereolabs {
         mRawLeftTopic = topicPrefix + it_prefix + mLeftTopicRoot + raw_suffix + img_raw_topic;
         mDepthTopic = topicPrefix + it_prefix + mDepthTopicRoot + (mOpenniDepthMode ? depth_openni_topic :
                       depth_topic);
-
 
         // Advertise publishers
         initPublishers();
