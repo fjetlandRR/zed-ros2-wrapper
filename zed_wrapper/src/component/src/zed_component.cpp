@@ -1648,7 +1648,7 @@ namespace stereolabs {
         mPubPose = create_publisher<geometry_msgs::msg::PoseStamped>(mPoseTopic, mPoseQos);
         RCLCPP_INFO(get_logger(), " * '%s'", mPubPose->get_topic_name());
 
-        mPubPoseCov = create_publisher<geometry_msgs::msg::PoseWithCovariance>(mPoseCovTopic, mPoseQos);
+        mPubPoseCov = create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(mPoseCovTopic, mPoseQos);
         RCLCPP_INFO(get_logger(), " * '%s'", mPubPoseCov->get_topic_name());
 
         mPubOdom = create_publisher<nav_msgs::msg::Odometry>(mOdomTopic, mPoseQos);
@@ -1959,6 +1959,8 @@ namespace stereolabs {
         }
 
         mPubOdom->on_activate();
+        mPubPose->on_activate();
+        mPubPoseCov->on_activate();
         // <---- Publishers activation
 
         // ----> Start Pointcloud thread
@@ -2059,6 +2061,8 @@ namespace stereolabs {
         }
 
         mPubOdom->on_deactivate();
+        mPubPose->on_deactivate();
+        mPubPoseCov->on_deactivate();
         // <---- Publishers deactivation
 
         // We return a success and hence invoke the transition to the next
@@ -3087,6 +3091,183 @@ namespace stereolabs {
 
     void ZedCameraComponent::processPose() {
 
+        size_t odomSub = count_subscribers(mOdomTopic);         // mPubOdom subscribers
+
+        static sl::TRACKING_STATE oldStatus;
+        mTrackingStatus = mZed.getPosition(mLastZedPose, sl::REFERENCE_FRAME_WORLD);
+
+        sl::Translation translation = mLastZedPose.getTranslation();
+        sl::Orientation quat = mLastZedPose.getOrientation();
+
+#ifndef NDEBUG // Enable for TF checking
+        double roll, pitch, yaw;
+        tf2::Matrix3x3(tf2::Quaternion(quat.ox, quat.oy, quat.oz, quat.ow)).getRPY(roll, pitch, yaw);
+
+        RCLCPP_DEBUG(get_logger(), "Sensor POSE [%s -> %s] - {%.2f,%.2f,%.2f} {%.2f,%.2f,%.2f}",
+                     mLeftCamFrameId.c_str(), mMapFrameId.c_str(),
+                     translation.x, translation.y, translation.z,
+                     roll * RAD2DEG, pitch * RAD2DEG, yaw * RAD2DEG);
+
+        RCLCPP_DEBUG(get_logger(), "MAP -> Tracking Status: %s", sl::toString(mTrackingStatus).c_str());
+#endif
+
+        if (mTrackingStatus == sl::TRACKING_STATE_OK ||
+            mTrackingStatus == sl::TRACKING_STATE_SEARCHING /*|| status == sl::TRACKING_STATE_FPS_TOO_LOW*/) {
+            // Transform ZED pose in TF2 Transformation
+            geometry_msgs::msg::Transform map2sensTransf;
+
+            map2sensTransf.translation.x = translation(0);
+            map2sensTransf.translation.y = translation(1);
+            map2sensTransf.translation.z = translation(2);
+            map2sensTransf.rotation.x = quat(0);
+            map2sensTransf.rotation.y = quat(1);
+            map2sensTransf.rotation.z = quat(2);
+            map2sensTransf.rotation.w = quat(3);
+            tf2::Transform map_to_sens_transf;
+            tf2::fromMsg(map2sensTransf, map_to_sens_transf);
+
+            mMap2BaseTransf = map_to_sens_transf * mSensor2BaseTransf; // Base position in map frame
+
+            if (mTwoDMode) {
+                tf2::Vector3 tr_2d = mMap2BaseTransf.getOrigin();
+                tr_2d.setZ(mFixedZValue);
+                mMap2BaseTransf.setOrigin(tr_2d);
+
+                double roll, pitch, yaw;
+                tf2::Matrix3x3(mMap2BaseTransf.getRotation()).getRPY(roll, pitch, yaw);
+
+                tf2::Quaternion quat_2d;
+                quat_2d.setRPY(0.0, 0.0, yaw);
+
+                mMap2BaseTransf.setRotation(quat_2d);
+            }
+
+#ifndef NDEBUG // Enable for TF checking
+            double roll, pitch, yaw;
+            tf2::Matrix3x3(mMap2BaseTransf.getRotation()).getRPY(roll, pitch, yaw);
+
+            RCLCPP_DEBUG(get_logger(), "*** Base POSE [%s -> %s] - {%.3f,%.3f,%.3f} {%.3f,%.3f,%.3f}",
+                         mMapFrameId.c_str(), mBaseFrameId.c_str(),
+                         mMap2BaseTransf.getOrigin().x(), mMap2BaseTransf.getOrigin().y(), mMap2BaseTransf.getOrigin().z(),
+                         roll * RAD2DEG, pitch * RAD2DEG, yaw * RAD2DEG);
+#endif
+
+            bool initOdom = false;
+
+            if (!(mFloorAlignment)) {
+                initOdom = mInitOdomWithPose;
+            } else {
+                initOdom = (mTrackingStatus == sl::TRACKING_STATE_OK) & mInitOdomWithPose;
+            }
+
+            if (initOdom || mResetOdom) {
+
+                RCLCPP_INFO(get_logger(), "Odometry aligned to last tracking pose");
+
+                // Propagate Odom transform in time
+                mOdom2BaseTransf = mMap2BaseTransf;
+                mMap2BaseTransf.setIdentity();
+
+                if (odomSub > 0) {
+                    // Publish odometry message
+                    publishOdom(mOdom2BaseTransf, mLastZedPose, mFrameTimestamp);
+                }
+
+                mInitOdomWithPose = false;
+                mResetOdom = false;
+            } else {
+                // Transformation from map to odometry frame
+                mMap2OdomTransf = mMap2BaseTransf * mOdom2BaseTransf.inverse();
+
+#ifndef NDEBUG // Enable for TF checking
+                double roll, pitch, yaw;
+                tf2::Matrix3x3(mMap2OdomTransf.getRotation()).getRPY(roll, pitch, yaw);
+
+                RCLCPP_DEBUG(get_logger(), "+++ Diff [%s -> %s] - {%.3f,%.3f,%.3f} {%.3f,%.3f,%.3f}",
+                             mMapFrameId.c_str(), mOdomFrameId.c_str(),
+                             mMap2OdomTransf.getOrigin().x(), mMap2OdomTransf.getOrigin().y(), mMap2OdomTransf.getOrigin().z(),
+                             roll * RAD2DEG, pitch * RAD2DEG, yaw * RAD2DEG);
+#endif
+            }
+
+            // Publish Pose message
+            publishPose();
+            mTrackingReady = true;
+        }
+
+        oldStatus = mTrackingStatus;
+    }
+
+    void ZedCameraComponent::publishPose() {
+
+        size_t poseSub = count_subscribers(mPoseTopic);         // mPubPose subscribers
+        size_t poseCovSub = count_subscribers(mPoseCovTopic);   // mPubPoseCov subscribers
+
+        tf2::Transform base_pose;
+        base_pose.setIdentity();
+
+        base_pose = mMap2BaseTransf;
+
+        std_msgs::msg::Header header;
+        header.stamp = mFrameTimestamp;
+        header.frame_id = mMapFrameId; // frame
+
+        geometry_msgs::msg::Pose pose;
+
+        // conversion from Tranform to message
+        geometry_msgs::msg::Transform base2frame = tf2::toMsg(base_pose);
+
+        // Add all value in Pose message
+        pose.position.x = base2frame.translation.x;
+        pose.position.y = base2frame.translation.y;
+        pose.position.z = base2frame.translation.z;
+        pose.orientation.x = base2frame.rotation.x;
+        pose.orientation.y = base2frame.rotation.y;
+        pose.orientation.z = base2frame.rotation.z;
+        pose.orientation.w = base2frame.rotation.w;
+
+        if (poseSub > 0) {
+
+            geometry_msgs::msg::PoseStamped poseNoCov;
+
+            poseNoCov.header = header;
+            poseNoCov.pose = pose;
+
+            // Publish pose stamped message
+            mPubPose->publish(poseNoCov);
+        }
+
+        if (mPublishPoseCov) {
+            if (poseCovSub > 0) {
+                geometry_msgs::msg::PoseWithCovarianceStamped poseCov;
+
+                poseCov.header = header;
+                poseCov.pose.pose = pose;
+
+                // Odometry pose covariance if available
+#if ((ZED_SDK_MAJOR_VERSION>2) || (ZED_SDK_MAJOR_VERSION==2 && ZED_SDK_MINOR_VERSION>=6 && ZED_SDK_MINOR_VERSION<8))
+
+                if (!mSpatialMemory)
+#endif
+                {
+                    for (size_t i = 0; i < poseCov.pose.covariance.size(); i++) {
+                        poseCov.pose.covariance[i] = static_cast<double>(mLastZedPose.pose_covariance[i]);
+
+                        if (mTwoDMode) {
+                            if ((i >= 2 && i <= 4) ||
+                                (i >= 8 && i <= 10) ||
+                                (i >= 12 && i <= 29) ||
+                                (i >= 32 && i <= 34)) {
+                                poseCov.pose.covariance[i] = 1e-9; // Very low covariance if 2D mode
+                            }
+                        }
+                    }
+                }
+
+                // Publish pose with covariance stamped message
+                mPubPoseCov->publish(poseCov);
+            }
+        }
     }
 }
 

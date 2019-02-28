@@ -45,7 +45,7 @@
 #include "sensor_msgs/msg/imu.hpp"
 #include "stereo_msgs/msg/disparity_image.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
-#include "geometry_msgs/msg/pose_with_covariance_stamped.h"
+#include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
 
@@ -69,7 +69,7 @@ namespace stereolabs {
     typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::Imu>> imuPub;
 
     typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<geometry_msgs::msg::PoseStamped>> posePub;
-    typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<geometry_msgs::msg::PoseWithCovariance>> poseCovPub;
+    typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<geometry_msgs::msg::PoseWithCovarianceStamped>> poseCovPub;
     typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<nav_msgs::msg::Odometry>> odomPub;
     typedef std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<nav_msgs::msg::Path>> pathPub;
 
@@ -78,7 +78,7 @@ namespace stereolabs {
     typedef std::shared_ptr<sensor_msgs::msg::Imu> imuMsgPtr;
 
     typedef std::shared_ptr<geometry_msgs::msg::PoseStamped> poseMsgPtr;
-    typedef std::shared_ptr<geometry_msgs::msg::PoseWithCovariance> poseCovMsgPtr;
+    typedef std::shared_ptr<geometry_msgs::msg::PoseWithCovarianceStamped> poseCovMsgPtr;
     typedef std::shared_ptr<nav_msgs::msg::Odometry> odomMsgPtr;
     typedef std::shared_ptr<nav_msgs::msg::Path> pathMsgPtr;
     // <---- Typedefs to simplify declarations
@@ -219,6 +219,7 @@ namespace stereolabs {
 
         void processOdometry();
         void processPose();
+        void publishPose();
 
         /** \brief Get the information of the ZED cameras and store them in an
          * information message
@@ -503,6 +504,7 @@ namespace stereolabs {
         bool mTrackingActivated = false;
         bool mTrackingReady = false;
         sl::TRACKING_STATE mTrackingStatus;
+        bool mResetOdom = false;
 
         // TF Transforms
         tf2::Transform mMap2OdomTransf;         // Coordinates of the odometry frame in map frame

@@ -56,6 +56,7 @@ find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(image_transport REQUIRED)
+find_package(geometry_msgs REQUIRED)
 
 ###############################################################################
 #Add all files in subdirectories of the project in
@@ -85,6 +86,7 @@ include_directories(
     ${tf2_geometry_msgs_INCLUDE_DIRS}
     ${nav_msgs_INCLUDE_DIRS}
     ${image_transport_INCLUDE_DIRS}
+    ${geometry_msgs_INCLUDE_DIRS}
 )
 
 link_directories(${ZED_LIBRARY_DIR})
@@ -143,6 +145,7 @@ ament_target_dependencies(zed_component
   tf2_ros
   tf2_geometry_msgs
   nav_msgs
+  geometry_msgs
 )
 rclcpp_register_node_plugins(zed_component "stereolabs::ZedCameraComponent")
 set(node_plugins "${node_plugins}stereolabs::ZedCameraComponent;$<TARGET_FILE:zed_component>\n")
@@ -166,11 +169,12 @@ target_compile_definitions(zed_tf_broadcaster PRIVATE "ZED_BUILDING_DLL")
 target_link_libraries(zed_tf_broadcaster
     ${rclcpp_LIBRARIES}
 )
-ament_target_dependencies(zed_it_broadcaster
+ament_target_dependencies(zed_tf_broadcaster
   rclcpp
   std_msgs
   sensor_msgs
   navigation_msgs
+  geometry_msgs
   tf2_geometry_msgs
   tf2
   tf2_ros

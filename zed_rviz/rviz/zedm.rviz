@@ -7,7 +7,8 @@ Panels:
         - /Global Options1
         - /TF1
         - /TF1/Frames1
-        - /Video1/Camera1/Status1
+        - /Video1
+        - /Video1/Camera1
         - /Video1/Camera1/Visibility1
         - /Pos. Tracking1
         - /Pos. Tracking1/Odometry1
@@ -69,6 +70,8 @@ Visualization Manager:
         All Enabled: false
         base_link:
           Value: true
+        odom:
+          Value: true
         zed_camera_center:
           Value: true
         zed_left_camera_frame:
@@ -85,14 +88,15 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        base_link:
-          zed_camera_center:
-            zed_left_camera_frame:
-              zed_left_camera_optical_frame:
-                {}
-            zed_right_camera_frame:
-              zed_right_camera_optical_frame:
-                {}
+        odom:
+          base_link:
+            zed_camera_center:
+              zed_left_camera_frame:
+                zed_left_camera_optical_frame:
+                  {}
+              zed_right_camera_frame:
+                zed_right_camera_optical_frame:
+                  {}
       Update Interval: 0
       Value: true
     - Class: rviz_common/Group
@@ -117,7 +121,7 @@ Visualization Manager:
               Odometry: true
               Value: false
             RobotModel: false
-            TF: true
+            TF: false
             Value: true
             Video:
               Left Rect: true
@@ -273,7 +277,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 3.5384414196014404
+      Distance: 8.761051177978516
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1

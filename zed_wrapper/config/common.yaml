@@ -70,7 +70,7 @@ zed:
                 initial_tracking_pose:      [0.0,0.0,0.0, 0.0,0.0,0.0]          # [X, Y, Z, R, P, Y]
                 pose_topic:                 'pose'
                 odometry_topic:             'odom'
-                init_odom_with_first_valid_pose: false                          # Wait for first valid "map pose" to initialize the odometry starting value
+                init_odom_with_first_valid_pose: true                          # Wait for first valid "map pose" to initialize the odometry starting value
                 path_pub_rate:              2.0
                 path_max_count:             -1                                  # Number of position kept in path vector. '-1' for no limitations
                 publish_pose_covariance:    true
