@@ -4,8 +4,9 @@ using namespace std::placeholders;
 
 namespace stereolabs {
 
-    ZedTfBroadcaster::ZedTfBroadcaster(const std::string& node_name /*= "zed_it_broadcaster"*/,
+    ZedTfBroadcaster::ZedTfBroadcaster(const std::string& node_name /*= "zed_node_tf"*/,
                                        const std::string& ros_namespace /*= "zed"*/,
+                                       const std::string& main_node /*= "zed_node"*/,
                                        bool intra_process_comms /*= true*/)
         : Node(node_name, ros_namespace, intra_process_comms) {
 
@@ -30,8 +31,46 @@ namespace stereolabs {
             topicPrefix += "/";
         }
 
-        topicPrefix += get_name();
+        mMainNode = main_node;
+
+        topicPrefix += mMainNode;
         topicPrefix += "/";
+
+        // Parameters
+        initParameters();
+
+        // Initialize subscribers
+        initSubscribers();
+    }
+
+    ZedTfBroadcaster::ZedTfBroadcaster(
+        const std::string& node_name,
+        const std::string& ros_namespace,
+        const std::string& main_node,
+        rclcpp::Context::SharedPtr context,
+        const std::vector<std::string>& arguments,
+        const std::vector<rclcpp::Parameter>& initial_parameters,
+        bool use_global_arguments /*= true*/,
+        bool use_intra_process_comms /*= false*/,
+        bool start_parameter_services /*= true*/)
+        : Node(node_name, ros_namespace, context, arguments, initial_parameters,
+               use_global_arguments, use_intra_process_comms, start_parameter_services) {
+
+#ifndef NDEBUG
+        rcutils_ret_t res = rcutils_logging_set_logger_level(get_name(), RCUTILS_LOG_SEVERITY_DEBUG);
+
+        if (res != RCUTILS_RET_OK) {
+            RCLCPP_INFO(get_logger(), "Error setting DEBUG logger");
+        }
+
+#endif
+
+        RCLCPP_INFO(get_logger(), "ZED TF Broadcaster Component created");
+
+        RCLCPP_INFO(get_logger(), "ZED TF Broadcaster namespace: %s", get_namespace());
+        RCLCPP_INFO(get_logger(), "ZED TF Broadcaster node: %s", get_name());
+
+        mMainNode = main_node;
 
         // Parameters
         initParameters();
@@ -120,7 +159,7 @@ namespace stereolabs {
             topicPrefix += "/";
         }
 
-        topicPrefix += get_name();
+        topicPrefix += mMainNode;
         topicPrefix += "/";
 
         // Topics

@@ -35,10 +35,43 @@ namespace stereolabs {
 
     class ZedTfBroadcaster : public rclcpp::Node {
       public:
+        /// Create a new node with the specified name.
+        /**
+         * \param[in] node_name Name of the node.
+         * \param[in] namespace_ Namespace of the node.
+         * \param[in] use_intra_process_comms True to use the optimized intra-process communication
+         * pipeline to pass messages between nodes in the same process using shared memory.
+         */
         ZED_PUBLIC
         explicit ZedTfBroadcaster(const std::string& node_name = "zed_tf_broadcaster",
                                   const std::string& ros_namespace = "zed",
+                                  const std::string& main_node = "zed_node",
                                   bool intra_process_comms = true);
+
+        /// Create a node based on the node name and a rclcpp::Context.
+        /**
+         * \param[in] node_name Name of the node.
+         * \param[in] ros_namespace Namespace of the node.
+         * \param[in] context The context for the node (usually represents the state of a process).
+         * \param[in] arguments Command line arguments that should apply only to this node.
+         * \param[in] initial_parameters a list of initial values for parameters on the node.
+         * This can be used to provide remapping rules that only affect one instance.
+         * \param[in] use_global_arguments False to prevent node using arguments passed to the process.
+         * \param[in] use_intra_process_comms True to use the optimized intra-process communication
+         * pipeline to pass messages between nodes in the same process using shared memory.
+         * \param[in] start_parameter_services True to setup ROS interfaces for accessing parameters
+         * in the node.
+         */
+        ZED_PUBLIC
+        explicit ZedTfBroadcaster(const std::string& node_name,
+                                  const std::string& ros_namespace,
+                                  const std::string& main_node,
+                                  rclcpp::Context::SharedPtr context,
+                                  const std::vector<std::string>& arguments,
+                                  const std::vector<rclcpp::Parameter>& initial_parameters,
+                                  bool use_global_arguments = true,
+                                  bool use_intra_process_comms = false,
+                                  bool start_parameter_services = true);
 
       protected:
         void odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg);
@@ -72,6 +105,8 @@ namespace stereolabs {
         std::shared_ptr<tf2_ros::TransformBroadcaster> mPoseBroadcaster;
 
         bool mBroadcasterInitialized = false;
+
+        std::string mMainNode;
     };
 
 }  // namespace stereolabs
