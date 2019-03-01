@@ -1580,6 +1580,7 @@ namespace stereolabs {
         mPoseCovTopic = topicPrefix + mPoseTopic + "_with_covariance";
         mPoseTopic = topicPrefix + mPoseTopic;
         mOdomTopic = topicPrefix + mOdomTopic;
+        mMapOdomTopic = topicPrefix + mMapOdomTopic;
         mPosePathTopic = topicPrefix + mPosePathTopic;
         mOdomPathTopic = topicPrefix + mOdomPathTopic;
         // <---- Pos. Tracking topics
@@ -1655,6 +1656,9 @@ namespace stereolabs {
         mPubOdom = create_publisher<nav_msgs::msg::Odometry>(mOdomTopic, mPoseQos);
         RCLCPP_INFO(get_logger(), " * '%s'", mPubOdom->get_topic_name());
 
+        mPubMapOdom = create_publisher<nav_msgs::msg::Odometry>(mMapOdomTopic, mPoseQos);
+        RCLCPP_INFO(get_logger(), " * '%s'", mPubMapOdom->get_topic_name());
+
         if (mPathPubRate > 0.0) {
             mPubPathPose = create_publisher<nav_msgs::msg::Path>(mPosePathTopic, mPoseQos);
             RCLCPP_INFO(get_logger(), " * '%s'", mPubPathPose->get_topic_name());
@@ -1691,9 +1695,6 @@ namespace stereolabs {
         // ----> TF2 Transform
         mTfBuffer.reset(new tf2_ros::Buffer(this->get_clock()));
         mTfListener.reset(new tf2_ros::TransformListener(*mTfBuffer));
-
-        //        set_pose(mInitialBasePose[0], mInitialBasePose[1], mInitialBasePose[2],
-        //                 mInitialBasePose[3], mInitialBasePose[4], mInitialBasePose[5]);
         // <---- TF2 Transform
 
         // ----> Frame IDs
@@ -1957,11 +1958,13 @@ namespace stereolabs {
         if (mImuPubRate > 0 && mZedRealCamModel == sl::MODEL_ZED_M) {
             mPubImu->on_activate();
             mPubImuRaw->on_activate();
+
         }
 
         mPubOdom->on_activate();
         mPubPose->on_activate();
         mPubPoseCov->on_activate();
+        mPubMapOdom->on_activate();
         // <---- Publishers activation
 
         // ----> Start Pointcloud thread
@@ -2064,6 +2067,7 @@ namespace stereolabs {
         mPubOdom->on_deactivate();
         mPubPose->on_deactivate();
         mPubPoseCov->on_deactivate();
+        mPubMapOdom->on_deactivate();
         // <---- Publishers deactivation
 
         // We return a success and hence invoke the transition to the next
@@ -2863,7 +2867,7 @@ namespace stereolabs {
         RCLCPP_INFO(get_logger(), " * Waiting for valid static transformations...");
 
         bool transformOk = false;
-        int count = 0;
+        double elapsed = 0.0;
 
         auto start = std::chrono::high_resolution_clock::now();
 
@@ -2871,17 +2875,22 @@ namespace stereolabs {
             transformOk = set_pose(mInitialBasePose[0], mInitialBasePose[1], mInitialBasePose[2],
                                    mInitialBasePose[3], mInitialBasePose[4], mInitialBasePose[5]);
 
-            double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() -
-                             start).count();
+            elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() -
+                      start).count();
 
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-            if (elapsed > 5000) {
+            if (elapsed > 10000) {
                 RCLCPP_WARN(get_logger(),
-                            " !!! Impossible to initialize static transformations. Is the 'ROBOT STATE PUBLISHER' node correctly working? ");
+                            " !!! Failed to get static transforms. Is the 'ROBOT STATE PUBLISHER' node correctly working? ");
                 break;
             }
+
         } while (transformOk == false);
+
+        if (transformOk) {
+            RCLCPP_DEBUG(get_logger(), "Time required to get valid static transforms: %g sec", elapsed / 1000.);
+        }
 
         RCLCPP_INFO(get_logger(), "Initial ZED left camera pose (ZED pos. tracking): ");
         RCLCPP_INFO(get_logger(), " * T: [%g,%g,%g]",
@@ -3238,6 +3247,7 @@ namespace stereolabs {
 
             // Publish Pose message
             publishPose();
+            publishMapOdom();
             mTrackingReady = true;
         }
 
@@ -3316,6 +3326,27 @@ namespace stereolabs {
         }
     }
 
+    void ZedCameraComponent::publishMapOdom() {
+
+        nav_msgs::msg::Odometry msg;
+        msg.header.stamp = mFrameTimestamp;
+        msg.header.frame_id = mMapFrameId; // map frame
+        msg.child_frame_id = mOdomFrameId;      // odom frame
+        // conversion from Tranform to message
+        geometry_msgs::msg::Transform map2odom = tf2::toMsg(mMap2OdomTransf);
+        // Add all value in odometry message
+        msg.pose.pose.position.x = map2odom.translation.x;
+        msg.pose.pose.position.y = map2odom.translation.y;
+        msg.pose.pose.position.z = map2odom.translation.z;
+        msg.pose.pose.orientation.x = map2odom.rotation.x;
+        msg.pose.pose.orientation.y = map2odom.rotation.y;
+        msg.pose.pose.orientation.z = map2odom.rotation.z;
+        msg.pose.pose.orientation.w = map2odom.rotation.w;
+
+        // Publish odometry message
+        mPubMapOdom->publish(msg);
+    }
+
     bool ZedCameraComponent::getCamera2BaseTransform() {
         RCLCPP_DEBUG(get_logger(), "Getting static TF from '%s' to '%s'", mCameraFrameId.c_str(), mBaseFrameId.c_str());
 
@@ -3325,9 +3356,11 @@ namespace stereolabs {
         // ----> Static transforms
         // Sensor to Base link
         try {
+
             // Save the transformation
             geometry_msgs::msg::TransformStamped c2b =
-                mTfBuffer->lookupTransform(mCameraFrameId, mBaseFrameId, tf2::TimePointZero);
+                mTfBuffer->lookupTransform(mCameraFrameId, mBaseFrameId, tf2::TimePointZero, std::chrono::seconds(2));
+
             // Get the TF2 transformation
             tf2::fromMsg(c2b.transform, mCamera2BaseTransf);
 
@@ -3371,7 +3404,7 @@ namespace stereolabs {
         try {
             // Save the transformation
             geometry_msgs::msg::TransformStamped s2c =
-                mTfBuffer->lookupTransform(mDepthFrameId, mCameraFrameId, tf2::TimePointZero);
+                mTfBuffer->lookupTransform(mDepthFrameId, mCameraFrameId, tf2::TimePointZero, std::chrono::seconds(2));
             // Get the TF2 transformation
             tf2::fromMsg(s2c.transform, mSensor2CameraTransf);
 
@@ -3414,7 +3447,7 @@ namespace stereolabs {
         try {
             // Save the transformation
             geometry_msgs::msg::TransformStamped s2b =
-                mTfBuffer->lookupTransform(mDepthFrameId, mBaseFrameId, tf2::TimePointZero);
+                mTfBuffer->lookupTransform(mDepthFrameId, mBaseFrameId, tf2::TimePointZero, std::chrono::seconds(2));
             // Get the TF2 transformation
             tf2::fromMsg(s2b.transform, mSensor2BaseTransf);
 

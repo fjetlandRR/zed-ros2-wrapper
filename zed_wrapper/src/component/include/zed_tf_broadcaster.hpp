@@ -31,7 +31,6 @@
 namespace stereolabs {
 
     typedef rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odomSub;
-    typedef rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr poseSub;
 
     class ZedTfBroadcaster : public rclcpp::Node {
       public:
@@ -75,7 +74,7 @@ namespace stereolabs {
 
       protected:
         void odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg);
-        void poseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
+        void mapOdomCallback(const nav_msgs::msg::Odometry::SharedPtr msg);
 
         void initSubscribers();
         void initParameters();
@@ -86,11 +85,11 @@ namespace stereolabs {
         bool mPublishTf = false;
         bool mPublishMapTf = false;
         std::string mOdomTopic = "odom";
-        std::string mPoseTopic = "pose";
+        std::string mMapOdomTopic = "map2odom";
 
         // Subscribers
         odomSub mOdomSub;
-        poseSub mPoseSub;
+        odomSub mMapOdomSub;
 
         // QoS profiles
         // https://github.com/ros2/ros2/wiki/About-Quality-of-Service-Settings
@@ -98,11 +97,11 @@ namespace stereolabs {
 
         // Messages
         nav_msgs::msg::Odometry mOdomMsg;
-        geometry_msgs::msg::PoseStamped mPoseMsg;
+        nav_msgs::msg::Odometry mMapOdomMsg;
 
         // Broadcasters
         std::shared_ptr<tf2_ros::TransformBroadcaster> mOdomBroadcaster;
-        std::shared_ptr<tf2_ros::TransformBroadcaster> mPoseBroadcaster;
+        std::shared_ptr<tf2_ros::TransformBroadcaster> mMapOdomBroadcaster;
 
         bool mBroadcasterInitialized = false;
 

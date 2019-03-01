@@ -220,6 +220,7 @@ namespace stereolabs {
         void processOdometry();
         void processPose();
         void publishPose();
+        void publishMapOdom();
 
         /** \brief Get the information of the ZED cameras and store them in an
          * information message
@@ -412,6 +413,7 @@ namespace stereolabs {
         posePub mPubPose;
         poseCovPub mPubPoseCov;
         odomPub mPubOdom;
+        odomPub mPubMapOdom;
         pathPub mPubPathPose;
         pathPub mPubPathOdom;
 
@@ -447,10 +449,12 @@ namespace stereolabs {
         std::string mImuRawTopic = "data_raw";
 
         std::string mOdomTopic = "odom";
+        std::string mMapOdomTopic = "map2odom";
         std::string mPoseTopic = "pose";
         std::string mPoseCovTopic = "pose_with_covariance";
         std::string mPosePathTopic = "path_pose";
         std::string mOdomPathTopic = "path_odom";
+
 
         // Messages
         // Camera info

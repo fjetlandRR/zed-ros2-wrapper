@@ -84,14 +84,6 @@ namespace stereolabs {
         rclcpp::Parameter paramVal;
         std::string paramName;
 
-        paramName = "tracking.pose_topic";
-
-        if (get_parameter(paramName, paramVal)) {
-            mPoseTopic = paramVal.as_string();
-        } else {
-            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
-        }
-
         paramName = "tracking.odometry_topic";
 
         if (get_parameter(paramName, paramVal)) {
@@ -160,12 +152,16 @@ namespace stereolabs {
             topicPrefix += "/";
         }
 
+        if ('/' != topicPrefix.at(0)) {
+            topicPrefix = '/'  + topicPrefix;
+        }
+
         topicPrefix += mMainNode;
         topicPrefix += "/";
 
         // Topics
         mOdomTopic = topicPrefix + mOdomTopic;
-        mPoseTopic = topicPrefix + mPoseTopic;
+        mMapOdomTopic = topicPrefix + mMapOdomTopic;
 
         // Subscribers
         mOdomSub = create_subscription<nav_msgs::msg::Odometry>(
@@ -174,11 +170,11 @@ namespace stereolabs {
                        mPoseQos);
         RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mOdomSub->get_topic_name());
 
-        mPoseSub = create_subscription<geometry_msgs::msg::PoseStamped>(
-                       mPoseTopic,
-                       std::bind(&ZedTfBroadcaster::poseCallback, this, _1),
-                       mPoseQos);
-        RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mPoseSub->get_topic_name());
+        mMapOdomSub = create_subscription<nav_msgs::msg::Odometry>(
+                          mMapOdomTopic,
+                          std::bind(&ZedTfBroadcaster::mapOdomCallback, this, _1),
+                          mPoseQos);
+        RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mMapOdomSub->get_topic_name());
     }
 
     void ZedTfBroadcaster::initBroadcasters() {
@@ -187,7 +183,7 @@ namespace stereolabs {
         }
 
         mOdomBroadcaster.reset(new tf2_ros::TransformBroadcaster(shared_from_this()));
-        mPoseBroadcaster.reset(new tf2_ros::TransformBroadcaster(shared_from_this()));
+        mMapOdomBroadcaster.reset(new tf2_ros::TransformBroadcaster(shared_from_this()));
 
         mBroadcasterInitialized = true;
     }
@@ -199,8 +195,10 @@ namespace stereolabs {
 
         geometry_msgs::msg::TransformStamped tf;
 
+        rclcpp::Time delayed(msg->header.stamp.sec, msg->header.stamp.nanosec + 33000000);
+
         tf.header.frame_id = msg->header.frame_id;
-        tf.header.stamp = msg->header.stamp;
+        tf.header.stamp = delayed;
 
         tf.child_frame_id = msg->child_frame_id;
         tf.transform.translation.x = msg->pose.pose.position.x;
@@ -214,25 +212,27 @@ namespace stereolabs {
         mOdomBroadcaster->sendTransform(tf);
     }
 
-    void ZedTfBroadcaster::poseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
+    void ZedTfBroadcaster::mapOdomCallback(const nav_msgs::msg::Odometry::SharedPtr msg) {
         if (!mBroadcasterInitialized) {
             initBroadcasters();
         }
 
         geometry_msgs::msg::TransformStamped tf;
 
+        rclcpp::Time delayed(msg->header.stamp.sec, msg->header.stamp.nanosec + 33000000);
+
         tf.header.frame_id = msg->header.frame_id;
-        tf.header.stamp = msg->header.stamp;
+        tf.header.stamp = delayed;
 
-        tf.child_frame_id = "odom"; // TODO get from params
-        tf.transform.translation.x = msg->pose.position.x;
-        tf.transform.translation.y = msg->pose.position.y;
-        tf.transform.translation.z = msg->pose.position.z;
-        tf.transform.rotation.x = msg->pose.orientation.x;
-        tf.transform.rotation.y = msg->pose.orientation.y;
-        tf.transform.rotation.z = msg->pose.orientation.z;
-        tf.transform.rotation.w = msg->pose.orientation.w;
+        tf.child_frame_id = msg->child_frame_id;
+        tf.transform.translation.x = msg->pose.pose.position.x;
+        tf.transform.translation.y = msg->pose.pose.position.y;
+        tf.transform.translation.z = msg->pose.pose.position.z;
+        tf.transform.rotation.x = msg->pose.pose.orientation.x;
+        tf.transform.rotation.y = msg->pose.pose.orientation.y;
+        tf.transform.rotation.z = msg->pose.pose.orientation.z;
+        tf.transform.rotation.w = msg->pose.pose.orientation.w;
 
-        mOdomBroadcaster->sendTransform(tf);
+        mMapOdomBroadcaster->sendTransform(tf);
     }
 }  // namespace stereolabs

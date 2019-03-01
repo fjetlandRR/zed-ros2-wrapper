@@ -5,13 +5,12 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /TF1
         - /TF1/Frames1
         - /Video1
         - /Video1/Camera1
         - /Video1/Camera1/Visibility1
-        - /Pos. Tracking1
-        - /Pos. Tracking1/Odometry1
+        - /Depth1/PointCloud21/Status1
+        - /Pos. Tracking1/Odometry1/Status1
         - /Pos. Tracking1/Odometry1/Shape1
         - /Pos. Tracking1/Odometry1/Covariance1
         - /Pos. Tracking1/Odometry1/Covariance1/Position1
@@ -122,6 +121,7 @@ Visualization Manager:
             Grid: true
             Pos. Tracking:
               Odometry: true
+              Pose: true
               Value: false
             RobotModel: false
             TF: false
@@ -250,7 +250,7 @@ Visualization Manager:
             Alpha: 1
             Axes Length: 1
             Axes Radius: 0.10000000149011612
-            Color: 255; 255; 0
+            Color: 25; 25; 255
             Head Length: 0.30000001192092896
             Head Radius: 0.10000000149011612
             Shaft Length: 1
@@ -259,11 +259,26 @@ Visualization Manager:
           Topic: /zed/zed_node/odom
           Unreliable: true
           Value: true
+        - Alpha: 1
+          Axes Length: 1
+          Axes Radius: 0.10000000149011612
+          Class: rviz_default_plugins/Pose
+          Color: 25; 255; 0
+          Enabled: true
+          Head Length: 0.30000001192092896
+          Head Radius: 0.10000000149011612
+          Name: Pose
+          Shaft Length: 1
+          Shaft Radius: 0.05000000074505806
+          Shape: Arrow
+          Topic: /zed/zed_node/pose
+          Unreliable: false
+          Value: true
       Enabled: true
       Name: Pos. Tracking
   Enabled: true
   Global Options:
-    Background Color: 186; 189; 182
+    Background Color: 200; 200; 200
     Fixed Frame: map
     Frame Rate: 30
   Name: root
@@ -280,25 +295,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 8.761051177978516
+      Distance: 2.5049848556518555
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.03598492965102196
-        Y: 0.12537242472171783
-        Z: -0.0009649693965911865
+        X: 0.22345879673957825
+        Y: 0.5584768652915955
+        Z: 0.022650999948382378
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.4103977382183075
+      Pitch: 0.6453966498374939
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 2.7954020500183105
+      Yaw: 4.150396347045898
     Saved: ~
 Window Geometry:
   Camera:
