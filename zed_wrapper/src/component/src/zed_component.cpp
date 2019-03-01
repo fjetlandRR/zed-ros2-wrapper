@@ -91,10 +91,11 @@ namespace stereolabs {
 
 #endif
 
-        RCLCPP_INFO(get_logger(), "ZED Camera Component created");
-
-        RCLCPP_INFO(get_logger(), "ZED namespace: '%s'", get_namespace());
-        RCLCPP_INFO(get_logger(), "ZED node: '%s'", get_name());
+        RCLCPP_INFO(get_logger(), "***********************************");
+        RCLCPP_INFO(get_logger(), " ZED Camera Main Component created");
+        RCLCPP_INFO(get_logger(), "  * namespace: %s", get_namespace());
+        RCLCPP_INFO(get_logger(), "  * node name: %s", get_name());
+        RCLCPP_INFO(get_logger(), "***********************************");
 
         RCLCPP_DEBUG(get_logger(), "[ROS2] Using RMW_IMPLEMENTATION = %s", rmw_get_implementation_identifier());
 
@@ -2315,11 +2316,11 @@ namespace stereolabs {
                 if (!loop_rate.sleep()) {
                     if (mean_elab_sec > (1. / mZedFrameRate)) {
 
-                        RCLCPP_WARN(get_logger(),  "Expected cycle time: %g sec  - Real cycle time: %g sec ",
-                                    1.0 / mZedFrameRate, mean_elab_sec);
-                        RCLCPP_INFO(get_logger(),  "Elaboration takes longer than requested "
-                                    "by the FPS rate. Please consider to "
-                                    "lower the 'frame_rate' setting.");
+                        RCLCPP_WARN_SKIPFIRST(get_logger(),  "Expected cycle time: %g sec  - Real cycle time: %g sec ",
+                                              1.0 / mZedFrameRate, mean_elab_sec);
+                        RCLCPP_WARN_SKIPFIRST(get_logger(),  "Elaboration takes longer than requested "
+                                              "by the FPS rate. Please consider to "
+                                              "lower the 'frame_rate' setting.");
 
                         loop_rate.reset();
                     }
@@ -2824,7 +2825,7 @@ namespace stereolabs {
         //                poseFrame = mPublishMapTf ? mMapFrameId : mOdometryFrameId;
 
         //                // Save the transformation from base to frame
-        //                geometry_msgs::TransformStamped c2p =
+        //                geometry_msgs::msg::TransformStamped c2p =
         //                    mTfBuffer->lookupTransform(poseFrame, mCameraFrameId, ros::Time(0));
         //                // Get the TF2 transformation
         //                tf2::fromMsg(c2p.transform, cam_to_pose);
@@ -2859,8 +2860,35 @@ namespace stereolabs {
     void ZedCameraComponent::startTracking() {
         RCLCPP_INFO(get_logger(), "*** Starting Positional Tracking ***");
 
-        set_pose(mInitialBasePose[0], mInitialBasePose[1], mInitialBasePose[2],
-                 mInitialBasePose[3], mInitialBasePose[4], mInitialBasePose[5]);
+        RCLCPP_INFO(get_logger(), " * Waiting for valid static transformations...");
+
+        bool transformOk = false;
+        int count = 0;
+
+        auto start = std::chrono::high_resolution_clock::now();
+
+        do {
+            transformOk = set_pose(mInitialBasePose[0], mInitialBasePose[1], mInitialBasePose[2],
+                                   mInitialBasePose[3], mInitialBasePose[4], mInitialBasePose[5]);
+
+            double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() -
+                             start).count();
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+            if (elapsed > 5000) {
+                RCLCPP_WARN(get_logger(),
+                            " !!! Impossible to initialize static transformations. Is the 'ROBOT STATE PUBLISHER' node correctly working? ");
+                break;
+            }
+        } while (transformOk == false);
+
+        RCLCPP_INFO(get_logger(), "Initial ZED left camera pose (ZED pos. tracking): ");
+        RCLCPP_INFO(get_logger(), " * T: [%g,%g,%g]",
+                    mInitialPoseSl.getTranslation().x, mInitialPoseSl.getTranslation().y, mInitialPoseSl.getTranslation().z);
+        RCLCPP_INFO(get_logger(), " * Q: [%g,%g,%g,%g]",
+                    mInitialPoseSl.getOrientation().ox, mInitialPoseSl.getOrientation().oy,
+                    mInitialPoseSl.getOrientation().oz, mInitialPoseSl.getOrientation().ow);
 
         if (mOdometryDb != "" && !sl_tools::file_exist(mOdometryDb)) {
             mOdometryDb = "";
@@ -2887,9 +2915,21 @@ namespace stereolabs {
         }
     }
 
-    void ZedCameraComponent::set_pose(float xt, float yt, float zt, float rr,
+    bool ZedCameraComponent::set_pose(float xt, float yt, float zt, float rr,
                                       float pr, float yr) {
         initTransforms();
+
+        if (!mSensor2BaseTransfValid) {
+            getSens2BaseTransform();
+        }
+
+        if (!mSensor2CameraTransfValid) {
+            getSens2CameraTransform();
+        }
+
+        if (!mCamera2BaseTransfValid) {
+            getCamera2BaseTransform();
+        }
 
         // Apply Base to sensor transform
         tf2::Transform initPose;
@@ -2916,46 +2956,40 @@ namespace stereolabs {
         sl::Translation trasl(t_vec);
         sl::Orientation orient(q_vec);
         mInitialPoseSl.setTranslation(trasl);
-        mInitialPoseSl.setOrientation(orient);
+
+        return (mSensor2BaseTransfValid & mSensor2CameraTransfValid & mCamera2BaseTransfValid);
     }
 
     void ZedCameraComponent::initTransforms() {
-        // Dynamic transforms
-        mOdom2BaseTransf.setIdentity();
-        mMap2OdomTransf.setIdentity();
 
-        // Static transforms
-        // Sensor to Base link
-        try {
-            // Save the transformation from base to frame
-            tf2::TimePoint tf2_time;
-            tf2_time = tf2::timeFromSec(mFrameTimestamp.seconds());
-            geometry_msgs::msg::TransformStamped s2b =
-                mTfBuffer->lookupTransform(mDepthFrameId, mBaseFrameId, tf2_time); // Coordinates of the base in sensor frame
-            // Get the TF2 transformation
-            tf2::fromMsg(s2b.transform, mSensor2BaseTransf);
+        // According to REP 105 -> http://www.ros.org/reps/rep-0105.html
 
-#if 0 //#ifndef NDEBUG // Enable for TF checking
-            double roll, pitch, yaw;
-            tf2::Matrix3x3(mSensor2BaseTransf.getRotation()).getRPY(roll, pitch, yaw);
+        // base_link <- odom <- map
+        //     ^                 |
+        //     |                 |
+        //     -------------------
 
-            RCLCPP_DEBUG(get_logger(), "Sensor2Base [%s -> %s] - {%.3f,%.3f,%.3f} {%.3f,%.3f,%.3f}",
-                         mDepthFrameId.c_str(), mBaseFrameId.c_str(),
-                         mSensor2BaseTransf.getOrigin().x(), mSensor2BaseTransf.getOrigin().y(), mSensor2BaseTransf.getOrigin().z(),
-                         roll * RAD2DEG, pitch * RAD2DEG, yaw * RAD2DEG);
-#endif
-
-
-        } catch (tf2::TransformException& ex) {
-            RCLCPP_WARN(get_logger(), "The tf from '%s' to '%s' does not seem to be available, "
-                        "will assume it as identity! Verify that the static transforms from URDF are correctly published",
-                        mDepthFrameId.c_str(), mBaseFrameId.c_str());
-            RCLCPP_DEBUG(get_logger(), "Transform error: %s", ex.what());
-            mSensor2BaseTransf.setIdentity();
-        }
+        // ----> Dynamic transforms
+        mOdom2BaseTransf.setIdentity();     // broadcasted if `publish_tf` is true
+        mMap2OdomTransf.setIdentity();      // broadcasted if `publish_map_tf` is true
+        mMap2BaseTransf.setIdentity();      // used internally, but not broadcasted
+        mMap2CameraTransf.setIdentity();    // used internally, but not broadcasted
+        // <---- Dynamic transforms
     }
 
     void ZedCameraComponent::processOdometry() {
+
+        if (!mSensor2BaseTransfValid) {
+            getSens2BaseTransform();
+        }
+
+        if (!mSensor2CameraTransfValid) {
+            getSens2CameraTransform();
+        }
+
+        if (!mCamera2BaseTransfValid) {
+            getCamera2BaseTransform();
+        }
 
         if (!mInitOdomWithPose) {
             sl::Pose deltaOdom;
@@ -3090,6 +3124,18 @@ namespace stereolabs {
     }
 
     void ZedCameraComponent::processPose() {
+
+        if (!mSensor2BaseTransfValid) {
+            getSens2BaseTransform();
+        }
+
+        if (!mSensor2CameraTransfValid) {
+            getSens2CameraTransform();
+        }
+
+        if (!mCamera2BaseTransfValid) {
+            getCamera2BaseTransform();
+        }
 
         size_t odomSub = count_subscribers(mOdomTopic);         // mPubOdom subscribers
 
@@ -3268,6 +3314,137 @@ namespace stereolabs {
                 mPubPoseCov->publish(poseCov);
             }
         }
+    }
+
+    bool ZedCameraComponent::getCamera2BaseTransform() {
+        RCLCPP_DEBUG(get_logger(), "Getting static TF from '%s' to '%s'", mCameraFrameId.c_str(), mBaseFrameId.c_str());
+
+        mCamera2BaseTransfValid = false;
+        static int errCount = 0;
+
+        // ----> Static transforms
+        // Sensor to Base link
+        try {
+            // Save the transformation
+            geometry_msgs::msg::TransformStamped c2b =
+                mTfBuffer->lookupTransform(mCameraFrameId, mBaseFrameId, tf2::TimePointZero);
+            // Get the TF2 transformation
+            tf2::fromMsg(c2b.transform, mCamera2BaseTransf);
+
+            double roll, pitch, yaw;
+            tf2::Matrix3x3(mCamera2BaseTransf.getRotation()).getRPY(roll, pitch, yaw);
+
+            RCLCPP_INFO(get_logger(), "Static transform Camera Center to Base [%s -> %s]",
+                        mCameraFrameId.c_str(), mBaseFrameId.c_str());
+            RCLCPP_INFO(get_logger(), " * Translation: {%.3f,%.3f,%.3f}",
+                        mCamera2BaseTransf.getOrigin().x(), mCamera2BaseTransf.getOrigin().y(), mCamera2BaseTransf.getOrigin().z());
+            RCLCPP_INFO(get_logger(), " * Rotation: {%.3f,%.3f,%.3f}",
+                        roll * RAD2DEG, pitch * RAD2DEG, yaw * RAD2DEG);
+
+        } catch (tf2::TransformException& ex) {
+            if (++errCount % 50 == 0) {
+                RCLCPP_WARN(get_logger(), "The tf from '%s' to '%s' does not seem to be available, "
+                            "will assume it as identity!",
+                            mCameraFrameId.c_str(), mBaseFrameId.c_str());
+                RCLCPP_WARN(get_logger(), "Transform error: %s", ex.what());
+            }
+
+            mCamera2BaseTransf.setIdentity();
+            return false;
+        }
+
+        // <---- Static transforms
+
+        errCount = 0;
+        mCamera2BaseTransfValid = true;
+        return true;
+    }
+
+    bool ZedCameraComponent::getSens2CameraTransform() {
+        RCLCPP_DEBUG(get_logger(), "Getting static TF from '%s' to '%s'", mDepthFrameId.c_str(), mCameraFrameId.c_str());
+
+        mSensor2CameraTransfValid = false;
+        static int errCount = 0;
+
+        // ----> Static transforms
+        // Sensor to Camera Center
+        try {
+            // Save the transformation
+            geometry_msgs::msg::TransformStamped s2c =
+                mTfBuffer->lookupTransform(mDepthFrameId, mCameraFrameId, tf2::TimePointZero);
+            // Get the TF2 transformation
+            tf2::fromMsg(s2c.transform, mSensor2CameraTransf);
+
+            double roll, pitch, yaw;
+            tf2::Matrix3x3(mSensor2CameraTransf.getRotation()).getRPY(roll, pitch, yaw);
+
+            RCLCPP_INFO(get_logger(), "Static transform Sensor to Camera Center [%s -> %s]",
+                        mDepthFrameId.c_str(), mCameraFrameId.c_str());
+            RCLCPP_INFO(get_logger(), " * Translation: {%.3f,%.3f,%.3f}",
+                        mSensor2CameraTransf.getOrigin().x(), mSensor2CameraTransf.getOrigin().y(), mSensor2CameraTransf.getOrigin().z());
+            RCLCPP_INFO(get_logger(), " * Rotation: {%.3f,%.3f,%.3f}",
+                        roll * RAD2DEG, pitch * RAD2DEG, yaw * RAD2DEG);
+        } catch (tf2::TransformException& ex) {
+            if (++errCount % 50 == 0) {
+                RCLCPP_WARN(get_logger(), "The tf from '%s' to '%s' does not seem to be available, "
+                            "will assume it as identity!",
+                            mDepthFrameId.c_str(), mCameraFrameId.c_str());
+                RCLCPP_WARN(get_logger(), "Transform error: %s", ex.what());
+            }
+
+            mSensor2CameraTransf.setIdentity();
+            return false;
+        }
+
+        // <---- Static transforms
+
+        errCount = 0;
+        mSensor2CameraTransfValid = true;
+        return true;
+    }
+
+    bool ZedCameraComponent::getSens2BaseTransform() {
+        RCLCPP_DEBUG(get_logger(), "Getting static TF from '%s' to '%s'", mDepthFrameId.c_str(), mBaseFrameId.c_str());
+
+        mSensor2BaseTransfValid = false;
+        static int errCount = 0;
+
+        // ----> Static transforms
+        // Sensor to Base link
+        try {
+            // Save the transformation
+            geometry_msgs::msg::TransformStamped s2b =
+                mTfBuffer->lookupTransform(mDepthFrameId, mBaseFrameId, tf2::TimePointZero);
+            // Get the TF2 transformation
+            tf2::fromMsg(s2b.transform, mSensor2BaseTransf);
+
+            double roll, pitch, yaw;
+            tf2::Matrix3x3(mSensor2BaseTransf.getRotation()).getRPY(roll, pitch, yaw);
+
+            RCLCPP_INFO(get_logger(), "Static transform Sensor to Base [%s -> %s]",
+                        mDepthFrameId.c_str(), mBaseFrameId.c_str());
+            RCLCPP_INFO(get_logger(), " * Translation: {%.3f,%.3f,%.3f}",
+                        mSensor2BaseTransf.getOrigin().x(), mSensor2BaseTransf.getOrigin().y(), mSensor2BaseTransf.getOrigin().z());
+            RCLCPP_INFO(get_logger(), " * Rotation: {%.3f,%.3f,%.3f}",
+                        roll * RAD2DEG, pitch * RAD2DEG, yaw * RAD2DEG);
+
+        } catch (tf2::TransformException& ex) {
+            if (++errCount % 50 == 0) {
+                RCLCPP_WARN(get_logger(), "The tf from '%s' to '%s' does not seem to be available, "
+                            "will assume it as identity!",
+                            mDepthFrameId.c_str(), mBaseFrameId.c_str());
+                RCLCPP_WARN(get_logger(), "Transform error: %s", ex.what());
+            }
+
+            mSensor2BaseTransf.setIdentity();
+            return false;
+        }
+
+        // <---- Static transforms
+
+        errCount = 0;
+        mSensor2BaseTransfValid = true;
+        return true;
     }
 }
 

@@ -65,10 +65,11 @@ namespace stereolabs {
 
 #endif
 
-        RCLCPP_INFO(get_logger(), "ZED TF Broadcaster Component created");
-
-        RCLCPP_INFO(get_logger(), "ZED TF Broadcaster namespace: %s", get_namespace());
-        RCLCPP_INFO(get_logger(), "ZED TF Broadcaster node: %s", get_name());
+        RCLCPP_INFO(get_logger(), "**************************************");
+        RCLCPP_INFO(get_logger(), " ZED TF Broadcaster Component created");
+        RCLCPP_INFO(get_logger(), "  * namespace: %s", get_namespace());
+        RCLCPP_INFO(get_logger(), "  * node name: %s", get_name());
+        RCLCPP_INFO(get_logger(), "************************************");
 
         mMainNode = main_node;
 
@@ -171,13 +172,13 @@ namespace stereolabs {
                        mOdomTopic,
                        std::bind(&ZedTfBroadcaster::odomCallback, this, _1),
                        mPoseQos);
-        RCLCPP_DEBUG(get_logger(), " * Subscribed to '%s'", mOdomSub->get_topic_name());
+        RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mOdomSub->get_topic_name());
 
         mPoseSub = create_subscription<geometry_msgs::msg::PoseStamped>(
                        mPoseTopic,
                        std::bind(&ZedTfBroadcaster::poseCallback, this, _1),
                        mPoseQos);
-        RCLCPP_DEBUG(get_logger(), " * Subscribed to '%s'", mPoseSub->get_topic_name());
+        RCLCPP_INFO(get_logger(), " * Subscribed to '%s'", mPoseSub->get_topic_name());
     }
 
     void ZedTfBroadcaster::initBroadcasters() {
@@ -217,7 +218,21 @@ namespace stereolabs {
         if (!mBroadcasterInitialized) {
             initBroadcasters();
         }
+
+        geometry_msgs::msg::TransformStamped tf;
+
+        tf.header.frame_id = msg->header.frame_id;
+        tf.header.stamp = msg->header.stamp;
+
+        tf.child_frame_id = "odom"; // TODO get from params
+        tf.transform.translation.x = msg->pose.position.x;
+        tf.transform.translation.y = msg->pose.position.y;
+        tf.transform.translation.z = msg->pose.position.z;
+        tf.transform.rotation.x = msg->pose.orientation.x;
+        tf.transform.rotation.y = msg->pose.orientation.y;
+        tf.transform.rotation.z = msg->pose.orientation.z;
+        tf.transform.rotation.w = msg->pose.orientation.w;
+
+        mOdomBroadcaster->sendTransform(tf);
     }
-
-
 }  // namespace stereolabs

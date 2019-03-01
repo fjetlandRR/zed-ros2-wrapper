@@ -215,7 +215,7 @@ namespace stereolabs {
 
         void initTransforms();
         void startTracking();
-        void set_pose(float xt, float yt, float zt, float rr, float pr, float yr);
+        bool set_pose(float xt, float yt, float zt, float rr, float pr, float yr);
 
         void processOdometry();
         void processPose();
@@ -278,6 +278,21 @@ namespace stereolabs {
          * \param e : the ros::TimerEvent binded to the callback
          */
         rcl_interfaces::msg::SetParametersResult paramChangeCallback(std::vector<rclcpp::Parameter> parameters);
+
+        /** \brief Utility to retrieve the static transform from Base to Depth Sensor
+                 *        from static TF
+                 */
+        bool getSens2BaseTransform();
+
+        /** \brief Utility to retrieve the static transform from Camera center to Depth Sensor
+         *        from static TF
+         */
+        bool getSens2CameraTransform();
+
+        /** \brief Utility to retrieve the static transform from Base Link to Camera center
+         *        from static TF
+         */
+        bool getCamera2BaseTransform();
 
       private:
         // Status variables

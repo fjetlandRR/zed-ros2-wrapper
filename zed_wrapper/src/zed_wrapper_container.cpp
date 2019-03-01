@@ -58,21 +58,23 @@ int main(int argc, char* argv[]) {
     rclcpp::executors::MultiThreadedExecutor multiExec(execArgs);
 
     // namespace: zed - node_name: zed_node - intra-process communication: true
-    std::string defNamespace = "zed";
-    std::string defNodeName = "zed_node";
-    bool intraProcComm = true;
-
-    std::vector<rclcpp::Parameter> params = createParamsListFromYAMLs(argc, argv, defNamespace, defNodeName);
+    std::string lcNamespace = "zed";
+    std::string lcNodeName = "zed_node";
+    bool intraProcComm = false;
 
     // ZED main component
-    auto lc_node = std::make_shared<stereolabs::ZedCameraComponent>(
-                       defNodeName, defNamespace,
-                       context,
-                       std::vector<std::string>(),
-                       params,
-                       false,
-                       intraProcComm);
+    // Note: use the constructor to get node_name and namespace from the launch file
+    auto lc_node = std::make_shared<stereolabs::ZedCameraComponent>(lcNodeName, lcNamespace, intraProcComm);
     multiExec.add_node(lc_node->get_node_base_interface());
+
+    // Overwrite the default values with the effective ones
+    lcNamespace = lc_node->get_namespace();
+    lcNodeName = lc_node->get_name();
+
+    // This is useful to use the same parameter of the Lifecyle node in the IT and TF broadcasters even
+    // if the node names are not the same (ROS2 requires that namespace+node_name in the YAML file match
+    // namespace+node_name of the node where it is loaded)
+    std::vector<rclcpp::Parameter> params = createParamsListFromYAMLs(argc, argv, lcNamespace, lcNodeName);
 
     // Note: image topics published by the main component do not support the ROS standard for `camera_info`
     //       topics to be compatible with the `camera view` plugin of `RVIZ2`.
@@ -85,7 +87,7 @@ int main(int argc, char* argv[]) {
     //       Lifecycle nodes. The component subscribes to image and depth topics from the main component
     //       and re-publish them using `image_transport`
     auto it_node = std::make_shared<stereolabs::ZedItBroadcaster>(
-                       defNodeName + "_it", defNamespace, defNodeName,
+                       lcNodeName + "_it", lcNamespace, lcNodeName,
                        context,
                        std::vector<std::string>(),
                        params,
@@ -98,7 +100,7 @@ int main(int argc, char* argv[]) {
     //       Lifecycle nodes. The component subscribes to ODOM and POSE topics from the main component
     //       and re-publish them using `TransformBroadcaster`
     auto tf_node = std::make_shared<stereolabs::ZedTfBroadcaster>(
-                       defNodeName + "_tf", defNamespace, defNodeName,
+                       lcNodeName + "_tf", lcNamespace, lcNodeName,
                        context,
                        std::vector<std::string>(),
                        params,
@@ -131,7 +133,7 @@ std::vector<rclcpp::Parameter> createParamsListFromYAMLs(int argc, char* argv[],
         std::string yaml_path = argvStr.erase(0, prefix.size());
         yaml_paths.push_back(yaml_path);
 
-        std::cout << yaml_path << std::endl;
+        std::cout << "YAML config: " << yaml_path << std::endl;
     }
 
     rcutils_allocator_t allocator = rcutils_get_default_allocator();
@@ -147,6 +149,8 @@ std::vector<rclcpp::Parameter> createParamsListFromYAMLs(int argc, char* argv[],
     if ('/' != combined_name_.at(0)) {
         combined_name_ = '/'  + combined_name_;
     }
+
+    std::cout << "Parsing parameters for " << combined_name_ << std::endl;
 
     for (const std::string& yaml_path : yaml_paths) {
         rcl_params_t* yaml_params = rcl_yaml_node_struct_init(allocator);
@@ -176,12 +180,7 @@ std::vector<rclcpp::Parameter> createParamsListFromYAMLs(int argc, char* argv[],
             parameters[param.get_name()] = param;
         }
     }
-
-    // initial values passed to constructor overwrite yaml file sources
-    //    for (auto& param : initial_parameters) {
-    //        parameters[param.get_name()] = param;
-    //    }
-
+    
     res.reserve(parameters.size());
 
     for (auto& kv : parameters) {
