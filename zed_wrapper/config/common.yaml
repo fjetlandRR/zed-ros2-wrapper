@@ -10,7 +10,7 @@ zed:
             general:
                 # To load a SVO file add the parameter `svo_file` and set a valid path
                 # Note: you cannot set `svo_file` with an empty string
-                # svo_file: '/home/walter/Documents/ZED/well.svo'
+                # svo_file: '/media/walter/Stereolabs-SSD/SVO/Stereolabs/sofa.svo'
                 camera_timeout_sec:         5
                 camera_max_reconnect:       5
                 camera_reactivate:          false                               # set to false if there is an external node manager that activates the camera after a correct configure

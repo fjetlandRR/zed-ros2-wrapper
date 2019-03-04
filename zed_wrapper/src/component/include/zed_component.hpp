@@ -320,10 +320,13 @@ namespace stereolabs {
          */
         void publishPointCloud();
 
-        /** \brief Callback to publish IMU raw data with a ROS publisher.
-         * \param e : the ros::TimerEvent binded to the callback
+        /** \brief Callback to publish IMU raw data with a ROS publisher
          */
         void imuPubCallback();
+
+        /** \brief Callback to publish Odometry and Pose paths with a ROS publisher
+         */
+        void pathPubCallback();
 
         /** \brief Callback to handle parameters changing
          * \param e : the ros::TimerEvent binded to the callback
@@ -369,6 +372,10 @@ namespace stereolabs {
 
         // IMU Timer
         rclcpp::TimerBase::SharedPtr mImuTimer = nullptr;
+
+        // Path Timer
+        rclcpp::TimerBase::SharedPtr mPathTimer = nullptr;
+
 
         // ZED SDK
         sl::Camera mZed;

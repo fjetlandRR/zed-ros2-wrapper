@@ -1675,6 +1675,8 @@ namespace stereolabs {
     }
 
     void ZedCameraComponent::initServices() {
+        RCLCPP_INFO(get_logger(), "*** SERVICES ***");
+
         std::string srv_name;
         std::string srv_prefix = get_namespace();
 
@@ -1686,30 +1688,39 @@ namespace stereolabs {
             srv_prefix = '/'  + srv_prefix;
         }
 
+        srv_prefix += get_name();
+        srv_prefix += '/';
+
         // ResetOdometry
         srv_name = srv_prefix + "reset_odometry";
         mResetOdomSrv = create_service<stereolabs_zed_interfaces::srv::ResetOdometry>(srv_name,
                         std::bind(&ZedCameraComponent::on_reset_odometry, this, _1, _2, _3));
+        RCLCPP_INFO(get_logger(), " * '%s'", mResetOdomSrv->get_service_name());
+
 
         // RestartTracking
         srv_name = srv_prefix + "restart_pos_tracking";
         mRestartTrkSrv = create_service<stereolabs_zed_interfaces::srv::RestartTracking>(srv_name,
                          std::bind(&ZedCameraComponent::on_restart_tracking, this, _1, _2, _3));
+        RCLCPP_INFO(get_logger(), " * '%s'", mRestartTrkSrv->get_service_name());
 
         // SetPose
         srv_name = srv_prefix + "set_pose";
         mSetPoseSrv = create_service<stereolabs_zed_interfaces::srv::SetPose>(srv_name,
                       std::bind(&ZedCameraComponent::on_set_pose, this, _1, _2, _3));
+        RCLCPP_INFO(get_logger(), " * '%s'", mSetPoseSrv->get_service_name());
 
         // StartSvoRecording
         srv_name = srv_prefix + "start_svo_rec";
         mStartSvoRecSrv = create_service<stereolabs_zed_interfaces::srv::StartSvoRecording>(srv_name,
                           std::bind(&ZedCameraComponent::on_start_svo_recording, this, _1, _2, _3));
+        RCLCPP_INFO(get_logger(), " * '%s'", mStartSvoRecSrv->get_service_name());
 
         // StartSvoRecording
         srv_name = srv_prefix + "stop_svo_rec";
         mStopSvoRecSrv = create_service<stereolabs_zed_interfaces::srv::StopSvoRecording>(srv_name,
                          std::bind(&ZedCameraComponent::on_stop_svo_recording, this, _1, _2, _3));
+        RCLCPP_INFO(get_logger(), " * '%s'", mStopSvoRecSrv->get_service_name());
     }
 
     rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCameraComponent::on_configure(
@@ -2010,6 +2021,12 @@ namespace stereolabs {
         mPubPose->on_activate();
         mPubPoseCov->on_activate();
         mPubMapOdom->on_activate();
+
+        if (mPathPubRate > 0.0) {
+            mPubPathPose->on_activate();
+            mPubPathOdom->on_activate();
+        }
+
         // <---- Publishers activation
 
         // ----> Start Pointcloud thread
@@ -2032,6 +2049,20 @@ namespace stereolabs {
         }
 
         // <---- Start IMU timer
+
+        // Camera Path
+        if (mPathPubRate > 0.0) {
+            std::chrono::milliseconds pathPeriodMsec(static_cast<int>(1000.0 / mPathPubRate));
+
+            mPathTimer = create_wall_timer(std::chrono::duration_cast<std::chrono::microseconds>(pathPeriodMsec),
+                                           std::bind(&ZedCameraComponent::pathPubCallback, this));
+
+            if (mPathMaxCount != -1) {
+                RCLCPP_DEBUG(get_logger(), "Path vectors reserved %d poses", mPathMaxCount);
+                mOdomPath.reserve(mPathMaxCount);
+                mMapPath.reserve(mPathMaxCount);
+            }
+        }
 
         // We return a success and hence invoke the transition to the next
         // step: "active".
@@ -2056,6 +2087,13 @@ namespace stereolabs {
         }
 
         // <---- Stop IMU timer
+
+        // ----> Stop Path timer
+        if (mPathTimer) {
+            mPathTimer->cancel();
+        }
+
+        // <---- Stop Path timer
 
         // ----> Verify that all the threads are not active
         if (!mThreadStop) {
@@ -2113,6 +2151,12 @@ namespace stereolabs {
         mPubPose->on_deactivate();
         mPubPoseCov->on_deactivate();
         mPubMapOdom->on_deactivate();
+
+        if (mPathPubRate > 0.0) {
+            mPubPathPose->on_deactivate();
+            mPubPathOdom->on_deactivate();
+        }
+
         // <---- Publishers deactivation
 
         // We return a success and hence invoke the transition to the next
@@ -2790,6 +2834,79 @@ namespace stereolabs {
         }
 
         //RCLCPP_DEBUG(get_logger(), "Pointcloud thread finished");
+    }
+
+    void ZedCameraComponent::pathPubCallback() {
+        uint32_t mapPathSub = count_subscribers(mPosePathTopic);
+        uint32_t odomPathSub = count_subscribers(mOdomPathTopic);
+
+        geometry_msgs::msg::PoseStamped odomPose;
+        geometry_msgs::msg::PoseStamped mapPose;
+
+        odomPose.header.stamp = mFrameTimestamp;
+        odomPose.header.frame_id = mMapFrameId; // frame
+        // conversion from Tranform to message
+        geometry_msgs::msg::Transform base2odom = tf2::toMsg(mOdom2BaseTransf);
+        // Add all value in Pose message
+        odomPose.pose.position.x = base2odom.translation.x;
+        odomPose.pose.position.y = base2odom.translation.y;
+        odomPose.pose.position.z = base2odom.translation.z;
+        odomPose.pose.orientation.x = base2odom.rotation.x;
+        odomPose.pose.orientation.y = base2odom.rotation.y;
+        odomPose.pose.orientation.z = base2odom.rotation.z;
+        odomPose.pose.orientation.w = base2odom.rotation.w;
+
+
+        mapPose.header.stamp = mFrameTimestamp;
+        mapPose.header.frame_id = mMapFrameId; // map_frame
+        // conversion from Tranform to message
+        geometry_msgs::msg::Transform base2map = tf2::toMsg(mMap2BaseTransf);
+        // Add all value in Pose message
+        mapPose.pose.position.x = base2map.translation.x;
+        mapPose.pose.position.y = base2map.translation.y;
+        mapPose.pose.position.z = base2map.translation.z;
+        mapPose.pose.orientation.x = base2map.rotation.x;
+        mapPose.pose.orientation.y = base2map.rotation.y;
+        mapPose.pose.orientation.z = base2map.rotation.z;
+        mapPose.pose.orientation.w = base2map.rotation.w;
+
+        // Circular vector
+        if (mPathMaxCount != -1) {
+            if (mOdomPath.size() == mPathMaxCount) {
+                RCLCPP_DEBUG(get_logger(), "Path vectors full: rotating ");
+                std::rotate(mOdomPath.begin(), mOdomPath.begin() + 1, mOdomPath.end());
+                std::rotate(mMapPath.begin(), mMapPath.begin() + 1, mMapPath.end());
+
+                mMapPath[mPathMaxCount - 1] = mapPose;
+                mOdomPath[mPathMaxCount - 1] = odomPose;
+            } else {
+                //RCLCPP_DEBUG(get_logger(), "Path vectors adding last available poses");
+                mMapPath.push_back(mapPose);
+                mOdomPath.push_back(odomPose);
+            }
+        } else {
+            //RCLCPP_DEBUG(get_logger(), "No limit path vectors, adding last available poses");
+            mMapPath.push_back(mapPose);
+            mOdomPath.push_back(odomPose);
+        }
+
+        if (mapPathSub > 0) {
+            nav_msgs::msg::Path mapPath;
+            mapPath.header.frame_id = mMapFrameId;
+            mapPath.header.stamp = mFrameTimestamp;
+            mapPath.poses = mMapPath;
+
+            mPubPathPose->publish(mapPath);
+        }
+
+        if (odomPathSub > 0) {
+            nav_msgs::msg::Path odomPath;
+            odomPath.header.frame_id = mMapFrameId;
+            odomPath.header.stamp = mFrameTimestamp;
+            odomPath.poses = mOdomPath;
+
+            mPubPathOdom->publish(odomPath);
+        }
     }
 
     void ZedCameraComponent::imuPubCallback() {
@@ -3554,6 +3671,9 @@ namespace stereolabs {
             const std::shared_ptr<stereolabs_zed_interfaces::srv::RestartTracking::Request>  req,
             std::shared_ptr<stereolabs_zed_interfaces::srv::RestartTracking::Response> res) {
 
+        (void)request_header;
+        (void)req;
+
         if (!set_pose(mInitialBasePose[0], mInitialBasePose[1], mInitialBasePose[2],
                       mInitialBasePose[3], mInitialBasePose[4], mInitialBasePose[5])) {
             res->done = false;
@@ -3575,6 +3695,9 @@ namespace stereolabs {
     void ZedCameraComponent::on_set_pose(const std::shared_ptr<rmw_request_id_t> request_header,
                                          const std::shared_ptr<stereolabs_zed_interfaces::srv::SetPose::Request>  req,
                                          std::shared_ptr<stereolabs_zed_interfaces::srv::SetPose::Response> res) {
+
+        (void)request_header;
+
         mInitialBasePose[0] = req->pos[0];
         mInitialBasePose[1] = req->pos[1];
         mInitialBasePose[2] = req->pos[2];
@@ -3604,6 +3727,9 @@ namespace stereolabs {
     void ZedCameraComponent::on_start_svo_recording(const std::shared_ptr<rmw_request_id_t> request_header,
             const std::shared_ptr<stereolabs_zed_interfaces::srv::StartSvoRecording::Request>  req,
             std::shared_ptr<stereolabs_zed_interfaces::srv::StartSvoRecording::Response> res) {
+
+        (void)request_header;
+
         std::lock_guard<std::mutex> lock(mRecMutex);
 
         if (mRecording) {
@@ -3671,6 +3797,10 @@ namespace stereolabs {
     void ZedCameraComponent::on_stop_svo_recording(const std::shared_ptr<rmw_request_id_t> request_header,
             const std::shared_ptr<stereolabs_zed_interfaces::srv::StopSvoRecording::Request>  req,
             std::shared_ptr<stereolabs_zed_interfaces::srv::StopSvoRecording::Response> res) {
+
+        (void)request_header;
+        (void)req;
+
         std::lock_guard<std::mutex> lock(mRecMutex);
 
         if (!mRecording) {
