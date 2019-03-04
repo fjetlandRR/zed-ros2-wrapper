@@ -1698,8 +1698,18 @@ namespace stereolabs {
 
         // SetPose
         srv_name = srv_prefix + "set_pose";
-        setPoseSrv = create_service<stereolabs_zed_interfaces::srv::SetPose>(srv_name,
-                     std::bind(&ZedCameraComponent::on_set_pose, this, _1, _2, _3));
+        mSetPoseSrv = create_service<stereolabs_zed_interfaces::srv::SetPose>(srv_name,
+                      std::bind(&ZedCameraComponent::on_set_pose, this, _1, _2, _3));
+
+        // StartSvoRecording
+        srv_name = srv_prefix + "start_svo_rec";
+        mStartSvoRecSrv = create_service<stereolabs_zed_interfaces::srv::StartSvoRecording>(srv_name,
+                          std::bind(&ZedCameraComponent::on_start_svo_recording, this, _1, _2, _3));
+
+        // StartSvoRecording
+        srv_name = srv_prefix + "stop_svo_rec";
+        mStopSvoRecSrv = create_service<stereolabs_zed_interfaces::srv::StopSvoRecording>(srv_name,
+                         std::bind(&ZedCameraComponent::on_stop_svo_recording, this, _1, _2, _3));
     }
 
     rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCameraComponent::on_configure(
@@ -2145,6 +2155,8 @@ namespace stereolabs {
     void ZedCameraComponent::zedGrabThreadFunc() {
         RCLCPP_INFO(get_logger(), "ZED thread started");
 
+        mRecording = false;
+
         mElabPeriodMean_sec.reset(new sl_tools::CSmartMean(mZedFrameRate));
         mGrabPeriodMean_usec.reset(new sl_tools::CSmartMean(mZedFrameRate));
         mPcPeriodMean_usec.reset(new sl_tools::CSmartMean(mZedFrameRate));
@@ -2215,7 +2227,7 @@ namespace stereolabs {
             mRunGrabLoop = pubImages | pubDepthData | pubPosTrackData;
             // <---- Subscribers check
 
-            if (mRunGrabLoop) {
+            if (mRunGrabLoop || mRecording) {
                 std::lock_guard<std::mutex> lock(mPosTrkMutex);
 
                 if ((computeTracking) && !mTrackingActivated && (mZedQuality != sl::DEPTH_MODE_NONE)) { // Start the tracking
@@ -2275,10 +2287,6 @@ namespace stereolabs {
 
                     if (elapsed > timeout) {
                         if (!mSvoMode) {
-                            //                            mThreadStop = true;
-                            //                            RCLCPP_ERROR(get_logger(), "Camera timeout. Please verify the connection and restart the node.");
-                            //                            this->shutdown();
-                            //                            break;
                             std::lock_guard<std::mutex> lock(mReconnectMutex);
                             mReconnectThread = std::thread(&ZedCameraComponent::zedReconnectThreadFunc, this);
                             mReconnectThread.detach();
@@ -2291,6 +2299,20 @@ namespace stereolabs {
                     std::this_thread::sleep_for(std::chrono::seconds(mCamTimeoutSec));
                     continue;
                 }
+
+                // ----> SVO recording
+                mRecMutex.lock();
+
+                if (mRecording) {
+                    mRecState = mZed.record();
+
+                    if (!mRecState.status) {
+                        RCLCPP_WARN(get_logger(), "Error saving frame to SVO");
+                    }
+                }
+
+                mRecMutex.unlock();
+                // <---- SVO recording
 
                 // Last frame timestamp
                 mPrevFrameTimestamp = mFrameTimestamp;
@@ -3577,6 +3599,92 @@ namespace stereolabs {
         startTracking();
 
         res->done = true;
+    }
+
+    void ZedCameraComponent::on_start_svo_recording(const std::shared_ptr<rmw_request_id_t> request_header,
+            const std::shared_ptr<stereolabs_zed_interfaces::srv::StartSvoRecording::Request>  req,
+            std::shared_ptr<stereolabs_zed_interfaces::srv::StartSvoRecording::Response> res) {
+        std::lock_guard<std::mutex> lock(mRecMutex);
+
+        if (mRecording) {
+            res->result = false;
+            res->info = "Recording was already active";
+            return;
+        }
+
+        // Check filename
+        if (req->svo_filename.empty()) {
+            req->svo_filename = "zed.svo";
+        }
+
+        sl::ERROR_CODE err;
+        sl::SVO_COMPRESSION_MODE compression = sl::SVO_COMPRESSION_MODE_RAW;
+#if ((ZED_SDK_MAJOR_VERSION>2) || (ZED_SDK_MAJOR_VERSION==2 && ZED_SDK_MINOR_VERSION>=6))
+        {
+            compression = sl::SVO_COMPRESSION_MODE_HEVC;
+            err = mZed.enableRecording(req->svo_filename.c_str(), compression); // H265 Compression?
+
+            if (err == sl::ERROR_CODE_SVO_UNSUPPORTED_COMPRESSION) {
+                RCLCPP_WARN(get_logger(), " %s not available. Trying %s", sl::toString(compression).c_str(),
+                            sl::toString(sl::SVO_COMPRESSION_MODE_AVCHD).c_str());
+                compression = sl::SVO_COMPRESSION_MODE_AVCHD;
+                err = mZed.enableRecording(req->svo_filename.c_str(), compression);  // H264 Compression?
+
+                if (err == sl::ERROR_CODE_SVO_UNSUPPORTED_COMPRESSION) {
+                    RCLCPP_WARN(get_logger(), " %s not available. Trying %s", sl::toString(compression).c_str(),
+                                sl::toString(sl::SVO_COMPRESSION_MODE_LOSSY).c_str());
+                    compression = sl::SVO_COMPRESSION_MODE_LOSSY;
+                    err = mZed.enableRecording(req->svo_filename.c_str(), compression);  // JPEG Compression?
+                }
+            }
+        }
+
+        if (err == sl::ERROR_CODE_SVO_UNSUPPORTED_COMPRESSION) {
+            compression = sl::SVO_COMPRESSION_MODE_RAW;
+            err = mZed.enableRecording(req->svo_filename.c_str(), compression);
+        }
+
+#else
+        compression = sl::SVO_COMPRESSION_MODE_LOSSY;
+        err = mZed.enableRecording(req->svo_filename.c_str(), compression);  // JPEG Compression?
+#endif
+
+        if (err != sl::SUCCESS) {
+            res->result = false;
+            res->info = sl::toString(err).c_str();
+            mRecording = false;
+            return;
+        }
+
+        mRecording = true;
+        res->info = "Recording started (";
+        res->info += sl::toString(compression).c_str();
+        res->info += ")";
+        res->result = true;
+
+        RCLCPP_INFO(get_logger(), "SVO recording STARTED: %s (%s)", req->svo_filename.c_str(), sl::toString(
+                        compression).c_str());
+    }
+
+    /* \brief Service callback to StopSvoRecording service
+     */
+    void ZedCameraComponent::on_stop_svo_recording(const std::shared_ptr<rmw_request_id_t> request_header,
+            const std::shared_ptr<stereolabs_zed_interfaces::srv::StopSvoRecording::Request>  req,
+            std::shared_ptr<stereolabs_zed_interfaces::srv::StopSvoRecording::Response> res) {
+        std::lock_guard<std::mutex> lock(mRecMutex);
+
+        if (!mRecording) {
+            res->done = false;
+            res->info = "Recording was not active";
+            return;
+        }
+
+        mZed.disableRecording();
+        mRecording = false;
+        res->info = "Recording stopped";
+        res->done = true;
+
+        RCLCPP_INFO(get_logger(), "SVO recording STOPPED");
     }
 }
 

@@ -92,6 +92,8 @@ namespace stereolabs {
     typedef rclcpp::Service<stereolabs_zed_interfaces::srv::ResetOdometry>::SharedPtr resetOdomSrvPtr;
     typedef rclcpp::Service<stereolabs_zed_interfaces::srv::RestartTracking>::SharedPtr restartTrkSrvPtr;
     typedef rclcpp::Service<stereolabs_zed_interfaces::srv::SetPose>::SharedPtr setPoseSrvPtr;
+    typedef rclcpp::Service<stereolabs_zed_interfaces::srv::StartSvoRecording>::SharedPtr startSvoRecSrvPtr;
+    typedef rclcpp::Service<stereolabs_zed_interfaces::srv::StopSvoRecording>::SharedPtr stopSvoRecSrvPtr;
 
     // <---- Typedefs to simplify declarations
 
@@ -229,6 +231,18 @@ namespace stereolabs {
         void on_set_pose(const std::shared_ptr<rmw_request_id_t> request_header,
                          const std::shared_ptr<stereolabs_zed_interfaces::srv::SetPose::Request>  req,
                          std::shared_ptr<stereolabs_zed_interfaces::srv::SetPose::Response> res);
+
+        /* \brief Service callback to StartSvoRecording service
+                */
+        void on_start_svo_recording(const std::shared_ptr<rmw_request_id_t> request_header,
+                                    const std::shared_ptr<stereolabs_zed_interfaces::srv::StartSvoRecording::Request>  req,
+                                    std::shared_ptr<stereolabs_zed_interfaces::srv::StartSvoRecording::Response> res);
+
+        /* \brief Service callback to StopSvoRecording service
+         */
+        void on_stop_svo_recording(const std::shared_ptr<rmw_request_id_t> request_header,
+                                   const std::shared_ptr<stereolabs_zed_interfaces::srv::StopSvoRecording::Request>  req,
+                                   std::shared_ptr<stereolabs_zed_interfaces::srv::StopSvoRecording::Response> res);
 
       protected:
         void zedGrabThreadFunc();
@@ -541,6 +555,7 @@ namespace stereolabs {
         std::mutex mImuMutex;
         std::mutex mCamDataMutex;
         std::mutex mPcMutex;
+        std::mutex mRecMutex;
         std::condition_variable mPcDataReadyCondVar;
         bool mPcDataReady = false;
         bool mTriggerAutoExposure = false;
@@ -579,10 +594,16 @@ namespace stereolabs {
         std::shared_ptr<tf2_ros::Buffer> mTfBuffer;
         std::shared_ptr<tf2_ros::TransformListener> mTfListener;
 
+        // SVO recording
+        bool mRecording = false;
+        sl::RecordingState mRecState;
+
         // Services
         resetOdomSrvPtr mResetOdomSrv;
         restartTrkSrvPtr mRestartTrkSrv;
-        setPoseSrvPtr setPoseSrv;
+        setPoseSrvPtr mSetPoseSrv;
+        startSvoRecSrvPtr mStartSvoRecSrv;
+        stopSvoRecSrvPtr mStopSvoRecSrv;
     };
 }
 
