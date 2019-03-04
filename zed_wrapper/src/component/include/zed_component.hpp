@@ -29,29 +29,36 @@
 #include <string>
 #include <thread>
 
-#include "lifecycle_msgs/msg/state.hpp"
-#include "lifecycle_msgs/msg/transition.hpp"
+#include <lifecycle_msgs/msg/state.hpp>
+#include <lifecycle_msgs/msg/transition.hpp>
 
-#include "rclcpp/rclcpp.hpp"
-#include "rclcpp/publisher.hpp"
+#include <rclcpp/rclcpp.hpp>
+#include <rclcpp/publisher.hpp>
 
-#include "rclcpp_lifecycle/lifecycle_node.hpp"
-#include "rclcpp_lifecycle/lifecycle_publisher.hpp"
+#include <rclcpp_lifecycle/lifecycle_node.hpp>
+#include <rclcpp_lifecycle/lifecycle_publisher.hpp>
 
-#include "rcutils/logging_macros.h"
-#include "sensor_msgs/msg/image.hpp"
-#include "sensor_msgs/msg/camera_info.hpp"
-#include "sensor_msgs/msg/point_cloud2.hpp"
-#include "sensor_msgs/msg/imu.hpp"
-#include "stereo_msgs/msg/disparity_image.hpp"
-#include "geometry_msgs/msg/pose_stamped.hpp"
-#include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
-#include "nav_msgs/msg/odometry.hpp"
-#include "nav_msgs/msg/path.hpp"
+#include <rcutils/logging_macros.h>
+#include <sensor_msgs/msg/image.hpp>
+#include <sensor_msgs/msg/camera_info.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <sensor_msgs/msg/imu.hpp>
+#include <stereo_msgs/msg/disparity_image.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
+#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+#include <nav_msgs/msg/path.hpp>
 
-#include "tf2_ros/buffer.h"
-#include "tf2_ros/transform_listener.h"
-#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+
+// Services (defined in the package "stereolabs_zed_interfaces")
+#include "stereolabs_zed_interfaces/srv/reset_odometry.hpp"
+#include "stereolabs_zed_interfaces/srv/restart_tracking.hpp"
+#include "stereolabs_zed_interfaces/srv/set_pose.hpp"
+#include "stereolabs_zed_interfaces/srv/start_svo_recording.hpp"
+#include "stereolabs_zed_interfaces/srv/stop_svo_recording.hpp"
 
 #include "sl/Camera.hpp"
 
@@ -81,6 +88,11 @@ namespace stereolabs {
     typedef std::shared_ptr<geometry_msgs::msg::PoseWithCovarianceStamped> poseCovMsgPtr;
     typedef std::shared_ptr<nav_msgs::msg::Odometry> odomMsgPtr;
     typedef std::shared_ptr<nav_msgs::msg::Path> pathMsgPtr;
+
+    typedef rclcpp::Service<stereolabs_zed_interfaces::srv::ResetOdometry>::SharedPtr resetOdomSrvPtr;
+    typedef rclcpp::Service<stereolabs_zed_interfaces::srv::RestartTracking>::SharedPtr restartTrkSrvPtr;
+    typedef rclcpp::Service<stereolabs_zed_interfaces::srv::SetPose>::SharedPtr setPoseSrvPtr;
+
     // <---- Typedefs to simplify declarations
 
     /// ZedCameraComponent inheriting from rclcpp_lifecycle::LifecycleNode
@@ -195,12 +207,36 @@ namespace stereolabs {
         */
         rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_cleanup(const rclcpp_lifecycle::State&);
 
+        /** \brief Service callback to ResetOdometry service
+         *  Odometry is reset to clear drift and odometry frame gets the latest pose
+         *  from ZED tracking.
+         */
+        void on_reset_odometry(const std::shared_ptr<rmw_request_id_t> request_header,
+                               const std::shared_ptr<stereolabs_zed_interfaces::srv::ResetOdometry::Request>  req,
+                               std::shared_ptr<stereolabs_zed_interfaces::srv::ResetOdometry::Response> res);
+
+        /** \brief Service callback to RestartTracking service
+         *  Tracking is restarted and pose set to the value of the parameter `initial_tracking_pose` or to
+         *  the latest value set by the `SetPose` service
+         */
+        void on_restart_tracking(const std::shared_ptr<rmw_request_id_t> request_header,
+                                 const std::shared_ptr<stereolabs_zed_interfaces::srv::RestartTracking::Request>  req,
+                                 std::shared_ptr<stereolabs_zed_interfaces::srv::RestartTracking::Response> res);
+
+        /** \brief Service callback to SetPose service
+         *  Tracking is restarted and pose set to values passed with the service
+         */
+        void on_set_pose(const std::shared_ptr<rmw_request_id_t> request_header,
+                         const std::shared_ptr<stereolabs_zed_interfaces::srv::SetPose::Request>  req,
+                         std::shared_ptr<stereolabs_zed_interfaces::srv::SetPose::Response> res);
+
       protected:
         void zedGrabThreadFunc();
         void pointcloudThreadFunc();
         void zedReconnectThreadFunc();
 
         void initPublishers();
+        void initServices();
 
         void getGeneralParams();
         void getVideoParams();
@@ -315,6 +351,7 @@ namespace stereolabs {
         // Reconnect thread
         std::thread mReconnectThread;
         std::mutex mReconnectMutex;
+        std::mutex mPosTrkMutex;
 
         // IMU Timer
         rclcpp::TimerBase::SharedPtr mImuTimer = nullptr;
@@ -541,6 +578,11 @@ namespace stereolabs {
         // initialization Transform listener
         std::shared_ptr<tf2_ros::Buffer> mTfBuffer;
         std::shared_ptr<tf2_ros::TransformListener> mTfListener;
+
+        // Services
+        resetOdomSrvPtr mResetOdomSrv;
+        restartTrkSrvPtr mRestartTrkSrv;
+        setPoseSrvPtr setPoseSrv;
     };
 }
 

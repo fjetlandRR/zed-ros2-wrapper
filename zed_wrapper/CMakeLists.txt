@@ -28,7 +28,7 @@ function(checkPackage package customMessage)
     endif()
 endfunction(checkPackage)
 
-find_package(ZED 2.3)
+find_package(ZED 2.6)
 checkPackage("ZED" "ZED SDK not found, install it from:\n https://www.stereolabs.com/developers/")
 
 exec_program(uname ARGS -p OUTPUT_VARIABLE CMAKE_SYSTEM_NAME2)
@@ -57,12 +57,13 @@ find_package(tf2_geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(image_transport REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(stereolabs_zed_interfaces REQUIRED)
 
 ###############################################################################
 #Add all files in subdirectories of the project in
 # a dummy_target so qtcreator have access to all files
 FILE(GLOB_RECURSE extra_files ${CMAKE_SOURCE_DIR}/*)
-add_custom_target(all_files_${PROJECT_NAME} SOURCES ${extra_files})
+add_custom_target(${PROJECT_NAME}_files SOURCES ${extra_files})
 
 ###############################################################################
 # INCLUDES and LIBS
@@ -87,6 +88,7 @@ include_directories(
     ${nav_msgs_INCLUDE_DIRS}
     ${image_transport_INCLUDE_DIRS}
     ${geometry_msgs_INCLUDE_DIRS}
+    ${stereolabs_zed_interfaces_INCLUDE_DIRS}
 )
 
 link_directories(${ZED_LIBRARY_DIR})
@@ -146,6 +148,7 @@ ament_target_dependencies(zed_component
   tf2_geometry_msgs
   nav_msgs
   geometry_msgs
+  stereolabs_zed_interfaces
 )
 rclcpp_register_node_plugins(zed_component "stereolabs::ZedCameraComponent")
 set(node_plugins "${node_plugins}stereolabs::ZedCameraComponent;$<TARGET_FILE:zed_component>\n")

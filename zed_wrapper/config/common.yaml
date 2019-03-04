@@ -20,7 +20,7 @@ zed:
                 resolution:                 2                                   # '0': HD2K, '1': HD1080, '2': HD720, '3': VGA
                 verbose:                    true
                 mat_resize_factor:          1.0                                 # Dynamic
-                frame_rate:                 30
+                frame_rate:                 15
                 gpu_id:                     -1
                 base_frame:                 'base_link'                         # must be equal to the frame_id used in the URDF file
                 camera_frame:               'zed_camera_center'                 # must be equal to the frame_id used in the URDF file

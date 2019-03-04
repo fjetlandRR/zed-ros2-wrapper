@@ -6,11 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
         - /TF1/Frames1
-        - /Video1
-        - /Video1/Camera1
-        - /Video1/Camera1/Visibility1
         - /Depth1/PointCloud21/Status1
-        - /Pos. Tracking1/Odometry1/Status1
         - /Pos. Tracking1/Odometry1/Shape1
         - /Pos. Tracking1/Odometry1/Covariance1
         - /Pos. Tracking1/Odometry1/Covariance1/Position1
@@ -295,25 +291,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 2.5049848556518555
+      Distance: 1.502227783203125
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.22345879673957825
-        Y: 0.5584768652915955
-        Z: 0.022650999948382378
+        X: 0.011304055340588093
+        Y: 0.38420042395591736
+        Z: 0.5123778581619263
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6453966498374939
+      Pitch: 0.2453969120979309
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 4.150396347045898
+      Yaw: 1.7953946590423584
     Saved: ~
 Window Geometry:
   Camera:

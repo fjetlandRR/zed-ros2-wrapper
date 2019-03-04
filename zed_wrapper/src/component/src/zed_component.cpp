@@ -28,6 +28,7 @@
 #include <sensor_msgs/msg/point_field.hpp>
 
 using namespace std::chrono_literals;
+using namespace std::placeholders;
 
 #ifndef TIMER_ELAPSED
 #define TIMER_ELAPSED double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count();
@@ -1366,7 +1367,6 @@ namespace stereolabs {
         getImuParams();
 
         // Dynamic parameters callback
-        using namespace std::placeholders;
         register_param_change_callback(std::bind(&ZedCameraComponent::paramChangeCallback, this, _1));
     }
 
@@ -1524,6 +1524,10 @@ namespace stereolabs {
             topicPrefix += "/";
         }
 
+        if ('/' != topicPrefix.at(0)) {
+            topicPrefix = '/'  + topicPrefix;
+        }
+
         topicPrefix += get_name();
         topicPrefix += "/";
 
@@ -1670,6 +1674,34 @@ namespace stereolabs {
         // <---- Create Pose/Odom publishers
     }
 
+    void ZedCameraComponent::initServices() {
+        std::string srv_name;
+        std::string srv_prefix = get_namespace();
+
+        if (srv_prefix.length() > 1) {
+            srv_prefix += "/";
+        }
+
+        if ('/' != srv_prefix.at(0)) {
+            srv_prefix = '/'  + srv_prefix;
+        }
+
+        // ResetOdometry
+        srv_name = srv_prefix + "reset_odometry";
+        mResetOdomSrv = create_service<stereolabs_zed_interfaces::srv::ResetOdometry>(srv_name,
+                        std::bind(&ZedCameraComponent::on_reset_odometry, this, _1, _2, _3));
+
+        // RestartTracking
+        srv_name = srv_prefix + "restart_pos_tracking";
+        mRestartTrkSrv = create_service<stereolabs_zed_interfaces::srv::RestartTracking>(srv_name,
+                         std::bind(&ZedCameraComponent::on_restart_tracking, this, _1, _2, _3));
+
+        // SetPose
+        srv_name = srv_prefix + "set_pose";
+        setPoseSrv = create_service<stereolabs_zed_interfaces::srv::SetPose>(srv_name,
+                     std::bind(&ZedCameraComponent::on_set_pose, this, _1, _2, _3));
+    }
+
     rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCameraComponent::on_configure(
         const rclcpp_lifecycle::State&) {
         RCLCPP_INFO(get_logger(), "*** State transition: %s ***", this->get_current_state().label().c_str());
@@ -1722,6 +1754,9 @@ namespace stereolabs {
 
         // Initialize Message Publishers
         initPublishers();
+
+        // Initialize Service Servers
+        initServices();
 
         // ----> ZED configuration
         if (!mSvoFilepath.empty()) {
@@ -2181,6 +2216,7 @@ namespace stereolabs {
             // <---- Subscribers check
 
             if (mRunGrabLoop) {
+                std::lock_guard<std::mutex> lock(mPosTrkMutex);
 
                 if ((computeTracking) && !mTrackingActivated && (mZedQuality != sl::DEPTH_MODE_NONE)) { // Start the tracking
                     startTracking();
@@ -2924,8 +2960,8 @@ namespace stereolabs {
         }
     }
 
-    bool ZedCameraComponent::set_pose(float xt, float yt, float zt, float rr,
-                                      float pr, float yr) {
+    bool ZedCameraComponent::set_pose(float xt, float yt, float zt,
+                                      float rr, float pr, float yr) {
         initTransforms();
 
         if (!mSensor2BaseTransfValid) {
@@ -3002,6 +3038,7 @@ namespace stereolabs {
 
         if (!mInitOdomWithPose) {
             sl::Pose deltaOdom;
+
             mTrackingStatus = mZed.getPosition(deltaOdom, sl::REFERENCE_FRAME_CAMERA);
 
             sl::Translation translation = deltaOdom.getTranslation();
@@ -3478,6 +3515,68 @@ namespace stereolabs {
         errCount = 0;
         mSensor2BaseTransfValid = true;
         return true;
+    }
+
+    void ZedCameraComponent::on_reset_odometry(const std::shared_ptr<rmw_request_id_t> request_header,
+            const std::shared_ptr<stereolabs_zed_interfaces::srv::ResetOdometry::Request> req,
+            std::shared_ptr<stereolabs_zed_interfaces::srv::ResetOdometry::Response> res) {
+
+        (void)request_header;
+        (void)req;
+
+        mResetOdom = true;
+        res->reset_done = true;
+    }
+
+    void ZedCameraComponent::on_restart_tracking(const std::shared_ptr<rmw_request_id_t> request_header,
+            const std::shared_ptr<stereolabs_zed_interfaces::srv::RestartTracking::Request>  req,
+            std::shared_ptr<stereolabs_zed_interfaces::srv::RestartTracking::Response> res) {
+
+        if (!set_pose(mInitialBasePose[0], mInitialBasePose[1], mInitialBasePose[2],
+                      mInitialBasePose[3], mInitialBasePose[4], mInitialBasePose[5])) {
+            res->done = false;
+            return;
+        }
+
+        std::lock_guard<std::mutex> lock(mPosTrkMutex);
+
+        // Disable tracking
+        mTrackingActivated = false;
+        mZed.disableTracking();
+
+        // Restart tracking
+        startTracking();
+
+        res->done = true;
+    }
+
+    void ZedCameraComponent::on_set_pose(const std::shared_ptr<rmw_request_id_t> request_header,
+                                         const std::shared_ptr<stereolabs_zed_interfaces::srv::SetPose::Request>  req,
+                                         std::shared_ptr<stereolabs_zed_interfaces::srv::SetPose::Response> res) {
+        mInitialBasePose[0] = req->pos[0];
+        mInitialBasePose[1] = req->pos[1];
+        mInitialBasePose[2] = req->pos[2];
+
+        mInitialBasePose[3] = req->orient[0];
+        mInitialBasePose[4] = req->orient[1];
+        mInitialBasePose[5] = req->orient[2];
+
+        if (!set_pose(mInitialBasePose[0], mInitialBasePose[1], mInitialBasePose[2],
+                      mInitialBasePose[3], mInitialBasePose[4], mInitialBasePose[5])) {
+            res->done = false;
+            return;
+        }
+
+        std::lock_guard<std::mutex> lock(mPosTrkMutex);
+
+        // Disable tracking
+        mTrackingActivated = false;
+        mZed.disableTracking();
+
+        // Restart tracking
+        startTracking();
+
+        res->done = true;
     }
 }
 
