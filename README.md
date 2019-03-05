@@ -45,12 +45,18 @@ The **zed_ros2_wrapper** is a [colcon](http://design.ros2.org/articles/build_too
 
 **Note:** If you haven’t set up your colcon workspace yet, please follow this short [tutorial](https://index.ros.org/doc/ros2/Tutorials/Colcon-Tutorial/). 
 
-To install the **zed_ros2_wrapper**, open a bash terminal, clone the package from Github, and build it:
+To install the **zed_ros2_wrapper**, open a bash terminal, clone the package from Github, and build it.
+
+It is very important to follow the correct compiling order to guarantee that all the dependencies are respected:
 
 ```bash
 $ cd ~/ros2_ws/src/ #use your current ros2 workspace folder
 $ git clone https://github.com/stereolabs/zed-ros2-wrapper.git
 $ cd ..
+$ colcon build --symlink-install --packages-select stereolabs_zed_interfaces --cmake-args=-DCMAKE_BUILD_TYPE=Release
+$ source ./install/local_setup.bash
+$ colcon build --symlink-install --packages-select stereolabs_zed --cmake-args=-DCMAKE_BUILD_TYPE=Release
+$ source ./install/local_setup.bash
 $ colcon build --symlink-install --cmake-args=-DCMAKE_BUILD_TYPE=Release
 $ echo source $(pwd)/install/local_setup.bash >> ~/.bashrc
 $ source ~/.bashrc
@@ -129,6 +135,16 @@ Add it in RVIZ2 with `point_cloud` -> `cloud` -> `PointCloud2`. Note that displa
 
 ![](https://cdn.stereolabs.com/docs/ros/images/point_cloud.jpg)
 
+### Displaying position and path
+The ZED position and orientation in space over time is published to the following topics:
+
+- **zed/zed_node/odom**: Odometry pose referred to odometry frame (only visual odometry is applied for ZED, visual-inertial for ZED-M)
+- **zed/zed_node/pose**: Camera pose referred to Map frame (complete data fusion algorithm is applied)
+- **zed/zed_node/pose_with_covariance**: Camera pose referred to Map frame with covariance (if spatial_memory is false in launch parameters)
+- zed/zed_node/path_odom: The sequence of camera odometry poses in Map frame
+- **zed/zed_node/path_map**: The sequence of camera poses in Map frame
+
+**Important**: By default, RVIZ does not display odometry data correctly. Open the newly created Odometry object in the left list, and set Position Tolerance and Angle Tolerance to 0, and Keep to1.
 
 ## Launching with recorded SVO video
 With the ZED, you can record and play back stereo video using Stereolabs' .SVO file format. To record a sequence, open the **ZED Explorer** app (`/usr/local/zed/tools`) and click on the **REC** button.
@@ -174,4 +190,4 @@ and the ZED node will report a warning message explaining the error type:
 
 ## Limitations
 The ROS2 wrapper is released as beta version. Many features available in the ROS wrapper are not yet introduced.
-Due to problems with TF2 in ROS2 Crystal Clemmys the positional tracking is not yet enabled, but we are working to enable it with the next ROS2 releasenin June 2019.
+Due to problems with TF2 in ROS2 Crystal Clemmys the visualization in RVIZ2 cannot result fluid due to timestamp synchronization.
