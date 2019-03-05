@@ -38,6 +38,14 @@ The ZED node publishes data to the following topics:
    - `zed/zed_node/confidence/confidence_image/camera_info`: Depth camera calibration data 
    - `zed/zed_node/confidence/confidence_map`: Confidence image (floating point values) 
    - `zed/zed_node/disparity/disparity_image`: Disparity image 
+ 
+- **Positional tracking**
+  - `/zed/zed_node/pose`: Absolute 3D position and orientation relative to the Map frame (Sensor Fusion algorithm + SLAM)
+  - `zed/zed_node/pose_with_covariance`: Camera pose referred to Map frame with covariance
+  - `/zed/zed_node/odom`: Absolute 3D position and orientation relative to the Odometry frame (pure visual odometry for ZED, visual-inertial odometry for ZED-M)
+  - `/zed/zed_node/map2odom`: Current transform from the odometry frame to the map frame. Useful to publish the TF transform `map` -> `odom`
+  - `/zed/zed_node/path_pose`: Sequence of camera poses in Map frame
+  - `/zed/zed_node/path_odom`: Sequence of camera odometry poses in Map frame
 
 - **Inertial data**
 
