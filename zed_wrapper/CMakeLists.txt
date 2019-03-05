@@ -28,7 +28,7 @@ function(checkPackage package customMessage)
     endif()
 endfunction(checkPackage)
 
-find_package(ZED 2.3)
+find_package(ZED 2.6)
 checkPackage("ZED" "ZED SDK not found, install it from:\n https://www.stereolabs.com/developers/")
 
 exec_program(uname ARGS -p OUTPUT_VARIABLE CMAKE_SYSTEM_NAME2)
@@ -56,12 +56,14 @@ find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(image_transport REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(stereolabs_zed_interfaces REQUIRED)
 
 ###############################################################################
 #Add all files in subdirectories of the project in
 # a dummy_target so qtcreator have access to all files
 FILE(GLOB_RECURSE extra_files ${CMAKE_SOURCE_DIR}/*)
-add_custom_target(all_files_${PROJECT_NAME} SOURCES ${extra_files})
+add_custom_target(${PROJECT_NAME}_files SOURCES ${extra_files})
 
 ###############################################################################
 # INCLUDES and LIBS
@@ -85,6 +87,8 @@ include_directories(
     ${tf2_geometry_msgs_INCLUDE_DIRS}
     ${nav_msgs_INCLUDE_DIRS}
     ${image_transport_INCLUDE_DIRS}
+    ${geometry_msgs_INCLUDE_DIRS}
+    ${stereolabs_zed_interfaces_INCLUDE_DIRS}
 )
 
 link_directories(${ZED_LIBRARY_DIR})
@@ -116,6 +120,10 @@ set(ZED_COMPONENT_SRC
 set(ZED_IT_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/component/src/zed_it_broadcaster.cpp
 )
+
+set(ZED_TF_SRC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/component/src/zed_tf_broadcaster.cpp
+)
 ###############################################################################
 # ZED COMPONENT PLUGIN and ZED EXECUTABLE
 
@@ -139,6 +147,8 @@ ament_target_dependencies(zed_component
   tf2_ros
   tf2_geometry_msgs
   nav_msgs
+  geometry_msgs
+  stereolabs_zed_interfaces
 )
 rclcpp_register_node_plugins(zed_component "stereolabs::ZedCameraComponent")
 set(node_plugins "${node_plugins}stereolabs::ZedCameraComponent;$<TARGET_FILE:zed_component>\n")
@@ -157,16 +167,36 @@ ament_target_dependencies(zed_it_broadcaster
 rclcpp_register_node_plugins(zed_it_broadcaster "stereolabs::ZedCameraIT")
 set(node_plugins "${node_plugins}stereolabs::ZedCameraIT;$<TARGET_FILE:zed_it_broadcaster>\n")
 
+add_library(zed_tf_broadcaster SHARED ${TOOLS_SRC} ${ZED_TF_SRC})
+target_compile_definitions(zed_tf_broadcaster PRIVATE "ZED_BUILDING_DLL")
+target_link_libraries(zed_tf_broadcaster
+    ${rclcpp_LIBRARIES}
+)
+ament_target_dependencies(zed_tf_broadcaster
+  rclcpp
+  std_msgs
+  sensor_msgs
+  navigation_msgs
+  geometry_msgs
+  tf2_geometry_msgs
+  tf2
+  tf2_ros
+)
+rclcpp_register_node_plugins(zed_tf_broadcaster "stereolabs::ZedCameraTF")
+set(node_plugins "${node_plugins}stereolabs::ZedCameraTF;$<TARGET_FILE:zed_tf_broadcaster>\n")
+
 add_executable(zed_wrapper_node ${NODE_SRC})
 target_link_libraries(zed_wrapper_node
     zed_component
     zed_it_broadcaster
+    zed_tf_broadcaster
 )
 ament_target_dependencies(zed_wrapper_node
   rclcpp
   class_loader
   zed_component
   zed_it_broadcaster
+  zed_tf_broadcaster
 )
 
 # Install executable
