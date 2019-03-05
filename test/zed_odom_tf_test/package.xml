@@ -2,14 +2,13 @@
 
 <!-- Package format 3 according to http://www.ros.org/reps/rep-0149.html -->
 <package format="3">
-  <name>stereolabs_zed</name>
+  <name>stereolabs_zed_odom_tf_test</name>
   <version>0.1.0</version>
   <description>
-    stereolabs_zed is a ROS2 wrapper for the <a href="https://www.stereolabs.com/developers/">ZED library</a>
-    for interfacing with the ZED camera.
+    This package is a test to check odom TF timestamps
   </description>
-  <maintainer email="support@stereolabs.com">STEREOLABS</maintainer>
 
+  <maintainer email="support@stereolabs.com">STEREOLABS</maintainer>
   <license>MIT</license>
 
   <url type="website">https://www.stereolabs.com/</url>
@@ -18,23 +17,13 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <depend>ament_index_cpp</depend>
-  <depend>class_loader</depend>
-  <depend>lifecycle_msgs</depend>
-  <depend>rclcpp_lifecycle</depend>
+  <depend>rclcpp</depend>
   <depend>sensor_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>geometry_msg</depend>
   <depend>tf2</depend>
   <depend>tf2_ros</depend>
   <depend>tf2_geometry_msgs</depend>
-  <depend>nav_msgs</depend>
-  <depend>geometry_msgs</depend>
-  <depend>stereo_msgs</depend>
-  <depend>image_transport</depend>
-
-  <build_depend>urdf</build_depend>
-
-  <exec_depend>robot_state_publisher</exec_depend>
-  <exec_depend>message_runtime</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

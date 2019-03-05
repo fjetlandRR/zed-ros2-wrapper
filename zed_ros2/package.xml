@@ -16,8 +16,9 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
+  <exec_depend>stereolabs_zed_interfaces</exec_depend>
   <exec_depend>stereolabs_zed</exec_depend>
-  <exec_depend>stereolabs_zed_rviz</exec_depend>
+  <exec_depend>stereolabs_zed_rviz</exec_depend>  
 
   <export>
     <build_type>ament_cmake</build_type>
