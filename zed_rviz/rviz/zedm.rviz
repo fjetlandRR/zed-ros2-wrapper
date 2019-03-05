@@ -40,7 +40,7 @@ Visualization Manager:
       Class: rviz_default_plugins/RobotModel
       Collision Enabled: false
       Description File: /home/walter/devel/ros2_ws/src/zed-ros2-wrapper/zed_wrapper/urdf/zedm.urdf
-      Description Source: File
+      Description Source: Topic
       Description Topic: /zed_description
       Enabled: true
       Links:
@@ -49,31 +49,6 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        base_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        zed_camera_center:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        zed_left_camera_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        zed_left_camera_optical_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        zed_right_camera_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        zed_right_camera_optical_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
       Name: RobotModel
       TF Prefix: ""
       Unreliable: false
@@ -126,7 +101,7 @@ Visualization Manager:
           Image Rendering: background and overlay
           Name: Camera
           Overlay Alpha: 0.5
-          Queue Size: 2
+          Queue Size: 1
           Topic: /zed/zed_node/rgb/image_rect_color
           Unreliable: true
           Value: true
@@ -209,7 +184,7 @@ Visualization Manager:
           Min Intensity: 0
           Name: PointCloud2
           Position Transformer: XYZ
-          Queue Size: 2
+          Queue Size: 1
           Selectable: false
           Size (Pixels): 1
           Size (m): 0.009999999776482582
@@ -361,25 +336,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 3.424605369567871
+      Distance: 10.036760330200195
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.03656711056828499
-        Y: -0.035934701561927795
-        Z: 0.37047746777534485
+        X: -0.6686826944351196
+        Y: -0.8824787735939026
+        Z: 0.34190571308135986
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.20039789378643036
+      Pitch: 0.25039777159690857
       Target Frame: base_link
       Value: Orbit (rviz)
-      Yaw: 1.9803965091705322
+      Yaw: 2.8953983783721924
     Saved: ~
 Window Geometry:
   Camera:
