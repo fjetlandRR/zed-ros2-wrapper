@@ -9,7 +9,7 @@ This package lets you use the ZED stereo camera with ROS2. It provides access to
   - Colored 3D point cloud
   - IMU data
 
-[More information](https://www.stereolabs.com/docs/ros2/)
+[More information](https://www.stereolabs.com/docs/ros2/getting-started/)
 
 ![](https://cdn.stereolabs.com/docs/ros/images/PointCloud_Depth_ROS.jpg)
 
@@ -85,7 +85,7 @@ $ ros2 launch stereolabs_zed zed.launch.py
 The `zed.launch.py` is a Python launch script that automatically manages the lifecycle state transitions of the ZED ROS2 node. You can run the `zed_unmanaged.launch.py` launch script if you want to manually control the state of the node. For a full guide about manually managing the lifecycle states of the ZED ROS2 node, please follow the [lifecycle tutorial](/integrations/ros2/lifecycle/)
 
 **Note:** You can set your own configurations modifying the parameters in the files **common.yaml**, **zed.yaml** and **zedm.yaml** available in the folder `zed_wrapper/config`.
-For full descriptions of each parameter, follow the complete guide [here](/integrations/ros2/zed_node#configuration-parameters).
+For full descriptions of each parameter, follow the complete guide [here](https://www.stereolabs.com/docs/ros2/zed_node#configuration-parameters).
 
 ## Displaying ZED data
 
@@ -102,7 +102,7 @@ If you are using a ZED Mini camera:
 ```bash
 $ roslaunch zed_rviz display_zedm.launch.py
 ```
-**Note:** If you haven't yet configured your own RVIZ interface, you can find a detailed tutorial [here](/integrations/ros2/rviz2/).
+**Note:** If you haven't yet configured your own RVIZ interface, you can find a detailed tutorial [here](https://www.stereolabs.com/docs/ros2/rviz2/).
 
 ### Displaying Images
 The ZED node publishes both original and stereo rectified (aligned) left and right images. In RVIZ, select a topic and use the `image` preview mode. 
@@ -149,7 +149,7 @@ The ZED position and orientation in space over time is published to the followin
 ## Launching with recorded SVO video
 With the ZED, you can record and play back stereo video using Stereolabs' .SVO file format. To record a sequence, open the **ZED Explorer** app (`/usr/local/zed/tools`) and click on the **REC** button.
 
-To launch the ROS wrapper with an SVO file, set the path of the SVO in the [launch parameter](/integrations/ros2/zed_node/#configuration-parameters) `general.svo_file` in the file `config/common.yaml`.
+To launch the ROS wrapper with an SVO file, set the path of the SVO in the [launch parameter](https://www.stereolabs.com/docs/ros2/zed_node/#configuration-parameters) `general.svo_file` in the file `config/common.yaml`.
 
 **Note:** add a `#` in front of the `general.svo_file` parameter to use an USB3 connected device, YAML does not allow to set an empty string parameter.
 
