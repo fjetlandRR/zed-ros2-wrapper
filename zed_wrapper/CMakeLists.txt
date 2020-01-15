@@ -28,7 +28,7 @@ function(checkPackage package customMessage)
     endif()
 endfunction(checkPackage)
 
-find_package(ZED 2.6)
+find_package(ZED 3 REQUIRED)
 checkPackage("ZED" "ZED SDK not found, install it from:\n https://www.stereolabs.com/developers/")
 
 exec_program(uname ARGS -p OUTPUT_VARIABLE CMAKE_SYSTEM_NAME2)
@@ -127,9 +127,6 @@ set(ZED_TF_SRC
 ###############################################################################
 # ZED COMPONENT PLUGIN and ZED EXECUTABLE
 
-# create ament index resource which references the libraries in the binary dir
-set(node_plugins "")
-
 add_library(zed_component SHARED ${TOOLS_SRC} ${ZED_COMPONENT_SRC})
 target_compile_definitions(zed_component PRIVATE "ZED_BUILDING_DLL")
 target_link_libraries(zed_component
@@ -150,8 +147,6 @@ ament_target_dependencies(zed_component
   geometry_msgs
   stereolabs_zed_interfaces
 )
-rclcpp_register_node_plugins(zed_component "stereolabs::ZedCameraComponent")
-set(node_plugins "${node_plugins}stereolabs::ZedCameraComponent;$<TARGET_FILE:zed_component>\n")
 
 add_library(zed_it_broadcaster SHARED ${TOOLS_SRC} ${ZED_IT_SRC})
 target_compile_definitions(zed_it_broadcaster PRIVATE "ZED_BUILDING_DLL")
@@ -164,8 +159,7 @@ ament_target_dependencies(zed_it_broadcaster
   sensor_msgs
   image_transport
 )
-rclcpp_register_node_plugins(zed_it_broadcaster "stereolabs::ZedCameraIT")
-set(node_plugins "${node_plugins}stereolabs::ZedCameraIT;$<TARGET_FILE:zed_it_broadcaster>\n")
+
 
 add_library(zed_tf_broadcaster SHARED ${TOOLS_SRC} ${ZED_TF_SRC})
 target_compile_definitions(zed_tf_broadcaster PRIVATE "ZED_BUILDING_DLL")
@@ -176,27 +170,34 @@ ament_target_dependencies(zed_tf_broadcaster
   rclcpp
   std_msgs
   sensor_msgs
-  navigation_msgs
+  nav_msgs
   geometry_msgs
   tf2_geometry_msgs
   tf2
   tf2_ros
 )
-rclcpp_register_node_plugins(zed_tf_broadcaster "stereolabs::ZedCameraTF")
-set(node_plugins "${node_plugins}stereolabs::ZedCameraTF;$<TARGET_FILE:zed_tf_broadcaster>\n")
+
+# This package installs libraries without exporting them.
+# Export the library path to ensure that the installed libraries are available.
+if(NOT WIN32)
+  ament_environment_hooks(
+    "${ament_cmake_package_templates_ENVIRONMENT_HOOK_LIBRARY_PATH}"
+    )
+endif()
 
 add_executable(zed_wrapper_node ${NODE_SRC})
 target_link_libraries(zed_wrapper_node
-    zed_component
-    zed_it_broadcaster
-    zed_tf_broadcaster
+    rclcpp
+    #zed_component
+    #zed_it_broadcaster
+    #zed_tf_broadcaster
 )
 ament_target_dependencies(zed_wrapper_node
   rclcpp
   class_loader
-  zed_component
-  zed_it_broadcaster
-  zed_tf_broadcaster
+  #zed_component
+  #zed_it_broadcaster
+  #zed_tf_broadcaster
 )
 
 # Install executable
