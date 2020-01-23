@@ -55,7 +55,7 @@ namespace sl_tools {
     /*! \brief Convert StereoLabs timestamp to ROS timestamp
      *  \param t : Stereolabs timestamp to be converted
      */
-    rclcpp::Time slTime2Ros(sl::timeStamp t);
+    rclcpp::Time slTime2Ros(sl::Timestamp t);
 
     /*! \brief sl::Mat to ros message conversion
      * \param img : the image to publish

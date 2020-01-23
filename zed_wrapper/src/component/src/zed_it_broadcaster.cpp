@@ -9,8 +9,8 @@ namespace stereolabs {
     ZedItBroadcaster::ZedItBroadcaster(const std::string& node_name /*= "zed_it_broadcaster"*/,
                                        const std::string& ros_namespace /*= "zed"*/,
                                        const std::string& main_node,
-                                       bool intra_process_comms /*= true*/)
-        : Node(node_name, ros_namespace, intra_process_comms) {
+                                       const rclcpp::NodeOptions& node_opt)
+        : Node(node_name, ros_namespace, node_opt) {
 
 #ifndef NDEBUG
         rcutils_ret_t res = rcutils_logging_set_logger_level(get_name(), RCUTILS_LOG_SEVERITY_DEBUG);
@@ -69,119 +69,16 @@ namespace stereolabs {
 
         mSubTimer = create_wall_timer(std::chrono::duration_cast<std::chrono::microseconds>(checkPeriodMsec),
                                       std::bind(&ZedItBroadcaster::checkSubscribersCallback, this));
-    }
-
-    ZedItBroadcaster::ZedItBroadcaster(
-        const std::string& node_name,
-        const std::string& ros_namespace,
-        const std::string& main_node,
-        rclcpp::Context::SharedPtr context,
-        const std::vector<std::string>& arguments,
-        const std::vector<rclcpp::Parameter>& initial_parameters,
-        bool use_global_arguments /*= true*/,
-        bool use_intra_process_comms /*= false*/,
-        bool start_parameter_services /*= true*/)
-        : Node(node_name, ros_namespace, context, arguments, initial_parameters,
-               use_global_arguments, use_intra_process_comms, start_parameter_services) {
-
-#ifndef NDEBUG
-        rcutils_ret_t res = rcutils_logging_set_logger_level(get_name(), RCUTILS_LOG_SEVERITY_DEBUG);
-
-        if (res != RCUTILS_RET_OK) {
-            RCLCPP_INFO(get_logger(), "Error setting DEBUG logger");
-        }
-
-#endif
-
-        RCLCPP_INFO(get_logger(), "ZED Image Transport Broadcaster Component created");
-
-        RCLCPP_INFO(get_logger(), "ZED Image Transport Broadcaster namespace: %s", get_namespace());
-        RCLCPP_INFO(get_logger(), "ZED Image Transport Broadcaster node: %s", get_name());
-
-        // Topics
-        std::string topicPrefix = get_namespace();
-
-        if (topicPrefix.length() > 1) {
-            topicPrefix += "/";
-        }
-
-        mMainNode = main_node;
-
-        topicPrefix += mMainNode;
-        topicPrefix += "/";
-
-        // Parameters
-        initParameters();
-
-        // Video topics
-        std::string img_topic = "/image_rect_color";
-        std::string img_raw_topic = "/image_raw_color";
-        std::string raw_suffix = "_raw";
-        std::string it_prefix = "it_";
-        // Depth topics
-        std::string depth_topic = "/depth_registered";
-        std::string depth_openni_topic = "/depth_raw_registered";
-
-        // Image Transport output topic names
-        mRgbTopic = topicPrefix + it_prefix + mRgbTopicRoot + img_topic;
-        mRightTopic = topicPrefix + it_prefix + mRightTopicRoot + img_topic;
-        mLeftTopic = topicPrefix + it_prefix + mLeftTopicRoot + img_topic;
-        mRawRgbTopic = topicPrefix + it_prefix + mRgbTopicRoot + raw_suffix + img_raw_topic;
-        mRawRightTopic = topicPrefix + it_prefix + mRightTopicRoot + raw_suffix + img_raw_topic;
-        mRawLeftTopic = topicPrefix + it_prefix + mLeftTopicRoot + raw_suffix + img_raw_topic;
-        mDepthTopic = topicPrefix + it_prefix + mDepthTopicRoot + (mOpenniDepthMode ? depth_openni_topic :
-                      depth_topic);
-
-        // Advertise publishers
-        initPublishers();
-
-        // Subscribers checking
-        std::chrono::milliseconds checkPeriodMsec(100);
-
-        mSubTimer = create_wall_timer(std::chrono::duration_cast<std::chrono::microseconds>(checkPeriodMsec),
-                                      std::bind(&ZedItBroadcaster::checkSubscribersCallback, this));
-    }
+    }    
 
     void ZedItBroadcaster::initParameters() {
         rclcpp::Parameter paramVal;
-        std::string paramName;
-
-        paramName = "video.rgb_topic_root";
-
-        if (get_parameter(paramName, paramVal)) {
-            mRgbTopicRoot = paramVal.as_string();
-        } else {
-            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
-        }
-
-        paramName = "video.left_topic_root";
-
-        if (get_parameter(paramName, paramVal)) {
-            mLeftTopicRoot = paramVal.as_string();
-        } else {
-            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
-        }
-
-        paramName = "video.right_topic_root";
-
-        if (get_parameter(paramName, paramVal)) {
-            mRightTopicRoot = paramVal.as_string();
-        } else {
-            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
-        }
+        std::string paramName;        
 
         paramName = "depth.openni_depth_mode";
 
         if (get_parameter(paramName, paramVal)) {
             mOpenniDepthMode = paramVal.as_int();
-        } else {
-            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
-        }
-
-        paramName = "depth.depth_topic_root";
-
-        if (get_parameter(paramName, paramVal)) {
-            mDepthTopicRoot = paramVal.as_string();
         } else {
             RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
         }

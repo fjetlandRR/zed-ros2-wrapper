@@ -23,8 +23,8 @@
 #include <rclcpp/parameter_map.hpp>
 
 #include "zed_component.hpp"
-#include "zed_it_broadcaster.hpp"
-#include "zed_tf_broadcaster.hpp"
+//#include "zed_it_broadcaster.hpp"
+//#include "zed_tf_broadcaster.hpp"
 
 #include <rcl_yaml_param_parser/parser.h>
 
@@ -62,51 +62,56 @@ int main(int argc, char* argv[]) {
     std::string lcNodeName = "zed_node";
     bool intraProcComm = false;
 
+    rclcpp::NodeOptions opt;
+    opt.use_intra_process_comms(intraProcComm);
+    opt.context(context);
+
     // ZED main component
     // Note: use the constructor to get node_name and namespace from the launch file
-    auto lc_node = std::make_shared<stereolabs::ZedCameraComponent>(lcNodeName, lcNamespace, intraProcComm);
+    auto lc_node = std::make_shared<stereolabs::ZedCameraComponent>(lcNodeName, lcNamespace, opt);
     multiExec.add_node(lc_node->get_node_base_interface());
+
 
     // Overwrite the default values with the effective ones
     lcNamespace = lc_node->get_namespace();
     lcNodeName = lc_node->get_name();
 
-    // This is useful to use the same parameter of the Lifecyle node in the IT and TF broadcasters even
-    // if the node names are not the same (ROS2 requires that namespace+node_name in the YAML file match
-    // namespace+node_name of the node where it is loaded)
-    std::vector<rclcpp::Parameter> params = createParamsListFromYAMLs(argc, argv, lcNamespace, lcNodeName);
+//    // This is useful to use the same parameter of the Lifecyle node in the IT and TF broadcasters even
+//    // if the node names are not the same (ROS2 requires that namespace+node_name in the YAML file match
+//    // namespace+node_name of the node where it is loaded)
+//    std::vector<rclcpp::Parameter> params = createParamsListFromYAMLs(argc, argv, lcNamespace, lcNodeName);
 
-    // Note: image topics published by the main component do not support the ROS standard for `camera_info`
-    //       topics to be compatible with the `camera view` plugin of `RVIZ2`.
-    //       See
-    //          * https://answers.ros.org/question/312930/ros2-image_transport-and-rviz2-camera-something-wrong/
-    //          * https://github.com/ros2/rviz/issues/207
+//    // Note: image topics published by the main component do not support the ROS standard for `camera_info`
+//    //       topics to be compatible with the `camera view` plugin of `RVIZ2`.
+//    //       See
+//    //          * https://answers.ros.org/question/312930/ros2-image_transport-and-rviz2-camera-something-wrong/
+//    //          * https://github.com/ros2/rviz/issues/207
 
-    // ZED Image Transport broadcaster
-    // Note: this is required since `image_transport` stack in ROS Crystal Clemmys does not support
-    //       Lifecycle nodes. The component subscribes to image and depth topics from the main component
-    //       and re-publish them using `image_transport`
-    auto it_node = std::make_shared<stereolabs::ZedItBroadcaster>(
-                       lcNodeName + "_it", lcNamespace, lcNodeName,
-                       context,
-                       std::vector<std::string>(),
-                       params,
-                       false,
-                       intraProcComm);
-    multiExec.add_node(it_node->get_node_base_interface());
+//    // ZED Image Transport broadcaster
+//    // Note: this is required since `image_transport` stack in ROS Crystal Clemmys does not support
+//    //       Lifecycle nodes. The component subscribes to image and depth topics from the main component
+//    //       and re-publish them using `image_transport`
+//    auto it_node = std::make_shared<stereolabs::ZedItBroadcaster>(
+//                       lcNodeName + "_it", lcNamespace, lcNodeName,
+//                       context,
+//                       std::vector<std::string>(),
+//                       params,
+//                       false,
+//                       intraProcComm);
+//    multiExec.add_node(it_node->get_node_base_interface());
 
-    // ZED TF broadcaster
-    // Note: this is required since `tf2_ros::TransformBroadcaster` in ROS Crystal Clemmys does not support
-    //       Lifecycle nodes. The component subscribes to ODOM and POSE topics from the main component
-    //       and re-publish them using `TransformBroadcaster`
-    auto tf_node = std::make_shared<stereolabs::ZedTfBroadcaster>(
-                       lcNodeName + "_tf", lcNamespace, lcNodeName,
-                       context,
-                       std::vector<std::string>(),
-                       params,
-                       false,
-                       intraProcComm);
-    multiExec.add_node(tf_node->get_node_base_interface());
+//    // ZED TF broadcaster
+//    // Note: this is required since `tf2_ros::TransformBroadcaster` in ROS Crystal Clemmys does not support
+//    //       Lifecycle nodes. The component subscribes to ODOM and POSE topics from the main component
+//    //       and re-publish them using `TransformBroadcaster`
+//    auto tf_node = std::make_shared<stereolabs::ZedTfBroadcaster>(
+//                       lcNodeName + "_tf", lcNamespace, lcNodeName,
+//                       context,
+//                       std::vector<std::string>(),
+//                       params,
+//                       false,
+//                       intraProcComm);
+//    multiExec.add_node(tf_node->get_node_base_interface());
 
     multiExec.spin();
 

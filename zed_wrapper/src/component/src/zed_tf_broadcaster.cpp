@@ -82,15 +82,7 @@ namespace stereolabs {
 
     void ZedTfBroadcaster::initParameters() {
         rclcpp::Parameter paramVal;
-        std::string paramName;
-
-        paramName = "tracking.odometry_topic";
-
-        if (get_parameter(paramName, paramVal)) {
-            mOdomTopic = paramVal.as_string();
-        } else {
-            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
-        }
+        std::string paramName;       
 
         paramName = "tracking.publish_tf";
 

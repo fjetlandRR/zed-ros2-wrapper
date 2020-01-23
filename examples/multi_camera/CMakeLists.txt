@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
+
 project(stereolabs_example_multi_camera)
 
 # if CMAKE_BUILD_TYPE is not specified, take 'Release' as default

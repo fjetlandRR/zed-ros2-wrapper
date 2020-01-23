@@ -32,9 +32,6 @@ zed:
                 auto_exposure:              true                                # Dynamic
                 exposure:                   80                                  # Dynamic
                 gain:                       80                                  # Dynamic
-                rgb_topic_root:             "rgb"
-                left_topic_root:            "left"
-                right_topic_root:           "right"
                 qos_history:                0                                   # '0': KEEP_LAST - '1': KEEP_ALL
                 qos_depth:                  10                                  # Queue size if using KEEP_LAST
                 qos_reliability:            1                                   # '0': BEST_EFFORT - '1': RELIABLE
@@ -45,12 +42,6 @@ zed:
                 confidence:                 80                                  # Dynamic
                 depth_stabilization:        1                                   # `0`: disabled, `1`: enabled
                 openni_depth_mode:          0                                   # '0': 32bit float meters, '1': 16bit uchar millimeters
-                depth_topic_root:           "depth"
-                point_cloud_topic:          "point_cloud/cloud_registered"
-                disparity_topic:            "disparity/disparity_image"
-                confidence_root:            "confidence"
-                confidence_img_topic:       "confidence_image"
-                confidence_map_topic:       "confidence_map"
                 qos_history:                0                                   # '0': KEEP_LAST - '1': KEEP_ALL
                 qos_depth:                  10                                  # Queue size if using KEEP_LAST
                 qos_reliability:            1                                   # '0': BEST_EFFORT - '1': RELIABLE
@@ -68,8 +59,6 @@ zed:
                 two_d_mode:                 false
                 fixed_z_value:              0.0                                 # if 2D mode this is the fixed value assigned to Z coordinate
                 initial_tracking_pose:      [0.0,0.0,0.0, 0.0,0.0,0.0]          # [X, Y, Z, R, P, Y]
-                pose_topic:                 'pose'
-                odometry_topic:             'odom'
                 init_odom_with_first_valid_pose: true                          # Wait for first valid "map pose" to initialize the odometry starting value
                 path_pub_rate:              2.0
                 path_max_count:             -1                                  # Number of position kept in path vector. '-1' for no limitations

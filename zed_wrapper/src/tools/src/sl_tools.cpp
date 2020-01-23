@@ -36,7 +36,7 @@ namespace sl_tools {
 
         for (auto& it : f)
             if (it.serial_number == serial_number &&
-                it.camera_state == sl::CAMERA_STATE::CAMERA_STATE_AVAILABLE) {
+                it.camera_state == sl::CAMERA_STATE::AVAILABLE) {
                 id = it.id;
             }
 
@@ -49,7 +49,7 @@ namespace sl_tools {
 
         for (auto& it : f) {
             if (it.serial_number == serial_number &&
-                it.camera_state == sl::CAMERA_STATE::CAMERA_STATE_AVAILABLE) {
+                it.camera_state == sl::CAMERA_STATE::AVAILABLE) {
                 prop = it;
             }
         }
@@ -164,9 +164,10 @@ namespace sl_tools {
         return ver;
     }
 
-    rclcpp::Time slTime2Ros(sl::timeStamp t) {
-        uint32_t sec = static_cast<uint32_t>(t / 1000000000);
-        uint32_t nsec = static_cast<uint32_t>(t % 1000000000);
+    rclcpp::Time slTime2Ros(sl::Timestamp t) {
+        uint64_t ts_nsec = t.getNanoseconds();
+        uint32_t sec = static_cast<uint32_t>(ts_nsec / 1000000000);
+        uint32_t nsec = static_cast<uint32_t>(ts_nsec % 1000000000);
         return rclcpp::Time(sec, nsec);
     }
 
@@ -190,42 +191,42 @@ namespace sl_tools {
         sl::MAT_TYPE dataType = img.getDataType();
 
         switch (dataType) {
-        case sl::MAT_TYPE_32F_C1: /**< float 1 channel.*/
+        case sl::MAT_TYPE::F32_C1: /**< float 1 channel.*/
             imgMessage->encoding = sensor_msgs::image_encodings::TYPE_32FC1;
             memcpy((char*)(&imgMessage->data[0]), img.getPtr<sl::float1>(), size);
             break;
 
-        case sl::MAT_TYPE_32F_C2: /**< float 2 channels.*/
+        case sl::MAT_TYPE::F32_C2: /**< float 2 channels.*/
             imgMessage->encoding = sensor_msgs::image_encodings::TYPE_32FC2;
             memcpy((char*)(&imgMessage->data[0]), img.getPtr<sl::float2>(), size);
             break;
 
-        case sl::MAT_TYPE_32F_C3: /**< float 3 channels.*/
+        case sl::MAT_TYPE::F32_C3: /**< float 3 channels.*/
             imgMessage->encoding = sensor_msgs::image_encodings::TYPE_32FC3;
             memcpy((char*)(&imgMessage->data[0]), img.getPtr<sl::float3>(), size);
             break;
 
-        case sl::MAT_TYPE_32F_C4: /**< float 4 channels.*/
+        case sl::MAT_TYPE::F32_C4: /**< float 4 channels.*/
             imgMessage->encoding = sensor_msgs::image_encodings::TYPE_32FC4;
             memcpy((char*)(&imgMessage->data[0]), img.getPtr<sl::float4>(), size);
             break;
 
-        case sl::MAT_TYPE_8U_C1: /**< unsigned char 1 channel.*/
+        case sl::MAT_TYPE::U8_C1: /**< unsigned char 1 channel.*/
             imgMessage->encoding = sensor_msgs::image_encodings::MONO8;
             memcpy((char*)(&imgMessage->data[0]), img.getPtr<sl::uchar1>(), size);
             break;
 
-        case sl::MAT_TYPE_8U_C2: /**< unsigned char 2 channels.*/
+        case sl::MAT_TYPE::U8_C2: /**< unsigned char 2 channels.*/
             imgMessage->encoding = sensor_msgs::image_encodings::TYPE_8UC2;
             memcpy((char*)(&imgMessage->data[0]), img.getPtr<sl::uchar2>(), size);
             break;
 
-        case sl::MAT_TYPE_8U_C3: /**< unsigned char 3 channels.*/
+        case sl::MAT_TYPE::U8_C3: /**< unsigned char 3 channels.*/
             imgMessage->encoding = sensor_msgs::image_encodings::BGR8;
             memcpy((char*)(&imgMessage->data[0]), img.getPtr<sl::uchar3>(), size);
             break;
 
-        case sl::MAT_TYPE_8U_C4: /**< unsigned char 4 channels.*/
+        case sl::MAT_TYPE::U8_C4: /**< unsigned char 4 channels.*/
             imgMessage->encoding = sensor_msgs::image_encodings::BGRA8;
             memcpy((char*)(&imgMessage->data[0]), img.getPtr<sl::uchar4>(), size);
             break;

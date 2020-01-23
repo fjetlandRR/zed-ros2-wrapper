@@ -105,39 +105,13 @@ namespace stereolabs {
         /// Create a new ZedCameraComponent/lifecycle node with the specified name.
         /**
          * \param[in] node_name Name of the node.
-         * \param[in] namespace_ Namespace of the node.
-         * \param[in] use_intra_process_comms True to use the optimized intra-process communication
-         * pipeline to pass messages between nodes in the same process using shared memory.
+         * \param[in] ros_namespace Namespace of the node.
+         * \param[in] node_opt node options. See `rclcpp::NodeOptions`
          */
         ZED_PUBLIC
         explicit ZedCameraComponent(const std::string& node_name = "zed_node",
                                     const std::string& ros_namespace = "zed",
-                                    bool intra_process_comms = false);
-
-        /// Create a ZedCameraComponent/lifecycle node based on the node name and a rclcpp::Context.
-        /**
-         * \param[in] node_name Name of the node.
-         * \param[in] namespace_ Namespace of the node.
-         * \param[in] context The context for the node (usually represents the state of a process).
-         * \param[in] arguments Command line arguments that should apply only to this node.
-         * \param[in] initial_parameters a list of initial values for parameters on the node.
-         * This can be used to provide remapping rules that only affect one instance.
-         * \param[in] use_global_arguments False to prevent node using arguments passed to the process.
-         * \param[in] use_intra_process_comms True to use the optimized intra-process communication
-         * pipeline to pass messages between nodes in the same process using shared memory.
-         * \param[in] start_parameter_services True to setup ROS interfaces for accessing parameters
-         * in the node.
-         */
-        ZED_PUBLIC
-        explicit ZedCameraComponent(
-            const std::string& node_name,
-            const std::string& ros_namespace,
-            rclcpp::Context::SharedPtr context,
-            const std::vector<std::string>& arguments,
-            const std::vector<rclcpp::Parameter>& initial_parameters,
-            bool use_global_arguments = true,
-            bool use_intra_process_comms = false,
-            bool start_parameter_services = true);
+                                    const rclcpp::NodeOptions& node_opt = rclcpp::NodeOptions() );
 
         virtual ~ZedCameraComponent();
 
@@ -358,6 +332,7 @@ namespace stereolabs {
         rclcpp::Time mPointCloudTime;
 
         // Grab thread
+        sl::ERROR_CODE mGrabStatus;
         std::thread mGrabThread;
         bool mThreadStop = false;
         bool mRunGrabLoop = false;
@@ -427,10 +402,10 @@ namespace stereolabs {
 
         // QoS profiles
         // https://github.com/ros2/ros2/wiki/About-Quality-of-Service-Settings
-        rmw_qos_profile_t mVideoQos = rmw_qos_profile_default;
-        rmw_qos_profile_t mDepthQos = rmw_qos_profile_default;
-        rmw_qos_profile_t mImuQos   = rmw_qos_profile_default;
-        rmw_qos_profile_t mPoseQos  = rmw_qos_profile_default;
+        rclcpp::QoS mVideoQos;
+        rclcpp::QoS mDepthQos;
+        rclcpp::QoS mImuQos;
+        rclcpp::QoS mPoseQos;
 
 
         // ZED dynamic params
@@ -581,7 +556,7 @@ namespace stereolabs {
         std::vector<geometry_msgs::msg::PoseStamped> mMapPath;
         bool mTrackingActivated = false;
         bool mTrackingReady = false;
-        sl::TRACKING_STATE mTrackingStatus;
+        sl::POSITIONAL_TRACKING_STATE mTrackingStatus;
         bool mResetOdom = false;
 
         // TF Transforms
@@ -603,7 +578,7 @@ namespace stereolabs {
 
         // SVO recording
         bool mRecording = false;
-        sl::RecordingState mRecState;
+        sl::RecordingStatus mRecState;
 
         // Services
         resetOdomSrvPtr mResetOdomSrv;
