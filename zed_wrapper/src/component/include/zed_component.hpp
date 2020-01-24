@@ -359,7 +359,7 @@ namespace stereolabs {
         sl::InitParameters mZedParams;
         int mZedId = 0;
         int mZedSerialNumber = 0;
-        int mZedUserCamModel = 1;   // Camera model set by ROS Param
+        sl::MODEL mZedUserCamModel = sl::MODEL::ZED;   // Camera model set by ROS Param
         sl::MODEL mZedRealCamModel; // Camera model requested to SDK
         int mZedFrameRate = 30;
         std::string mSvoFilepath = "";

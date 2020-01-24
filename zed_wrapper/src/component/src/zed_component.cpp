@@ -166,7 +166,7 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCam
                 return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
             } else {
 
-                if (mZedUserCamModel == 0) {
+                if (mZedUserCamModel == sl::MODEL::ZED) {
                     RCLCPP_INFO(get_logger(), "Please verify the USB connection");
                 } else {
                     RCLCPP_INFO(get_logger(), "Please verify the USB connection. Try to flip the USB TypeC cable on ZED mini");
@@ -209,10 +209,20 @@ void ZedCameraComponent::getGeneralParams() {
     // ------------------------------------------
 
     paramName = "general.camera_model";
-    declare_parameter(paramName, rclcpp::ParameterValue(mZedUserCamModel) );
+    declare_parameter(paramName, rclcpp::ParameterValue("zed") );
 
     if (get_parameter(paramName, paramVal)) {
-        mZedUserCamModel = paramVal.as_int();
+        std::string camera_model = paramVal.as_string();
+
+        if (camera_model == "zed") {
+            mZedUserCamModel = sl::MODEL::ZED;
+        } else if (camera_model == "zedm") {
+            mZedUserCamModel = sl::MODEL::ZED_M;
+        } else if (camera_model == "zed2") {
+            mZedUserCamModel = sl::MODEL::ZED2;
+        } else {
+            RCLCPP_ERROR_STREAM(get_logger(), "Camera model not valid in parameter values: " << camera_model);
+        }
     } else {
         RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
     }
@@ -1124,7 +1134,7 @@ void ZedCameraComponent::getImuParams() {
     rmw_qos_reliability_policy_t qos_reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
     rmw_qos_durability_policy_t qos_durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
 
-    if (mZedUserCamModel == 1) {
+    if (mZedUserCamModel != sl::MODEL::ZED) {
         RCLCPP_INFO(get_logger(), "*** IMU parameters ***");
 
         // ------------------------------------------
@@ -1555,7 +1565,7 @@ void ZedCameraComponent::initPublishers() {
     // <---- Create Depth Publishers
 
     // ----> Create IMU Publishers
-    if (mImuPubRate > 0 && mZedUserCamModel == 1) {
+    if (mImuPubRate > 0 && mZedUserCamModel != sl::MODEL::ZED) {
         mPubImu = create_publisher<sensor_msgs::msg::Imu>(mImuTopic, mImuQos);
         RCLCPP_INFO(get_logger(), " * '%s'", mPubImu->get_topic_name());
 
@@ -1787,7 +1797,7 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCam
 
         RCLCPP_WARN(get_logger(), "Error opening camera: %s", sl::toString(err).c_str());
 
-        if (err == sl::ERROR_CODE::CAMERA_DETECTION_ISSUE && mZedUserCamModel == 1) {
+        if (err == sl::ERROR_CODE::CAMERA_DETECTION_ISSUE && mZedUserCamModel == sl::MODEL::ZED_M) {
             RCLCPP_INFO(get_logger(), "Try to flip the USB3 Type-C connector");
         } else {
             RCLCPP_INFO(get_logger(), "Please verify the USB3 connection");
@@ -1816,16 +1826,19 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCam
     mZedRealCamModel = camInfo.camera_model;
 
     if (mZedRealCamModel == sl::MODEL::ZED) {
-
-        if (mZedUserCamModel != 0) {
+        if (mZedUserCamModel != sl::MODEL::ZED) {
             RCLCPP_WARN(get_logger(), "Camera model does not match user parameter. Please modify "
-                                      "the value of the parameter 'camera_model' to '0'");
+                                      "the value of the parameter 'camera_model' to 'zed'");
         }
     } else if (mZedRealCamModel == sl::MODEL::ZED_M) {
-
-        if (mZedUserCamModel != 1) {
+        if (mZedUserCamModel != sl::MODEL::ZED_M) {
             RCLCPP_WARN(get_logger(), "Camera model does not match user parameter. Please modify "
-                                      "the value of the parameter 'camera_model' to '1'");
+                                      "the value of the parameter 'camera_model' to 'zedm'");
+        }
+    } else if (mZedRealCamModel == sl::MODEL::ZED2) {
+        if (mZedUserCamModel != sl::MODEL::ZED2) {
+            RCLCPP_WARN(get_logger(), "Camera model does not match user parameter. Please modify "
+                                      "the value of the parameter 'camera_model' to 'zed2'");
         }
     }
 

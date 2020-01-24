@@ -6,10 +6,10 @@ zed:
     zed_node:
         ros__parameters:
             general:
-                camera_model:       1                 # `0`: ZED, `1`: ZEDM
+                camera_model:       'zedm'
             depth:
                 min_depth:          0.1               # Min: 0.1, Max: 3.0
-                max_depth:          10.               # Dynamic
+                max_depth:          10.
             imu:
                 imu_frame:          'zed_imu_link'
                 imu_topic_root:     'imu'
