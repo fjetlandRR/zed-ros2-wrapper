@@ -368,7 +368,7 @@ namespace stereolabs {
         int mGpuId = -1;
         int mZedResol = 2; // Default resolution: RESOLUTION_HD720
         int mZedQuality = 1; // Default quality: DEPTH_MODE_PERFORMANCE
-        int mDepthStabilization = 1;
+        bool mDepthStabilization = true;
         int mCamTimeoutSec = 5;
         int mMaxReconnectTemp = 5;
         bool mZedReactivate = false;

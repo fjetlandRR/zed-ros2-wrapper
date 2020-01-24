@@ -672,7 +672,7 @@ void ZedCameraComponent::getDepthParams() {
     declare_parameter(paramName, rclcpp::ParameterValue(mDepthStabilization) );
 
     if (get_parameter(paramName, paramVal)) {
-        mDepthStabilization = paramVal.as_int();
+        mDepthStabilization = paramVal.as_bool();
     } else {
         RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
     }
@@ -685,7 +685,7 @@ void ZedCameraComponent::getDepthParams() {
     declare_parameter(paramName, rclcpp::ParameterValue(mOpenniDepthMode) );
 
     if (get_parameter(paramName, paramVal)) {
-        mOpenniDepthMode = paramVal.as_int();
+        mOpenniDepthMode = paramVal.as_bool();
     } else {
         RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
     }
@@ -1719,7 +1719,7 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCam
     mZedParams.depth_mode = static_cast<sl::DEPTH_MODE>(mZedQuality);
     mZedParams.sdk_verbose = mVerbose;
     mZedParams.sdk_gpu_id = mGpuId;
-    mZedParams.depth_stabilization = mDepthStabilization;
+    mZedParams.depth_stabilization = static_cast<int>(mDepthStabilization);
     mZedParams.camera_image_flip = mCameraFlip;
     mZedParams.depth_minimum_distance = mZedMinDepth;
     // <---- ZED configuration
@@ -2955,15 +2955,16 @@ void ZedCameraComponent::startTracking() {
         transformOk = set_pose(mInitialBasePose[0], mInitialBasePose[1], mInitialBasePose[2],
                 mInitialBasePose[3], mInitialBasePose[4], mInitialBasePose[5]);
 
-        elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() -
-                                                                        start).count();
+        if(!transformOk) {
+            elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() -
+                                                                            start).count();
+            if (elapsed > 2000) {
+                RCLCPP_WARN(get_logger(),
+                            " !!! Failed to get static transforms. Is the 'ROBOT STATE PUBLISHER' node correctly working? ");
+                break;
+            }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-        if (elapsed > 10000) {
-            RCLCPP_WARN(get_logger(),
-                        " !!! Failed to get static transforms. Is the 'ROBOT STATE PUBLISHER' node correctly working? ");
-            break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
 
     } while (transformOk == false);
