@@ -12,9 +12,6 @@ zed:
                 max_depth:          10.
             imu:
                 imu_frame:          'zed_imu_link'
-                imu_topic_root:     'imu'
-                imu_topic:          'data'
-                imu_raw_topic:      'data_raw'
                 imu_pub_rate:       100.0
                 imu_sync_frame:     false
                 qos_history:        0                 # '0': KEEP_LAST - '1': KEEP_ALL

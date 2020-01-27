@@ -1126,6 +1126,10 @@ void ZedCameraComponent::getPoseParams() {
 }
 
 void ZedCameraComponent::getImuParams() {
+    if (mZedUserCamModel != sl::MODEL::ZED) {
+        return;
+    }
+
     rclcpp::Parameter paramVal;
     std::string paramName;
 
@@ -1134,89 +1138,51 @@ void ZedCameraComponent::getImuParams() {
     rmw_qos_reliability_policy_t qos_reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
     rmw_qos_durability_policy_t qos_durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
 
-    if (mZedUserCamModel != sl::MODEL::ZED) {
-        RCLCPP_INFO(get_logger(), "*** IMU parameters ***");
+    RCLCPP_INFO(get_logger(), "*** IMU parameters ***");
 
-        // ------------------------------------------
+    // ------------------------------------------
 
-        paramName = "imu.imu_frame";
+    paramName = "imu.imu_frame";
+    declare_parameter(paramName, rclcpp::ParameterValue(mImuFrameId) );
 
-        if (get_parameter(paramName, paramVal)) {
-            mImuFrameId = paramVal.as_string();
-        } else {
-            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
-        }
-
-        RCLCPP_INFO(get_logger(), " * IMU frame: '%s'", mImuFrameId.c_str());
-
-        // ------------------------------------------
-
-        paramName = "imu.imu_topic_root";
-
-        if (get_parameter(paramName, paramVal)) {
-            mImuTopicRoot = paramVal.as_string();
-        } else {
-            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
-        }
-
-        if (!mImuTopicRoot.back() != '/') {
-            mImuTopicRoot.push_back('/');
-        }
-
-        RCLCPP_INFO(get_logger(), " * IMU topic root: '%s'", mImuTopicRoot.c_str());
-
-        // ------------------------------------------
-
-        paramName = "imu.imu_topic";
-
-        if (get_parameter(paramName, paramVal)) {
-            mImuTopic = paramVal.as_string();
-        } else {
-            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
-        }
-
-        RCLCPP_INFO(get_logger(), " * IMU topic: '%s'", mImuTopic.c_str());
-
-        // ------------------------------------------
-
-        paramName = "imu.imu_raw_topic";
-
-        if (get_parameter(paramName, paramVal)) {
-            mImuRawTopic = paramVal.as_string();
-        } else {
-            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
-        }
-
-        RCLCPP_INFO(get_logger(), " * IMU RAW topic: '%s'", mImuRawTopic.c_str());
-
-        // ------------------------------------------
-
-        paramName = "imu.imu_pub_rate";
-
-        if (get_parameter(paramName, paramVal)) {
-            if (paramVal.get_type() == rclcpp::PARAMETER_DOUBLE) {
-                mImuPubRate = paramVal.as_double();
-            } else {
-                RCLCPP_WARN(get_logger(), "The parameter '%s' must be a DOUBLE, using the default value", paramName.c_str());
-            }
-        } else {
-            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
-        }
-
-        RCLCPP_INFO(get_logger(), " * IMU rate: %g Hz", mImuPubRate);
-
-        // ------------------------------------------
-
-        paramName = "imu.imu_sync_frame";
-
-        if (get_parameter(paramName, paramVal)) {
-            mImuTimestampSync = paramVal.as_bool();
-        } else {
-            RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
-        }
-
-        RCLCPP_INFO(get_logger(), " * IMU timestamp sync with last frame: %s", mImuTimestampSync ? "ENABLED" : "DISABLED");
+    if (get_parameter(paramName, paramVal)) {
+        mImuFrameId = paramVal.as_string();
+    } else {
+        RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
     }
+
+    RCLCPP_INFO(get_logger(), " * IMU frame: '%s'", mImuFrameId.c_str());
+
+    // ------------------------------------------
+
+    paramName = "imu.imu_pub_rate";
+    declare_parameter(paramName, rclcpp::ParameterValue(mImuPubRate) );
+
+    if (get_parameter(paramName, paramVal)) {
+        if (paramVal.get_type() == rclcpp::PARAMETER_DOUBLE) {
+            mImuPubRate = paramVal.as_double();
+        } else {
+            RCLCPP_WARN(get_logger(), "The parameter '%s' must be a DOUBLE, using the default value", paramName.c_str());
+        }
+    } else {
+        RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+    }
+
+    RCLCPP_INFO(get_logger(), " * IMU rate: %g Hz", mImuPubRate);
+
+    // ------------------------------------------
+
+    paramName = "imu.imu_sync_frame";
+    declare_parameter(paramName, rclcpp::ParameterValue(mImuTimestampSync) );
+
+    if (get_parameter(paramName, paramVal)) {
+        mImuTimestampSync = paramVal.as_bool();
+    } else {
+        RCLCPP_WARN(get_logger(), "The parameter '%s' is not available, using the default value", paramName.c_str());
+    }
+
+    RCLCPP_INFO(get_logger(), " * IMU timestamp sync with last frame: %s", mImuTimestampSync ? "ENABLED" : "DISABLED");
+
 
     // ------------------------------------------
 
