@@ -1448,7 +1448,7 @@ void ZedCameraComponent::initPublishers() {
     // <---- Video topics
 
     // ----> Depth Topics
-    mDepthTopic = topicPrefix + mDepthTopicRoot;
+    mDepthTopic = topicPrefix + mDepthTopicRoot + "/";
 
     if (mOpenniDepthMode) {
         RCLCPP_INFO(get_logger(), "Openni depth mode activated");
@@ -1459,9 +1459,9 @@ void ZedCameraComponent::initPublishers() {
 
     std::string mDepthCamInfoTopic = mDepthTopic + cam_info_topic;
 
-    mConfImgTopic = topicPrefix + mConfTopicRoot + mConfImgTopic;
+    mConfImgTopic = topicPrefix + mConfTopicRoot + "/" + mConfImgTopic;
     mConfCamInfoTopic = mConfImgTopic + cam_info_topic;
-    mConfMapTopic = topicPrefix + mConfTopicRoot + mConfMapTopic;
+    mConfMapTopic = topicPrefix + mConfTopicRoot + "/" + mConfMapTopic;
 
     mDispTopic = topicPrefix + mDispTopic;
 
