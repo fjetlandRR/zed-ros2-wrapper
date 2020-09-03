@@ -101,9 +101,8 @@ namespace stereolabs {
 
         // QoS profiles
         // https://github.com/ros2/ros2/wiki/About-Quality-of-Service-Settings
-        rmw_qos_profile_t mVideoQos = rmw_qos_profile_default;
-        rmw_qos_profile_t mDepthQos = rmw_qos_profile_default;
-        rmw_qos_profile_t mImuQos = rmw_qos_profile_default;
+        rclcpp::QoS mVideoQos;
+        rclcpp::QoS mDepthQos;
 
         // Publisher topics
         std::string mRgbTopic;

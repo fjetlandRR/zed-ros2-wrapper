@@ -116,9 +116,9 @@ set(ZED_COMPONENT_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/component/src/zed_component.cpp
 )
 
-#set(ZED_IT_SRC
-#    ${CMAKE_CURRENT_SOURCE_DIR}/src/component/src/zed_it_broadcaster.cpp
-#)
+set(ZED_IT_SRC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/component/src/zed_it_broadcaster.cpp
+)
 
 #set(ZED_TF_SRC
 #    ${CMAKE_CURRENT_SOURCE_DIR}/src/component/src/zed_tf_broadcaster.cpp
@@ -148,18 +148,17 @@ ament_target_dependencies(zed_component
   stereolabs_zed_interfaces
 )
 
-#add_library(zed_it_broadcaster SHARED ${TOOLS_SRC} ${ZED_IT_SRC})
-#target_compile_definitions(zed_it_broadcaster PRIVATE "ZED_BUILDING_DLL")
-#target_link_libraries(zed_it_broadcaster
-#    ${rclcpp_LIBRARIES}
-#)
-#ament_target_dependencies(zed_it_broadcaster
-#  rclcpp
-#  std_msgs
-#  sensor_msgs
-#  image_transport
-#)
-
+add_library(zed_it_broadcaster SHARED ${TOOLS_SRC} ${ZED_IT_SRC})
+target_compile_definitions(zed_it_broadcaster PRIVATE "ZED_BUILDING_DLL")
+target_link_libraries(zed_it_broadcaster
+    ${rclcpp_LIBRARIES}
+)
+ament_target_dependencies(zed_it_broadcaster
+  rclcpp
+  std_msgs
+  sensor_msgs
+  image_transport
+)
 
 #add_library(zed_tf_broadcaster SHARED ${TOOLS_SRC} ${ZED_TF_SRC})
 #target_compile_definitions(zed_tf_broadcaster PRIVATE "ZED_BUILDING_DLL")
@@ -189,7 +188,7 @@ add_executable(zed_wrapper_node ${NODE_SRC})
 target_link_libraries(zed_wrapper_node        
     ${rclcpp_LIBRARIES}
     zed_component
-    #zed_it_broadcaster
+    zed_it_broadcaster
     #zed_tf_broadcaster
 )
 ament_target_dependencies(zed_wrapper_node

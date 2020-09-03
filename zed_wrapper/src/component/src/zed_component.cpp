@@ -47,7 +47,7 @@ ZedCameraComponent::ZedCameraComponent(const std::string& node_name, const std::
     , mVideoQos(10)
     , mDepthQos(10)
     , mImuQos(10)
-    , mPoseQos (10) {
+    , mPoseQos(10) {
 
 #ifndef NDEBUG
     std::string logger = ros_namespace.empty() ? "" : ros_namespace + ".";
