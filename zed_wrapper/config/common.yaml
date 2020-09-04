@@ -17,7 +17,7 @@
             camera_flip:                false
             zed_id:                     0
             serial_number:              0
-            resolution:                 0                                   # '0': HD2K, '1': HD1080, '2': HD720, '3': VGA
+            resolution:                 2                                   # '0': HD2K, '1': HD1080, '2': HD720, '3': VGA
             verbose:                    true
             mat_resize_factor:          1.0                                 # Dynamic
             frame_rate:                 15

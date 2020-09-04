@@ -224,7 +224,7 @@ void ZedItBroadcaster::initSubscribers() {
         topicPrefix += "/";
     }
 
-    topicPrefix += get_name();
+    topicPrefix += mMainNode;
     topicPrefix += "/";
 
     // Video topics
