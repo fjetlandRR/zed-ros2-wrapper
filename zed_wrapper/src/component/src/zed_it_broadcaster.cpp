@@ -26,8 +26,8 @@ ZedItBroadcaster::ZedItBroadcaster(const std::string& node_name /*= "zed_it_broa
 
     RCLCPP_INFO(get_logger(), "***************************************************");
     RCLCPP_INFO(get_logger(), " ZED Image Transport Broadcaster Component created");
-    RCLCPP_INFO(get_logger(), "  * namespace: %s", get_namespace());
-    RCLCPP_INFO(get_logger(), "  * node name: %s", get_name());
+    RCLCPP_INFO_STREAM(get_logger(), "  * namespace: " << get_namespace() << " (" << ros_namespace << ")");
+    RCLCPP_INFO_STREAM(get_logger(), "  * node name: " << get_name() << " (" << node_name << ")");
     RCLCPP_INFO(get_logger(), "***************************************************");
 
     // Topics

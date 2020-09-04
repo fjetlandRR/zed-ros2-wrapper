@@ -37,6 +37,7 @@ namespace stereolabs {
         /**
          * \param[in] node_name Name of the node.
          * \param[in] namespace_ Namespace of the node.
+         * \param[in] main_node Namespace of the node.
          * \param[in] node_opt Node options
          */
         ZED_PUBLIC

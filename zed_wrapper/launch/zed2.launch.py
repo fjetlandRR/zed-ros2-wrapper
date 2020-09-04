@@ -53,7 +53,7 @@ def generate_launch_description():
         node_namespace='zed',  # must match the namespace in config -> YAML
         node_name='zed_node',  # must match the node name in config -> YAML
         package='stereolabs_zed',
-        node_executable='zed_wrapper_node',
+        node_executable='zed_container',
         output='screen',
         parameters=[
             config_common,  # Common parameters

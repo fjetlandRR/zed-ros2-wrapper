@@ -22,7 +22,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/parameter_map.hpp>
 
-#include "zed_component.hpp"
+#include "zed_camera.hpp"
 #include "zed_it_broadcaster.hpp"
 //#include "zed_tf_broadcaster.hpp"
 
@@ -64,13 +64,13 @@ int main(int argc, char* argv[]) {
 
     rclcpp::NodeOptions opt;
     opt.use_intra_process_comms(intraProcComm);
+    opt.use_global_arguments(false);
     opt.context(context);
 
     // ZED main component
     // Note: use the constructor to get node_name and namespace from the launch file
-    auto lc_node = std::make_shared<stereolabs::ZedCameraComponent>(lcNodeName, lcNamespace, opt);
+    auto lc_node = std::make_shared<stereolabs::ZedCamera>(lcNodeName, lcNamespace, opt);
     multiExec.add_node(lc_node->get_node_base_interface());
-
 
     // Overwrite the default values with the effective ones
     lcNamespace = lc_node->get_namespace();
@@ -80,6 +80,7 @@ int main(int argc, char* argv[]) {
     // if the node names are not the same (ROS2 requires that namespace+node_name in the YAML file match
     // namespace+node_name of the node where it is loaded)
     std::vector<rclcpp::Parameter> params = createParamsListFromYAMLs(argc, argv, lcNamespace, lcNodeName);
+    opt.parameter_overrides(params);
 
     // Note: image topics published by the main component do not support the ROS standard for `camera_info`
     //       topics to be compatible with the `camera view` plugin of `RVIZ2`.
@@ -91,7 +92,7 @@ int main(int argc, char* argv[]) {
     // Note: this is required since `image_transport` stack in ROS Crystal Clemmys does not support
     //       Lifecycle nodes. The component subscribes to image and depth topics from the main component
     //       and re-publish them using `image_transport`
-    auto it_node = std::make_shared<stereolabs::ZedItBroadcaster>( lcNodeName + "_it", lcNamespace, lcNodeName, opt );
+    auto it_node = std::make_shared<stereolabs::ZedItBroadcaster>( (lcNodeName + "_it"), lcNamespace, lcNodeName, opt );
     multiExec.add_node(it_node->get_node_base_interface());
 
 //    // ZED TF broadcaster

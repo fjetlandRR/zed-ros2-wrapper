@@ -108,12 +108,12 @@ set(LINK_LIBRARIES
 set(TOOLS_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/tools/src/sl_tools.cpp )
 
-set(NODE_SRC
+set(ZED_CONTAINER_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/zed_wrapper_container.cpp
 )
 
-set(ZED_COMPONENT_SRC
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/component/src/zed_component.cpp
+set(ZED_CAMERA_SRC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/component/src/zed_camera.cpp
 )
 
 set(ZED_IT_SRC
@@ -126,14 +126,14 @@ set(ZED_IT_SRC
 ###############################################################################
 # ZED COMPONENT PLUGIN and ZED EXECUTABLE
 
-add_library(zed_component SHARED ${TOOLS_SRC} ${ZED_COMPONENT_SRC})
-target_compile_definitions(zed_component PRIVATE "ZED_BUILDING_DLL")
-target_link_libraries(zed_component
+add_library(zed_camera SHARED ${TOOLS_SRC} ${ZED_CAMERA_SRC})
+target_compile_definitions(zed_camera PRIVATE "ZED_BUILDING_DLL")
+target_link_libraries(zed_camera
     ${rclcpp_lifecycle_LIBRARIES}
     ${rclcpp_LIBRARIES}
     ${LINK_LIBRARIES}
 )
-ament_target_dependencies(zed_component
+ament_target_dependencies(zed_camera
   lifecycle_msgs
   rclcpp_lifecycle
   rclcpp
@@ -184,30 +184,30 @@ if(NOT WIN32)
     )
 endif()
 
-add_executable(zed_wrapper_node ${NODE_SRC})
-target_link_libraries(zed_wrapper_node        
+add_executable(zed_container ${ZED_CONTAINER_SRC})
+target_link_libraries(zed_container
     ${rclcpp_LIBRARIES}
-    zed_component
+    zed_camera
     zed_it_broadcaster
     #zed_tf_broadcaster
 )
-ament_target_dependencies(zed_wrapper_node
+ament_target_dependencies(zed_container
   rclcpp
   class_loader
-  #zed_component
+  #zed_camera
   #zed_it_broadcaster
   #zed_tf_broadcaster
 )
 
 # Install executable
 install(
-    TARGETS zed_wrapper_node
+    TARGETS zed_container
     DESTINATION lib/${PROJECT_NAME}
 )
 
 # Install plugins
 install(
-    TARGETS zed_component
+    TARGETS zed_camera
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin

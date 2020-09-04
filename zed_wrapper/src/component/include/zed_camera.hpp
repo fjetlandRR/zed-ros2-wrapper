@@ -1,5 +1,5 @@
-#ifndef ZED_COMPONENT_HPP
-#define ZED_COMPONENT_HPP
+#ifndef ZED_CAMERA_HPP
+#define ZED_CAMERA_HPP
 
 // /////////////////////////////////////////////////////////////////////////
 //
@@ -97,23 +97,23 @@ namespace stereolabs {
 
     // <---- Typedefs to simplify declarations
 
-    /// ZedCameraComponent inheriting from rclcpp_lifecycle::LifecycleNode
-    class ZedCameraComponent : public rclcpp_lifecycle::LifecycleNode {
+    /// ZedCamera inheriting from rclcpp_lifecycle::LifecycleNode
+    class ZedCamera : public rclcpp_lifecycle::LifecycleNode {
       public:
-        RCLCPP_SMART_PTR_DEFINITIONS(ZedCameraComponent)
+        RCLCPP_SMART_PTR_DEFINITIONS(ZedCamera)
 
-        /// Create a new ZedCameraComponent/lifecycle node with the specified name.
+        /// Create a new ZedCamera/lifecycle node with the specified name.
         /**
          * \param[in] node_name Name of the node.
          * \param[in] ros_namespace Namespace of the node.
          * \param[in] node_opt node options. See `rclcpp::NodeOptions`
          */
         ZED_PUBLIC
-        explicit ZedCameraComponent(const std::string& node_name = "zed_node",
+        explicit ZedCamera(const std::string& node_name = "zed_node",
                                     const std::string& ros_namespace = "zed",
                                     const rclcpp::NodeOptions& node_opt = rclcpp::NodeOptions() );
 
-        virtual ~ZedCameraComponent();
+        virtual ~ZedCamera();
 
         /// Transition callback for state error
         /**
@@ -366,7 +366,7 @@ namespace stereolabs {
         bool mSvoMode = false;
         bool mVerbose = true;
         int mGpuId = -1;
-        int mZedResol = 2; // Default resolution: RESOLUTION_HD720
+        int mZedResol = 1; // Default resolution: RESOLUTION_HD720
         int mZedQuality = 1; // Default quality: DEPTH_MODE_PERFORMANCE
         bool mDepthStabilization = true;
         int mCamTimeoutSec = 5;

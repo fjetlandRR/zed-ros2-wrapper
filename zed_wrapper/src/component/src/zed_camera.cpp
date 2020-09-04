@@ -18,7 +18,7 @@
 //
 // /////////////////////////////////////////////////////////////////////////
 
-#include "zed_component.hpp"
+#include "zed_camera.hpp"
 #include "sl_tools.h"
 #include <string>
 
@@ -41,7 +41,7 @@ namespace stereolabs {
 #define RAD2DEG 57.295777937
 #endif
 
-ZedCameraComponent::ZedCameraComponent(const std::string& node_name, const std::string& ros_namespace,
+ZedCamera::ZedCamera(const std::string& node_name, const std::string& ros_namespace,
                                        const rclcpp::NodeOptions &node_opt)
     : rclcpp_lifecycle::LifecycleNode(node_name, ros_namespace, node_opt)
     , mVideoQos(10)
@@ -62,17 +62,16 @@ ZedCameraComponent::ZedCameraComponent(const std::string& node_name, const std::
 
 #endif
 
-    RCLCPP_INFO(get_logger(), "ZED Camera Component created");
-
-    RCLCPP_INFO(get_logger(), "ZED namespace: '%s'", get_namespace());
-    RCLCPP_INFO(get_logger(), "ZED node: '%s'", get_name());
-
+    RCLCPP_INFO(get_logger(), "*******************************");
+    RCLCPP_INFO(get_logger(), " ZED Camera Component created");
+    RCLCPP_INFO(get_logger(), "  * namespace: %s", get_namespace());
+    RCLCPP_INFO(get_logger(), "  * node name: %s", get_name());
+    RCLCPP_INFO(get_logger(), "********************************");
     RCLCPP_DEBUG(get_logger(), "[ROS2] Using RMW_IMPLEMENTATION = %s", rmw_get_implementation_identifier());
-
     RCLCPP_INFO(get_logger(), "Waiting for `CONFIGURE` request...");
 }
 
-ZedCameraComponent::~ZedCameraComponent() {
+ZedCamera::~ZedCamera() {
     // ----> Verify that all the threads are not active
     if (!mThreadStop) {
         mThreadStop = true;
@@ -97,7 +96,7 @@ ZedCameraComponent::~ZedCameraComponent() {
     // <---- Verify that the grab thread is not active
 }
 
-rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCameraComponent::on_shutdown(
+rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCamera::on_shutdown(
         const rclcpp_lifecycle::State& previous_state) {
     RCLCPP_INFO(get_logger(), "*** State transition: %s ***", this->get_current_state().label().c_str());
 
@@ -142,7 +141,7 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCam
     return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
 }
 
-rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCameraComponent::on_error(
+rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCamera::on_error(
         const rclcpp_lifecycle::State& previous_state) {
     RCLCPP_INFO(get_logger(), "*** State transition: %s ***", this->get_current_state().label().c_str());
 
@@ -190,7 +189,7 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCam
     return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
 }
 
-void ZedCameraComponent::getGeneralParams() {
+void ZedCamera::getGeneralParams() {
     rclcpp::Parameter paramVal;
     std::string paramName;
 
@@ -467,7 +466,7 @@ void ZedCameraComponent::getGeneralParams() {
     RCLCPP_INFO(get_logger(), " * RIGHT CAMERA OPTICAL frame: '%s'", mRightCamOptFrameId.c_str());
 }
 
-void ZedCameraComponent::getVideoParams() {
+void ZedCamera::getVideoParams() {
     rclcpp::Parameter paramVal;
     std::string paramName;
 
@@ -580,7 +579,7 @@ void ZedCameraComponent::getVideoParams() {
     RCLCPP_INFO(get_logger(), " * Video QoS Durability: '%s'", sl_tools::qos2str(qos_durability).c_str());
 }
 
-void ZedCameraComponent::getDepthParams() {
+void ZedCamera::getDepthParams() {
     rclcpp::Parameter paramVal;
     std::string paramName;
 
@@ -761,7 +760,7 @@ void ZedCameraComponent::getDepthParams() {
     RCLCPP_INFO(get_logger(), " * Depth QoS Durability: '%s'", sl_tools::qos2str(qos_durability).c_str());
 }
 
-void ZedCameraComponent::getPoseParams() {
+void ZedCamera::getPoseParams() {
     rclcpp::Parameter paramVal;
     std::string paramName;
 
@@ -1125,7 +1124,7 @@ void ZedCameraComponent::getPoseParams() {
 
 }
 
-void ZedCameraComponent::getImuParams() {
+void ZedCamera::getImuParams() {
     if (mZedUserCamModel != sl::MODEL::ZED) {
         return;
     }
@@ -1243,7 +1242,7 @@ void ZedCameraComponent::getImuParams() {
     RCLCPP_INFO(get_logger(), " * IMU QoS Durability: '%s'", sl_tools::qos2str(qos_durability).c_str());
 }
 
-void ZedCameraComponent::initParameters() {
+void ZedCamera::initParameters() {
     // GENERAL parameters
     getGeneralParams();
 
@@ -1260,10 +1259,10 @@ void ZedCameraComponent::initParameters() {
     getImuParams();
 
     // Dynamic parameters callback
-    set_on_parameters_set_callback(std::bind(&ZedCameraComponent::paramChangeCallback, this, _1));
+    set_on_parameters_set_callback(std::bind(&ZedCamera::paramChangeCallback, this, _1));
 }
 
-rcl_interfaces::msg::SetParametersResult ZedCameraComponent::paramChangeCallback(std::vector<rclcpp::Parameter>
+rcl_interfaces::msg::SetParametersResult ZedCamera::paramChangeCallback(std::vector<rclcpp::Parameter>
                                                                                  parameters) {
 
     auto result = rcl_interfaces::msg::SetParametersResult();
@@ -1408,7 +1407,7 @@ rcl_interfaces::msg::SetParametersResult ZedCameraComponent::paramChangeCallback
     return result;
 }
 
-void ZedCameraComponent::initPublishers() {
+void ZedCamera::initPublishers() {
     RCLCPP_INFO(get_logger(), "*** PUBLISHED TOPICS ***");
 
     std::string topicPrefix = get_namespace();
@@ -1567,7 +1566,7 @@ void ZedCameraComponent::initPublishers() {
     // <---- Create Pose/Odom publishers
 }
 
-void ZedCameraComponent::initServices() {
+void ZedCamera::initServices() {
     RCLCPP_INFO(get_logger(), "*** SERVICES ***");
 
     std::string srv_name;
@@ -1587,36 +1586,36 @@ void ZedCameraComponent::initServices() {
     // ResetOdometry
     srv_name = srv_prefix + "reset_odometry";
     mResetOdomSrv = create_service<stereolabs_zed_interfaces::srv::ResetOdometry>(srv_name,
-                                                                                  std::bind(&ZedCameraComponent::on_reset_odometry, this, _1, _2, _3));
+                                                                                  std::bind(&ZedCamera::on_reset_odometry, this, _1, _2, _3));
     RCLCPP_INFO(get_logger(), " * '%s'", mResetOdomSrv->get_service_name());
 
 
     // RestartTracking
     srv_name = srv_prefix + "restart_pos_tracking";
     mRestartTrkSrv = create_service<stereolabs_zed_interfaces::srv::RestartTracking>(srv_name,
-                                                                                     std::bind(&ZedCameraComponent::on_restart_tracking, this, _1, _2, _3));
+                                                                                     std::bind(&ZedCamera::on_restart_tracking, this, _1, _2, _3));
     RCLCPP_INFO(get_logger(), " * '%s'", mRestartTrkSrv->get_service_name());
 
     // SetPose
     srv_name = srv_prefix + "set_pose";
     mSetPoseSrv = create_service<stereolabs_zed_interfaces::srv::SetPose>(srv_name,
-                                                                          std::bind(&ZedCameraComponent::on_set_pose, this, _1, _2, _3));
+                                                                          std::bind(&ZedCamera::on_set_pose, this, _1, _2, _3));
     RCLCPP_INFO(get_logger(), " * '%s'", mSetPoseSrv->get_service_name());
 
     // StartSvoRecording
     srv_name = srv_prefix + "start_svo_rec";
     mStartSvoRecSrv = create_service<stereolabs_zed_interfaces::srv::StartSvoRecording>(srv_name,
-                                                                                        std::bind(&ZedCameraComponent::on_start_svo_recording, this, _1, _2, _3));
+                                                                                        std::bind(&ZedCamera::on_start_svo_recording, this, _1, _2, _3));
     RCLCPP_INFO(get_logger(), " * '%s'", mStartSvoRecSrv->get_service_name());
 
     // StartSvoRecording
     srv_name = srv_prefix + "stop_svo_rec";
     mStopSvoRecSrv = create_service<stereolabs_zed_interfaces::srv::StopSvoRecording>(srv_name,
-                                                                                      std::bind(&ZedCameraComponent::on_stop_svo_recording, this, _1, _2, _3));
+                                                                                      std::bind(&ZedCamera::on_stop_svo_recording, this, _1, _2, _3));
     RCLCPP_INFO(get_logger(), " * '%s'", mStopSvoRecSrv->get_service_name());
 }
 
-rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCameraComponent::on_configure(
+rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCamera::on_configure(
         const rclcpp_lifecycle::State&) {
     RCLCPP_INFO(get_logger(), "*** State transition: %s ***", this->get_current_state().label().c_str());
 
@@ -1751,7 +1750,7 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCam
         sl::ERROR_CODE err = mZed.open(mZedParams);
 
         if (err == sl::ERROR_CODE::SUCCESS) {
-            RCLCPP_INFO(get_logger(), "ZED Opened");
+            RCLCPP_DEBUG(get_logger(), "Opening successfull");
             break;
         }
 
@@ -1869,7 +1868,7 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCam
     return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
 }
 
-rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCameraComponent::on_activate(
+rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCamera::on_activate(
         const rclcpp_lifecycle::State&) {
     RCLCPP_INFO(get_logger(), "*** State transition: %s ***", this->get_current_state().label().c_str());
 
@@ -1928,12 +1927,12 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCam
     // ----> Start Pointcloud thread
     mPcDataReady = false;
     //RCLCPP_DEBUG(get_logger(), "on_activate -> mPcDataReady FALSE")
-    mPcThread = std::thread(&ZedCameraComponent::pointcloudThreadFunc, this);
+    mPcThread = std::thread(&ZedCamera::pointcloudThreadFunc, this);
     // <---- Start Pointcloud thread
 
     // ----> Start ZED thread
     mThreadStop = false;
-    mGrabThread = std::thread(&ZedCameraComponent::zedGrabThreadFunc, this);
+    mGrabThread = std::thread(&ZedCamera::zedGrabThreadFunc, this);
     // <---- Start ZED thread
 
     // ----> Start IMU timer
@@ -1941,7 +1940,7 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCam
         std::chrono::milliseconds imuPeriodMsec(static_cast<int>(1000.0 / mImuPubRate));
 
         mImuTimer = create_wall_timer(std::chrono::duration_cast<std::chrono::microseconds>(imuPeriodMsec),
-                                      std::bind(&ZedCameraComponent::imuPubCallback, this));
+                                      std::bind(&ZedCamera::imuPubCallback, this));
     }
 
     // <---- Start IMU timer
@@ -1951,7 +1950,7 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCam
         std::chrono::milliseconds pathPeriodMsec(static_cast<int>(1000.0 / mPathPubRate));
 
         mPathTimer = create_wall_timer(std::chrono::duration_cast<std::chrono::microseconds>(pathPeriodMsec),
-                                       std::bind(&ZedCameraComponent::pathPubCallback, this));
+                                       std::bind(&ZedCamera::pathPubCallback, this));
 
         if (mPathMaxCount != -1) {
             RCLCPP_DEBUG(get_logger(), "Path vectors reserved %d poses", mPathMaxCount);
@@ -1969,7 +1968,7 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCam
     return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
 }
 
-rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCameraComponent::on_deactivate(
+rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCamera::on_deactivate(
         const rclcpp_lifecycle::State&) {
     RCLCPP_INFO(get_logger(), "*** State transition: %s ***", this->get_current_state().label().c_str());
 
@@ -2064,7 +2063,7 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCam
     return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
 }
 
-rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCameraComponent::on_cleanup(
+rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCamera::on_cleanup(
         const rclcpp_lifecycle::State&) {
     RCLCPP_INFO(get_logger(), "*** State transition: %s ***", this->get_current_state().label().c_str());
 
@@ -2092,7 +2091,7 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ZedCam
     return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
 }
 
-void ZedCameraComponent::zedGrabThreadFunc() {
+void ZedCamera::zedGrabThreadFunc() {
     RCLCPP_INFO(get_logger(), "ZED thread started");
 
     mRecording = false;
@@ -2212,7 +2211,7 @@ void ZedCameraComponent::zedGrabThreadFunc() {
                 if (elapsed > timeout) {
                     if (!mSvoMode) {
                         std::lock_guard<std::mutex> lock(mReconnectMutex);
-                        mReconnectThread = std::thread(&ZedCameraComponent::zedReconnectThreadFunc, this);
+                        mReconnectThread = std::thread(&ZedCamera::zedReconnectThreadFunc, this);
                         mReconnectThread.detach();
                         return;
                     } else {
@@ -2313,13 +2312,7 @@ void ZedCameraComponent::zedGrabThreadFunc() {
 
             // <---- Thread sleep
         } else {
-            static int noSubInfoCount = 0;
-
-            if (noSubInfoCount % 500 == 0) {
-                RCLCPP_INFO(get_logger(), "*** No subscribers ***");
-            }
-
-            noSubInfoCount++;
+            RCLCPP_INFO_ONCE(get_logger(), "*** Waiting for subscribers ***");
 
             std::this_thread::sleep_for(std::chrono::milliseconds(10));  // No subscribers, we just wait
             loop_rate.reset();
@@ -2329,7 +2322,7 @@ void ZedCameraComponent::zedGrabThreadFunc() {
     RCLCPP_INFO(get_logger(), "ZED thread finished");
 }
 
-void ZedCameraComponent::publishImages(rclcpp::Time timeStamp) {
+void ZedCamera::publishImages(rclcpp::Time timeStamp) {
     size_t rgbSubnumber = count_subscribers(mRgbTopic);  // mPubRgb subscribers
     size_t rgbRawSubnumber = count_subscribers(mRgbRawTopic);  //mPubRawRgb subscribers
     size_t leftSubnumber = count_subscribers(mLeftTopic);  //mPubLeft subscribers
@@ -2398,7 +2391,7 @@ void ZedCameraComponent::publishImages(rclcpp::Time timeStamp) {
     // <---- Publish the right image if someone has subscribed to
 }
 
-void ZedCameraComponent::publishDepthData(rclcpp::Time timeStamp) {
+void ZedCamera::publishDepthData(rclcpp::Time timeStamp) {
     size_t depthSub = count_subscribers(mDepthTopic);       // mPubDepth subscribers
     size_t confImgSub = count_subscribers(mConfImgTopic);   // mConfImg subscribers
     size_t confMapSub = count_subscribers(mConfMapTopic);   // mConfMap subscribers
@@ -2467,7 +2460,7 @@ void ZedCameraComponent::publishDepthData(rclcpp::Time timeStamp) {
     // <---- Publish the point cloud if someone has subscribed to
 }
 
-void ZedCameraComponent::fillCamInfo(sl::Camera& zed, std::shared_ptr<sensor_msgs::msg::CameraInfo> leftCamInfoMsg,
+void ZedCamera::fillCamInfo(sl::Camera& zed, std::shared_ptr<sensor_msgs::msg::CameraInfo> leftCamInfoMsg,
                                      std::shared_ptr<sensor_msgs::msg::CameraInfo> rightCamInfoMsg,
                                      std::string leftFrameId, std::string rightFrameId,
                                      bool rawParam /*= false*/) {
@@ -2546,18 +2539,18 @@ void ZedCameraComponent::fillCamInfo(sl::Camera& zed, std::shared_ptr<sensor_msg
     rightCamInfoMsg->header.frame_id = rightFrameId;
 }
 
-void ZedCameraComponent::publishCamInfo(camInfoMsgPtr camInfoMsg, camInfoPub pubCamInfo, rclcpp::Time timeStamp) {
+void ZedCamera::publishCamInfo(camInfoMsgPtr camInfoMsg, camInfoPub pubCamInfo, rclcpp::Time timeStamp) {
     camInfoMsg->header.stamp = timeStamp;
     pubCamInfo->publish(*camInfoMsg);
 }
 
-void ZedCameraComponent::publishImage(sl::Mat img,
+void ZedCamera::publishImage(sl::Mat img,
                                       imagePub pubImg,
                                       std::string imgFrameId, rclcpp::Time timeStamp) {
     pubImg->publish(*sl_tools::imageToROSmsg(img, imgFrameId, timeStamp)) ;
 }
 
-void ZedCameraComponent::publishDepth(sl::Mat depth, rclcpp::Time t) {
+void ZedCamera::publishDepth(sl::Mat depth, rclcpp::Time t) {
 
     if (!mOpenniDepthMode) {
         mPubDepth->publish(*sl_tools::imageToROSmsg(depth, mDepthOptFrameId, t));
@@ -2594,7 +2587,7 @@ void ZedCameraComponent::publishDepth(sl::Mat depth, rclcpp::Time t) {
 }
 
 
-void ZedCameraComponent::publishDisparity(sl::Mat disparity, rclcpp::Time timestamp) {
+void ZedCamera::publishDisparity(sl::Mat disparity, rclcpp::Time timestamp) {
     sl::CameraInformation zedParam = mZed.getCameraInformation(sl::Resolution(sl::Resolution(mMatWidth, mMatHeight)));
 
     std::shared_ptr<sensor_msgs::msg::Image> disparity_image =
@@ -2616,7 +2609,7 @@ void ZedCameraComponent::publishDisparity(sl::Mat disparity, rclcpp::Time timest
     mPubDisparity->publish(msg);
 }
 
-void ZedCameraComponent::publishPointCloud() {
+void ZedCamera::publishPointCloud() {
     // Publish freq calculation
     static std::chrono::steady_clock::time_point last_time = std::chrono::steady_clock::now();
     std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
@@ -2660,7 +2653,7 @@ void ZedCameraComponent::publishPointCloud() {
     mPubPointcloud->publish(*mPointcloudMsg);
 }
 
-void ZedCameraComponent::zedReconnectThreadFunc() {
+void ZedCamera::zedReconnectThreadFunc() {
     std::lock_guard<std::mutex> lock(mReconnectMutex);
 
     rclcpp_lifecycle::State retState;
@@ -2693,7 +2686,7 @@ void ZedCameraComponent::zedReconnectThreadFunc() {
     }
 }
 
-void ZedCameraComponent::pointcloudThreadFunc() {
+void ZedCamera::pointcloudThreadFunc() {
     std::unique_lock<std::mutex> lock(mPcMutex);
 
     while (!mThreadStop) {
@@ -2720,7 +2713,7 @@ void ZedCameraComponent::pointcloudThreadFunc() {
     //RCLCPP_DEBUG(get_logger(), "Pointcloud thread finished");
 }
 
-void ZedCameraComponent::pathPubCallback() {
+void ZedCamera::pathPubCallback() {
     uint32_t mapPathSub = count_subscribers(mPosePathTopic);
     uint32_t odomPathSub = count_subscribers(mOdomPathTopic);
 
@@ -2793,7 +2786,7 @@ void ZedCameraComponent::pathPubCallback() {
     }
 }
 
-void ZedCameraComponent::imuPubCallback() {
+void ZedCamera::imuPubCallback() {
 
     std::lock_guard<std::mutex> lock(mImuMutex);
 
@@ -2920,7 +2913,7 @@ void ZedCameraComponent::imuPubCallback() {
     //        }
 }
 
-void ZedCameraComponent::startTracking() {
+void ZedCamera::startTracking() {
     RCLCPP_INFO(get_logger(), "*** Starting Positional Tracking ***");
 
     RCLCPP_INFO(get_logger(), " * Waiting for valid static transformations...");
@@ -2984,7 +2977,7 @@ void ZedCameraComponent::startTracking() {
     }
 }
 
-bool ZedCameraComponent::set_pose(float xt, float yt, float zt,
+bool ZedCamera::set_pose(float xt, float yt, float zt,
                                   float rr, float pr, float yr) {
     initTransforms();
 
@@ -3029,7 +3022,7 @@ bool ZedCameraComponent::set_pose(float xt, float yt, float zt,
     return (mSensor2BaseTransfValid & mSensor2CameraTransfValid & mCamera2BaseTransfValid);
 }
 
-void ZedCameraComponent::initTransforms() {
+void ZedCamera::initTransforms() {
 
     // According to REP 105 -> http://www.ros.org/reps/rep-0105.html
 
@@ -3046,7 +3039,7 @@ void ZedCameraComponent::initTransforms() {
     // <---- Dynamic transforms
 }
 
-void ZedCameraComponent::processOdometry() {
+void ZedCamera::processOdometry() {
 
     if (!mSensor2BaseTransfValid) {
         getSens2BaseTransform();
@@ -3140,7 +3133,7 @@ void ZedCameraComponent::processOdometry() {
     }
 }
 
-void ZedCameraComponent::publishOdom(tf2::Transform odom2baseTransf, sl::Pose& slPose, rclcpp::Time t) {
+void ZedCamera::publishOdom(tf2::Transform odom2baseTransf, sl::Pose& slPose, rclcpp::Time t) {
 
     nav_msgs::msg::Odometry odom;
     odom.header.stamp = t;
@@ -3193,7 +3186,7 @@ void ZedCameraComponent::publishOdom(tf2::Transform odom2baseTransf, sl::Pose& s
     mPubOdom->publish(odom);
 }
 
-void ZedCameraComponent::processPose() {
+void ZedCamera::processPose() {
 
     if (!mSensor2BaseTransfValid) {
         getSens2BaseTransform();
@@ -3315,7 +3308,7 @@ void ZedCameraComponent::processPose() {
     oldStatus = mTrackingStatus;
 }
 
-void ZedCameraComponent::publishPose() {
+void ZedCamera::publishPose() {
 
     size_t poseSub = count_subscribers(mPoseTopic);         // mPubPose subscribers
     size_t poseCovSub = count_subscribers(mPoseCovTopic);   // mPubPoseCov subscribers
@@ -3387,7 +3380,7 @@ void ZedCameraComponent::publishPose() {
     }
 }
 
-void ZedCameraComponent::publishMapOdom() {
+void ZedCamera::publishMapOdom() {
 
     nav_msgs::msg::Odometry msg;
     msg.header.stamp = mFrameTimestamp;
@@ -3408,7 +3401,7 @@ void ZedCameraComponent::publishMapOdom() {
     mPubMapOdom->publish(msg);
 }
 
-bool ZedCameraComponent::getCamera2BaseTransform() {
+bool ZedCamera::getCamera2BaseTransform() {
     RCLCPP_DEBUG(get_logger(), "Getting static TF from '%s' to '%s'", mCameraFrameId.c_str(), mBaseFrameId.c_str());
 
     mCamera2BaseTransfValid = false;
@@ -3454,7 +3447,7 @@ bool ZedCameraComponent::getCamera2BaseTransform() {
     return true;
 }
 
-bool ZedCameraComponent::getSens2CameraTransform() {
+bool ZedCamera::getSens2CameraTransform() {
     RCLCPP_DEBUG(get_logger(), "Getting static TF from '%s' to '%s'", mDepthFrameId.c_str(), mCameraFrameId.c_str());
 
     mSensor2CameraTransfValid = false;
@@ -3497,7 +3490,7 @@ bool ZedCameraComponent::getSens2CameraTransform() {
     return true;
 }
 
-bool ZedCameraComponent::getSens2BaseTransform() {
+bool ZedCamera::getSens2BaseTransform() {
     RCLCPP_DEBUG(get_logger(), "Getting static TF from '%s' to '%s'", mDepthFrameId.c_str(), mBaseFrameId.c_str());
 
     mSensor2BaseTransfValid = false;
@@ -3541,7 +3534,7 @@ bool ZedCameraComponent::getSens2BaseTransform() {
     return true;
 }
 
-void ZedCameraComponent::on_reset_odometry(const std::shared_ptr<rmw_request_id_t> request_header,
+void ZedCamera::on_reset_odometry(const std::shared_ptr<rmw_request_id_t> request_header,
                                            const std::shared_ptr<stereolabs_zed_interfaces::srv::ResetOdometry::Request> req,
                                            std::shared_ptr<stereolabs_zed_interfaces::srv::ResetOdometry::Response> res) {
 
@@ -3552,7 +3545,7 @@ void ZedCameraComponent::on_reset_odometry(const std::shared_ptr<rmw_request_id_
     res->reset_done = true;
 }
 
-void ZedCameraComponent::on_restart_tracking(const std::shared_ptr<rmw_request_id_t> request_header,
+void ZedCamera::on_restart_tracking(const std::shared_ptr<rmw_request_id_t> request_header,
                                              const std::shared_ptr<stereolabs_zed_interfaces::srv::RestartTracking::Request>  req,
                                              std::shared_ptr<stereolabs_zed_interfaces::srv::RestartTracking::Response> res) {
 
@@ -3577,7 +3570,7 @@ void ZedCameraComponent::on_restart_tracking(const std::shared_ptr<rmw_request_i
     res->done = true;
 }
 
-void ZedCameraComponent::on_set_pose(const std::shared_ptr<rmw_request_id_t> request_header,
+void ZedCamera::on_set_pose(const std::shared_ptr<rmw_request_id_t> request_header,
                                      const std::shared_ptr<stereolabs_zed_interfaces::srv::SetPose::Request>  req,
                                      std::shared_ptr<stereolabs_zed_interfaces::srv::SetPose::Response> res) {
 
@@ -3609,7 +3602,7 @@ void ZedCameraComponent::on_set_pose(const std::shared_ptr<rmw_request_id_t> req
     res->done = true;
 }
 
-void ZedCameraComponent::on_start_svo_recording(const std::shared_ptr<rmw_request_id_t> request_header,
+void ZedCamera::on_start_svo_recording(const std::shared_ptr<rmw_request_id_t> request_header,
                                                 const std::shared_ptr<stereolabs_zed_interfaces::srv::StartSvoRecording::Request>  req,
                                                 std::shared_ptr<stereolabs_zed_interfaces::srv::StartSvoRecording::Response> res) {
 
@@ -3676,7 +3669,7 @@ void ZedCameraComponent::on_start_svo_recording(const std::shared_ptr<rmw_reques
 
 /* \brief Service callback to StopSvoRecording service
      */
-void ZedCameraComponent::on_stop_svo_recording(const std::shared_ptr<rmw_request_id_t> request_header,
+void ZedCamera::on_stop_svo_recording(const std::shared_ptr<rmw_request_id_t> request_header,
                                                const std::shared_ptr<stereolabs_zed_interfaces::srv::StopSvoRecording::Request>  req,
                                                std::shared_ptr<stereolabs_zed_interfaces::srv::StopSvoRecording::Response> res) {
 
@@ -3705,4 +3698,4 @@ void ZedCameraComponent::on_stop_svo_recording(const std::shared_ptr<rmw_request
 // Register the component with class_loader.
 // This acts as a sort of entry point, allowing the component to be discoverable when its library
 // is being loaded into a running process.
-CLASS_LOADER_REGISTER_CLASS(stereolabs::ZedCameraComponent, rclcpp_lifecycle::LifecycleNode)
+CLASS_LOADER_REGISTER_CLASS(stereolabs::ZedCamera, rclcpp_lifecycle::LifecycleNode)
